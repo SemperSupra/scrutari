@@ -75,7 +75,25 @@
   .conf-high { background: #065f46; color: #6ee7b7; }
   .conf-med { background: #78350f; color: #fcd34d; }
   .conf-low { background: #7f1d1d; color: #fca5a5; }
-</style>
+  .rec-progress { height: 0.5rem; background: #1e293b; border-radius: 9999px; overflow: hidden; margin: 0.5rem 0; }
+  .rec-fill { height: 100%; background: #ef4444; border-radius: 9999px; transition: width 0.5s ease; }
+  .rec-fill.rec-complete { background: #22c55e; }
+  .rec-status { font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.5rem; }
+  .rec-dot { display: inline-block; width: 0.6rem; height: 0.6rem; background: #ef4444; border-radius: 50%; margin-right: 0.4rem; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .rec-dot.done { background: #22c55e; animation: none; }
+  .rec-event-count { font-size: 0.7rem; color: #64748b; }
+  .beh-signal-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; font-size: 0.75rem; border-bottom: 1px solid #1e293b; }
+  .beh-signal-item:last-child { border-bottom: none; }
+  .beh-signal-icon { width: 1.2rem; text-align: center; flex-shrink: 0; }
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; display: flex; align-items: center; justify-content: center; }
+  .modal-box { background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 1.5rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+  .modal-box h3 { font-size: 1rem; margin-bottom: 0.75rem; }
+  .modal-close { float: right; cursor: pointer; color: #64748b; font-size: 1.2rem; }
+  .field-preview { font-family: monospace; font-size: 0.7rem; background: #0f172a; padding: 0.5rem; border-radius: 0.375rem; max-height: 200px; overflow-y: auto; margin: 0.5rem 0; white-space: pre-wrap; word-break: break-all; }
+  .field-check { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; font-size: 0.75rem; cursor: pointer; }
+  .field-check input { accent-color: #3b82f6; }
+
 </head>
 <body>
 <div class="container">
@@ -107,6 +125,8 @@
 <button class="btn" onclick="document.getElementById('section-headers').scrollIntoView()">Headers</button>
 <button class="btn" onclick="document.getElementById('section-botornot').scrollIntoView()">Bot-or-Not</button>
 <button class="btn" onclick="document.getElementById('section-benchmarks').scrollIntoView()">Benchmarks</button>
+<button class="btn" onclick="document.getElementById('section-behavior').scrollIntoView()">Behavior</button>
+<button class="btn" onclick="document.getElementById('section-submit').scrollIntoView()">Submit</button>
 </div>
 
 <div id="section-fingerprint" class="card">
@@ -118,7 +138,7 @@
 
 <div id="section-botornot" class="card gauge-card">
   <h2>Bot-or-Not™ <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; rating how human-like your connection appears</span></h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 25+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 29+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
   <div id="botornot-results">
     <div class="gauge-container" style="opacity:0.5;">
       <div class="gauge-emoji">🤖</div>
@@ -134,6 +154,44 @@
   <button class="btn" onclick="loadBenchmarks()">Load Benchmarks</button>
   <div id="benchmarks-results">
     <div class="result-box info" style="margin-top:0.5rem;">Click "Load Benchmarks" to see how common browsers and tools compare.</div>
+  </div>
+</div>
+
+<div id="section-behavior" class="card">
+  <h2>🕹️ Behavioral Analysis <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; how human-like your interactions look</span></h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
+    Records mouse movements, scrolling, clicks, and typing to detect automation.
+    <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();document.getElementById('entropy-explanation').innerHTML?0:showEntropyExplanation(0,'0')">How does this work?</span>
+  </p>
+  <div id="behavior-results">
+    <div class="gauge-container" style="text-align:center;">
+      <div class="gauge-emoji">🎯</div>
+      <div class="gauge-title" id="behavior-status">Ready to record</div>
+      <div class="gauge-subtitle" id="behavior-substatus">Click "Start Recording" and interact naturally for 15 seconds</div>
+      <div id="behavior-progress" style="display:none;">
+        <div class="rec-progress"><div class="rec-fill" id="behavior-bar" style="width:0%;"></div></div>
+        <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events recorded</div>
+      </div>
+      <button class="btn" id="behavior-btn" onclick="toggleBehaviorRecording()">▶ Start Recording (15s)</button>
+      <div id="behavior-results-inner"></div>
+    </div>
+  </div>
+</div>
+
+<div id="section-submit" class="card">
+  <h2>📤 Contribute to Research <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; help us improve Bot-or-Not</span></h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
+    Submit your anonymized fingerprint to build a public k-anonymity dataset.
+    No IP addresses, no cookies — just browser attributes.
+  </p>
+  <div id="submit-results">
+    <div class="gauge-container" style="text-align:center;">
+      <div class="gauge-emoji">🔬</div>
+      <div class="gauge-title">Run fingerprint + Bot-or-Not first</div>
+      <div class="gauge-subtitle">After capturing your fingerprint, you'll be able to contribute anonymized data to improve detection accuracy.</div>
+      <div id="submit-preview-section" style="display:none;text-align:left;margin-top:0.75rem;"></div>
+      <div id="submit-status" style="margin-top:0.5rem;"></div>
+    </div>
   </div>
 </div>
 
@@ -949,6 +1007,29 @@ async function captureFingerprint() {
     fp['HTTP Referrer'] = ref.length > 80 ? ref.substring(0, 80) + '...' : ref;
   } catch(e) { fp['HTTP Referrer'] = 'error'; }
 
+  // CSS Engine Fingerprinting — detect browser CSS engine and version via @supports
+  // Different CSS engines (Blink, Gecko, WebKit) support different features at different times
+  try {
+    if (typeof CSS !== 'undefined' && CSS.supports) {
+      fp['CSS Grid'] = CSS.supports('display: grid') ? 'Yes' : 'No';
+      fp['CSS Subgrid'] = CSS.supports('display: subgrid') ? 'Yes' : 'No';
+      fp['CSS :has()'] = CSS.supports('selector(:has(*))') ? 'Yes' : 'No';
+      fp['CSS Container Queries'] = CSS.supports('container-type: inline-size') ? 'Yes' : 'No';
+      fp['CSS scroll() timeline'] = CSS.supports('animation-timeline: scroll()') ? 'Yes' : 'No';
+      fp['CSS view transitions'] = CSS.supports('selector(::view-transition)') ? 'Yes' : 'No';
+      fp['CSS initial-letter'] = CSS.supports('initial-letter: 2') ? 'Yes (Safari)' : 'No';
+      fp['CSS P3 color'] = CSS.supports('color: color(display-p3 1 0.5 0.5)') ? 'Yes' : 'No';
+      fp['CSS -webkit-scrollbar'] = CSS.supports('selector(::-webkit-scrollbar)') ? 'Yes (WebKit/Blink)' : 'No';
+      fp['CSS -moz-appearance'] = CSS.supports('-moz-appearance: none') ? 'Yes (Gecko)' : 'No';
+      fp['CSS Houdini paint'] = typeof CSS.paintWorklet !== 'undefined' ? 'Yes (Chrome)' : 'No';
+      fp['CSS prefers-reduced-data'] = window.matchMedia('(prefers-reduced-data: reduce)').matches ? 'Yes (Safari)' : 'No';
+      fp['CSS forced-colors'] = window.matchMedia('(forced-colors: active)').matches ? 'Yes' : 'No';
+      fp['CSS inverted-colors'] = window.matchMedia('(inverted-colors: inverted)').matches ? 'Yes' : 'No';
+    } else {
+      fp['CSS Engine'] = 'No CSS.supports (ancient browser)';
+    }
+  } catch(e) { fp['CSS Fingerprint'] = 'error'; }
+
   var ent = calculateFingerprintEntropy(fp);
   document.getElementById('fingerprint-entropy').innerHTML =
     '<div class="result-box info"><strong>Fingerprint Entropy: ' + ent.total + ' bits</strong> &mdash; ' +
@@ -1149,9 +1230,24 @@ function computeBotOrNot(fp) {
     return ref.length > 0 && !ref.includes('(empty');
   });
 
+  // 27. CSS Houdini Paint Worklet — Chrome-only API, suspicious if missing from Chrome
+  test(1, 'CSS Houdini Paint API', false, function() {
+    return fp['CSS Houdini paint'] && fp['CSS Houdini paint'] === 'Yes (Chrome)';
+  });
+
+  // 28. CSS :has() selector — widely supported in modern browsers, missing = old/unusual
+  test(1, 'CSS :has() selector', false, function() {
+    return fp['CSS :has()'] === 'Yes';
+  });
+
+  // 29. CSS Container Queries — modern responsive feature, missing = old browser
+  test(1, 'CSS Container Queries', false, function() {
+    return fp['CSS Container Queries'] === 'Yes';
+  });
+
   // === COMPUTE SCORE ===
   var botProb = totalWeight > 0 ? (botWeight / totalWeight) : 0.5;
-  var maxPossibleWeight = 80; // sum of all test weights
+  var maxPossibleWeight = 83; // sum of all test weights
   var coverage = totalWeight / maxPossibleWeight;
   var confidence = coverage >= 0.8 ? 'High' : (coverage >= 0.5 ? 'Medium' : 'Low');
 
@@ -1160,7 +1256,7 @@ function computeBotOrNot(fp) {
     confidence: confidence,
     coverage: Math.round(coverage * 100),
     testsRun: results.length,
-    testsTotal: 26,
+    testsTotal: 29,
     totalWeight: totalWeight,
     maxWeight: maxPossibleWeight,
     results: results
@@ -1339,6 +1435,378 @@ function captureTimeLeaks() {
   html += '</table>';
   div.innerHTML = html;
 }
+
+// ===== BEHAVIORAL TRACKING ENGINE =====
+var __behavior = { running: false, timer: null, timeout: null, duration: 15000, startTime: null,
+  events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [] }, count: 0 };
+
+function __trackMouse(e) { if (!__behavior.running) return;
+  __behavior.events.mouse.push({ x: e.clientX, y: e.clientY, t: performance.now() }); __behavior.count++; __updateBehaviorUI(); }
+function __trackScroll() { if (!__behavior.running) return;
+  __behavior.events.scroll.push({ y: window.scrollY, t: performance.now() }); __behavior.count++; __updateBehaviorUI(); }
+function __trackClick(e) { if (!__behavior.running) return;
+  __behavior.events.click.push({ x: e.clientX, y: e.clientY, t: performance.now(), target: e.target.tagName }); __behavior.count++; __updateBehaviorUI(); }
+function __trackKey(e) { if (!__behavior.running) return;
+  __behavior.events.key.push({ key: e.key, t: performance.now(), type: e.type }); __behavior.count++; __updateBehaviorUI(); }
+function __trackFocus(e) { if (!__behavior.running) return;
+  __behavior.events.focus.push({ t: performance.now(), type: e.type }); }
+function __trackResize() { if (!__behavior.running) return;
+  __behavior.events.resize.push({ w: window.innerWidth, h: window.innerHeight, t: performance.now() }); }
+
+function __updateBehaviorUI() {
+  var elapsed = performance.now() - __behavior.startTime;
+  var remaining = Math.max(0, Math.round((__behavior.duration - elapsed) / 1000));
+  var pct = Math.min(100, Math.round(elapsed / __behavior.duration * 100));
+  document.getElementById('behavior-bar').style.width = pct + '%';
+  document.getElementById('behavior-timer').textContent = remaining + 's';
+  document.getElementById('behavior-events').textContent = __behavior.count;
+}
+
+function toggleBehaviorRecording() { __behavior.running ? stopBehaviorRecording() : startBehaviorRecording(); }
+
+function startBehaviorRecording() {
+  __behavior = { running: true, timer: null, timeout: null, duration: 15000, startTime: performance.now(),
+    events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [] }, count: 0 };
+  document.getElementById('behavior-btn').textContent = '⏹ Stop Recording';
+  document.getElementById('behavior-progress').style.display = 'block';
+  document.getElementById('behavior-status').textContent = '🔴 Recording...';
+  document.getElementById('behavior-substatus').textContent = 'Move your mouse, scroll, click, and type naturally';
+  document.getElementById('behavior-bar').style.width = '0%';
+  document.getElementById('behavior-dot').className = 'rec-dot';
+  document.getElementById('behavior-bar').className = 'rec-fill';
+  document.getElementById('behavior-results-inner').innerHTML = '';
+  document.addEventListener('mousemove', __trackMouse);
+  document.addEventListener('scroll', __trackScroll);
+  document.addEventListener('click', __trackClick);
+  document.addEventListener('keydown', __trackKey);
+  document.addEventListener('keyup', __trackKey);
+  window.addEventListener('focus', __trackFocus);
+  window.addEventListener('blur', __trackFocus);
+  window.addEventListener('resize', __trackResize);
+  __behavior.timer = setInterval(__updateBehaviorUI, 100);
+  __behavior.timeout = setTimeout(stopBehaviorRecording, __behavior.duration);
+}
+
+function stopBehaviorRecording() {
+  if (!__behavior.running) return;
+  __behavior.running = false;
+  clearInterval(__behavior.timer); clearTimeout(__behavior.timeout);
+  document.removeEventListener('mousemove', __trackMouse);
+  document.removeEventListener('scroll', __trackScroll);
+  document.removeEventListener('click', __trackClick);
+  document.removeEventListener('keydown', __trackKey);
+  document.removeEventListener('keyup', __trackKey);
+  window.removeEventListener('focus', __trackFocus);
+  window.removeEventListener('blur', __trackFocus);
+  window.removeEventListener('resize', __trackResize);
+  document.getElementById('behavior-btn').textContent = '▶ Start Recording (15s)';
+  document.getElementById('behavior-status').textContent = '✅ Recording complete';
+  document.getElementById('behavior-dot').className = 'rec-dot done';
+  document.getElementById('behavior-bar').className = 'rec-fill rec-complete';
+  displayBehaviorResults(analyzeBehavior(__behavior.events));
+}
+
+function analyzeBehavior(events) {
+  var signals = [], totalWeight = 0, botWeight = 0;
+  function t(w, name, isBot, fn) { try {
+    var r = fn(); if (r === null) return; totalWeight += w;
+    if (r === isBot) botWeight += w;
+    signals.push({ name: name, bot: r === isBot, weight: w, value: r,
+      humanLabel: isBot ? (r ? 'Bot-like' : 'Human-like') : (r ? 'Human-like' : 'Bot-like') });
+  } catch(e) {} }
+
+  var m = events.mouse || [], s = events.scroll || [], c = events.click || [], k = events.key || [], f = events.focus || [], rsz = events.resize || [];
+
+  t(1, 'Mouse movement present', false, function() { return m.length >= 50; });
+
+  if (m.length >= 5) {
+    var spd = [];
+    for (var i = 1; i < m.length; i++) {
+      var dt = m[i].t - m[i-1].t, dx = m[i].x - m[i-1].x, dy = m[i].y - m[i-1].y;
+      var dist = Math.sqrt(dx*dx + dy*dy);
+      if (dt > 0 && dist > 0) spd.push(dist / dt);
+    }
+    t(4, 'Mouse speed variance', true, function() {
+      if (spd.length < 5) return null;
+      var avg = spd.reduce(function(a,b){return a+b;},0)/spd.length;
+      var variance = spd.reduce(function(a,b){return a+(b-avg)*(b-avg);},0)/spd.length;
+      return Math.sqrt(variance)/(avg||0.001) < 0.5;
+    });
+    t(4, 'Mouse path curvature', true, function() {
+      if (m.length < 10) return null;
+      var straight = 0;
+      for (var i = 2; i < m.length; i++) {
+        var a1 = Math.atan2(m[i].y-m[i-1].y, m[i].x-m[i-1].x);
+        var a2 = Math.atan2(m[i-1].y-m[i-2].y, m[i-1].x-m[i-2].x);
+        if (Math.abs(a1-a2) < 0.01) straight++;
+      }
+      return straight/(m.length-2) > 0.8;
+    });
+    t(3, 'Mouse pause frequency', true, function() {
+      var pauses = 0;
+      for (var i = 1; i < m.length; i++) if (m[i].t - m[i-1].t > 200) pauses++;
+      return pauses / (m.length/100) < 0.5;
+    });
+    t(2, 'Mouse speed', true, function() {
+      if (spd.length < 5) return null;
+      return spd.reduce(function(a,b){return a+b;},0)/spd.length > 1.5;
+    });
+  }
+
+  t(1, 'Scrolling present', false, function() { return s.length >= 5; });
+  if (s.length >= 5) {
+    t(3, 'Scroll reading pauses', true, function() {
+      for (var i = 1; i < s.length; i++) if (s[i].t - s[i-1].t > 500) return false;
+      return true;
+    });
+    t(2, 'Scroll direction changes', true, function() {
+      var ch = 0;
+      for (var i = 2; i < s.length; i++) if ((s[i-1].y-s[i-2].y)*(s[i].y-s[i-1].y) < 0) ch++;
+      return ch === 0 && s.length > 10;
+    });
+  }
+
+  t(1, 'Clicks detected', false, function() { return c.length >= 1; });
+  if (c.length >= 1) {
+    t(3, 'Time to first interaction', true, function() {
+      return (c[0].t - (__behavior.startTime||0)) < 500;
+    });
+  }
+
+  t(2, 'Tab switching', true, function() { return f.length === 0; });
+  t(2, 'Window resize', true, function() { return rsz.length === 0; });
+  t(1, 'Keyboard input detected', false, function() { return k.length >= 5; });
+
+  if (k.length >= 10) {
+    t(3, 'Typing speed variance', true, function() {
+      var down = {}, holds = [];
+      for (var i = 0; i < k.length; i++) {
+        if (k[i].type === 'keydown') down[k[i].key] = k[i].t;
+        else if (k[i].type === 'keyup' && down[k[i].key]) { holds.push(k[i].t - down[k[i].key]); delete down[k[i].key]; }
+      }
+      if (holds.length < 3) return null;
+      var avg = holds.reduce(function(a,b){return a+b;},0)/holds.length;
+      var variance = holds.reduce(function(a,b){return a+(b-avg)*(b-avg);},0)/holds.length;
+      return Math.sqrt(variance)/(avg||0.001) < 0.3;
+    });
+  }
+
+  var bp = totalWeight > 0 ? (botWeight/totalWeight) : 0.5;
+  var coverage = totalWeight / 33;
+  return {
+    botProbability: Math.round(bp*100), confidence: coverage>=0.7?'High':(coverage>=0.4?'Medium':'Low'),
+    signals: signals, totalWeight: totalWeight, maxWeight: 33,
+    eventCount: { mouse: m.length, scroll: s.length, clicks: c.length, keys: k.length, focus: f.length, resize: rsz.length }
+  };
+}
+
+function displayBehaviorResults(r) {
+  var pct = r.botProbability, inv = 100-pct;
+  var cat, emoji, color;
+  if (pct<=15) { cat='Human-like Behavior'; emoji='🧑'; color='#22c55e'; }
+  else if (pct<=35) { cat='Mostly Human'; emoji='🙂'; color='#84cc16'; }
+  else if (pct<=55) { cat='Uncertain'; emoji='🤷'; color='#eab308'; }
+  else if (pct<=80) { cat='Bot-like Behavior'; emoji='🤖'; color='#f97316'; }
+  else { cat='Automated Behavior'; emoji='⚙️'; color='#ef4444'; }
+  var cc = r.confidence==='High'?'conf-high':(r.confidence==='Medium'?'conf-med':'conf-low');
+  var html = '<div style="margin-top:0.75rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;">';
+  html += '<div style="font-size:1.5rem;margin-bottom:0.25rem;">'+emoji+'</div>';
+  html += '<div style="font-size:0.9rem;font-weight:600;">'+cat+'</div>';
+  html += '<div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">'+pct+'% bot-like behavior <span class="conf-badge '+cc+'">'+r.confidence+'</span></div>';
+  html += '<div class="gauge-bar" style="height:0.75rem;background:linear-gradient(to right,#22c55e,#84cc16,#eab308,#f97316,#ef4444);">';
+  html += '<div class="gauge-fill" style="width:'+pct+'%;background:rgba(15,23,42,0.4);height:100%;"></div></div>';
+  html += '<div class="gauge-label"><span>Human</span><span>Bot</span></div>';
+  var ev = r.eventCount;
+  html += '<div style="font-size:0.7rem;color:#64748b;margin:0.5rem 0;">Events: '+ev.mouse+' mouse, '+ev.scroll+' scroll, '+ev.clicks+' clicks, '+ev.keys+' keys</div>';
+  html += '<div style="margin-top:0.5rem;"><span class="toggle-link" onclick="var s=document.getElementById(\'beh-signals\');s.classList.toggle(\'open\')">Show '+r.signals.length+' signal details ▼</span></div>';
+  html += '<div id="beh-signals" class="signal-list">';
+  for (var i = 0; i < r.signals.length; i++) {
+    var s = r.signals[i], icon = s.bot ? '⚠' : '✓', cls = s.bot ? 'signal-fail' : 'signal-pass';
+    html += '<div class="beh-signal-item"><span class="beh-signal-icon '+cls+'">'+icon+'</span>';
+    html += '<span class="'+cls+'">'+s.name+'</span><span class="signal-detail">'+s.humanLabel+'</span><span class="signal-weight">w'+s.weight+'</span></div>';
+  }
+  html += '</div></div>';
+  document.getElementById('behavior-results-inner').innerHTML = html;
+}
+
+// ===== SUBMISSION ENGINE =====
+var __lastFingerprintData = null;
+var __lastBotOrNotData = null;
+
+// Hook into captureFingerprint to store data for submission
+// We patch captureFingerprint by storing results when Bot-or-Not is computed
+// This is called from the renderBotOrNot hook point
+
+function enableSubmission(fp, bon) {
+  __lastFingerprintData = fp;
+  __lastBotOrNotData = bon;
+  var sec = document.getElementById('submit-preview-section');
+  sec.style.display = 'block';
+
+  // Build data preview
+  var previewData = buildSubmissionData(fp, bon);
+  var previewJSON = JSON.stringify(previewData, null, 2);
+
+  sec.innerHTML =
+    '<div style="background:#0f172a;border-radius:0.375rem;padding:0.75rem;">' +
+    '<h4 style="font-size:0.85rem;margin-bottom:0.5rem;">🔍 Data Preview — what will be sent</h4>' +
+    '<p style="font-size:0.7rem;color:#94a3b8;margin-bottom:0.5rem;">' +
+    'No IP addresses, cookies, or personal identifiers are included. ' +
+    'Only browser attribute hashes and aggregate stats are collected. ' +
+    '<a href="https://github.com/SemperSupra/scrutari#privacy" target="_blank" style="color:#60a5fa;">Privacy policy</a></p>' +
+    '<div class="field-preview">' + escapeHtml(previewJSON) + '</div>' +
+    '<div style="margin-top:0.75rem;">' +
+    '<label class="field-check"><input type="checkbox" id="submit-consent" onchange="document.getElementById(\'submit-btn\').disabled=!this.checked"> ' +
+    'I consent to submitting these anonymized browser attributes for research purposes. ' +
+    'I understand this data will be publicly available.</label></div>' +
+    '<button class="btn" id="submit-btn" disabled onclick="submitResults()" style="margin-top:0.5rem;">📤 Submit Anonymous Results</button>' +
+    '<div id="submit-result-msg" style="margin-top:0.5rem;font-size:0.75rem;"></div>' +
+    '</div>';
+}
+
+function buildSubmissionData(fp, bon) {
+  if (!fp) return { error: 'no data' };
+  // Strip identifying fields — keep only aggregate stats and hashes
+  var safe = {};
+  // Bot-or-Not scores (aggregate only)
+  if (bon) {
+    safe.botScore = bon.botProbability;
+    safe.botConfidence = bon.confidence;
+    safe.botTestsRun = bon.testsRun;
+    safe.botSignalNames = (bon.results || []).filter(function(s) { return s.bot; }).map(function(s) { return s.name; }).slice(0, 10);
+  }
+  // Entropy bits (aggregate, not per-attribute)
+  safe.totalEntropyBits = fp.totalEntropyBits || null;
+  // Screen resolution class (not exact — bucket for k-anonymity)
+  var w = screen.width, h = screen.height;
+  if (w >= 3840) safe.screenClass = '4K+';
+  else if (w >= 2560) safe.screenClass = 'QHD+';
+  else if (w >= 1920) safe.screenClass = 'Full HD';
+  else if (w >= 1366) safe.screenClass = 'HD+';
+  else safe.screenClass = '<HD';
+  // JS capabilities (boolean arrays, not version numbers)
+  safe.hasWASM = typeof WebAssembly !== 'undefined';
+  safe.hasWebGL = fp['webgl'] === true || fp['WebGL Renderer'] !== undefined;
+  safe.hasCanvas = !!(fp['Canvas Hash'] && !fp['Canvas Hash'].includes('blocked'));
+  safe.hasAudio = !!(fp['Audio Hash'] && !fp['Audio'].includes('blocked'));
+  safe.hasServiceWorker = 'serviceWorker' in navigator;
+  // Font count (not which fonts)
+  var fontMatch = (fp['Fonts Detected'] || '').match(/\d+/);
+  safe.fontCount = fontMatch ? parseInt(fontMatch[0]) : null;
+  // OS signals (boolean preferences)
+  safe.darkMode = !!(fp['Dark Mode'] === 'Yes');
+  safe.reducedMotion = !!(fp['Reduced Motion'] === 'Yes');
+  safe.hasTouch = navigator.maxTouchPoints > 0;
+  // CPU/memory buckets
+  var cores = navigator.hardwareConcurrency || 0;
+  safe.cpuCores = cores <= 2 ? 'low' : (cores <= 8 ? 'medium' : 'high');
+  safe.deviceMemory = navigator.deviceMemory ? (navigator.deviceMemory <= 4 ? 'low' : navigator.deviceMemory <= 8 ? 'medium' : 'high') : null;
+  // Timezone region (not specific timezone)
+  var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  safe.tzRegion = tz.split('/')[0] || 'unknown';
+  // Adblock
+  safe.adblockDetected = fp['Adblock Detected'] === 'Yes';
+  // Browser engine
+  safe.engine = fp['JS Engine'] || 'unknown';
+  // WebGL renderer class (not specific model)
+  var renderer = (fp['WebGL Renderer'] || '').toLowerCase();
+  if (renderer.includes('nvidia')) safe.gpuClass = 'nvidia';
+  else if (renderer.includes('amd') || renderer.includes('radeon')) safe.gpuClass = 'amd';
+  else if (renderer.includes('intel')) safe.gpuClass = 'intel';
+  else if (renderer.includes('apple') || renderer.includes('metal')) safe.gpuClass = 'apple';
+  else if (renderer.includes('llvmpipe') || renderer.includes('swiftshader')) safe.gpuClass = 'software';
+  else safe.gpuClass = 'other';
+  // Timestamp (anonymized to day)
+  safe.submitted = new Date().toISOString().split('T')[0]; // date only, no time
+
+  safe.version = 1;
+  return safe;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function submitResults() {
+  var btn = document.getElementById('submit-btn');
+  var msg = document.getElementById('submit-result-msg');
+  btn.disabled = true;
+  btn.textContent = '⏳ Submitting...';
+  msg.innerHTML = '';
+
+  var data = buildSubmissionData(__lastFingerprintData, __lastBotOrNotData);
+
+  // Endpoint: configure SUBMISSION_ENDPOINT env var or use default
+  // For production deployment, set up a serverless function that accepts POST
+  // and appends to a JSONL file. See automation/submit-endpoint/README.md
+  var endpoint = window.SUBMISSION_ENDPOINT || 'https://scrutari-submit.netlify.app/.netlify/functions/submit';
+
+  try {
+    var resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (resp.ok) {
+      msg.innerHTML = '<span style="color:#6ee7b7;">✅ Thank you! Your data helps improve k-anonymity research.</span>';
+      btn.textContent = '✅ Submitted';
+    } else {
+      var errText = await resp.text().catch(function() { return 'unknown error'; });
+      throw new Error('HTTP ' + resp.status + ': ' + errText);
+    }
+  } catch(e) {
+    msg.innerHTML = '<span style="color:#fca5a5;">⚠ Submission failed: ' + escapeHtml(e.message) + '. ' +
+      'The research endpoint may not be deployed yet. ' +
+      'Results are saved locally. ' +
+      '<span class="toggle-link" onclick="navigator.clipboard.writeText(\'' + escapeHtml(JSON.stringify(data)) + '\')">Copy to clipboard</span></span>';
+    btn.disabled = false;
+    btn.textContent = '📤 Retry Submission';
+  }
+}
+
+// Patch captureFingerprint to enable submission when results are ready
+// We intercept via the renderBotOrNot call in captureFingerprint
+// The enableSubmission function is called from captureFingerprint via a hook
+// that we set up by patching the bot-or-not rendering path
+
+// Actually, we integrate it into captureFingerprint by adding a call after renderBotOrNot
+// Let's do it via a simple override of the existing flow
+// captureFingerprint already calls renderBotOrNot after computeBotOrNot
+// We add the enableSubmission call right after that
+
+// Store the original renderBotOrNot if we need to patch it
+// Better approach: we modify captureFingerprint to call enableSubmission
+// But since we've already shipped captureFingerprint, we hook in via setInterval
+// that checks for new bot data
+
+// Simpler: the renderBotOrNot function is called from captureFingerprint.
+// We modify the flow at the point where botornot-results is set.
+// Let's add the hook by wrapping the bonDiv assignment.
+
+// Cleanest: just check if bon data appeared every 2 seconds
+var __submissionCheck = setInterval(function() {
+  if (__lastBotOrNotData && __lastFingerprintData) {
+    var sec = document.getElementById('submit-preview-section');
+    if (sec && sec.style.display !== 'block') {
+      enableSubmission(__lastFingerprintData, __lastBotOrNotData);
+    }
+  }
+}, 2000);
+
+// Initialize submission section
+document.addEventListener('DOMContentLoaded', function() {
+  var sec = document.getElementById('submit-results');
+  if (sec) {
+    sec.innerHTML =
+      '<div class="gauge-container" style="text-align:center;">' +
+      '<div class="gauge-emoji">🔬</div>' +
+      '<div class="gauge-title">Run fingerprint + Bot-or-Not first</div>' +
+      '<div class="gauge-subtitle">After capturing your fingerprint, you\'ll be able to contribute anonymized data.</div>' +
+      '<div id="submit-preview-section" style="display:none;text-align:left;margin-top:0.75rem;"></div>' +
+      '<div id="submit-status" style="margin-top:0.5rem;"></div>' +
+      '</div>';
+  }
+});
 </script>
 </div>
 </body>
