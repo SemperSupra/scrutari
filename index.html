@@ -2570,9 +2570,8 @@ function downloadScoreCard() {
 async function submitResults() {
   var btn = document.getElementById('submit-btn');
   var msg = document.getElementById('submit-result-msg');
-  btn.disabled = true;
-  btn.textContent = '⏳ Submitting...';
-  msg.innerHTML = '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting...'; }
+  if (msg) msg.innerHTML = '';
 
   var data = buildSubmissionData(__lastFingerprintData, __lastBotOrNotData);
 
@@ -2588,19 +2587,15 @@ async function submitResults() {
       body: JSON.stringify(data),
     });
     if (resp.ok) {
-      msg.innerHTML = '<span style="color:#6ee7b7;">✅ Thank you! Your data helps improve k-anonymity research.</span>';
+      if (msg) msg.innerHTML = '<span style="color:#6ee7b7;">✅ Thank you! Your data helps improve k-anonymity research.</span>';
       btn.textContent = '✅ Submitted';
     } else {
       var errText = await resp.text().catch(function() { return 'unknown error'; });
       throw new Error('HTTP ' + resp.status + ': ' + errText);
     }
   } catch(e) {
-    msg.innerHTML = '<span style="color:#fca5a5;">⚠ Submission failed: ' + escapeHtml(e.message) + '. ' +
-      'The research endpoint may not be deployed yet. ' +
-      'Results are saved locally. ' +
-      '<span class="toggle-link" onclick="navigator.clipboard.writeText(\'' + escapeHtml(JSON.stringify(data)) + '\')">Copy to clipboard</span></span>';
-    btn.disabled = false;
-    btn.textContent = '📤 Retry Submission';
+    if (msg) msg.innerHTML = '<span style="color:#fca5a5;">⚠ Submission failed: ' + escapeHtml(e.message) + '.</span>';
+    if (btn) { btn.disabled = false; btn.textContent = '📤 Retry Submission'; }
   }
 }
 

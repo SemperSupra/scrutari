@@ -48,6 +48,12 @@
   function = "og-image"
   path = "/api/og"
 
+# Redirect: /api/submit → serverless function (cleaner URL)
+[[redirects]]
+  from = "/api/submit"
+  to = "/.netlify/functions/submit"
+  status = 200
+
 # Security headers
 [[headers]]
   for = "/*"
