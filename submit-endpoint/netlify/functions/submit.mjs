@@ -18,7 +18,13 @@
 //   At 10K submissions with ~95% expected uniqueness: ~500KB vs ~5MB
 
 const BLOB_NAME = 'scrutari-data';
-const ALLOWED_SOURCES = ['manual', 'automation_baseline'];
+// Labeled sources for ground truth validation
+// manual = human (self-reported), automation_* = known bot type
+const ALLOWED_SOURCES = [
+  'manual', 'automation_baseline', 'automation_playwright', 'automation_playwright_stealth',
+  'automation_puppeteer', 'automation_puppeteer_stealth', 'automation_selenium',
+  'automation_selenium_stealth', 'automation_http', 'automation_curl',
+];
 const MAX_BLOB_SIZE_BYTES = 800 * 1024 * 1024; // 800MB safety limit (1GB free)
 
 export default async (req, context) => {

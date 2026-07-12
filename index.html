@@ -427,6 +427,20 @@
 var __ipinfoData = null;
 
 async function detectMyIP() {
+  // Try Netlify classify endpoint first (faster, no third-party)
+  var endpoint = window.CLASSIFY_ENDPOINT || localStorage.getItem('scrutari_classify') || '/api/classify';
+  try {
+    var resp = await fetch(endpoint);
+    if (resp.ok) {
+      var data = await resp.json();
+      __ipinfoData = { ip: data.ip, country: data.country, region: data.region, city: data.city,
+        loc: data.loc, timezone: data.timezone, org: data.org || data.type };
+      document.getElementById('expected-ip').value = data.ip || '';
+      return;
+    }
+  } catch(e) { /* fall through to ipinfo.io */ }
+
+  // Fallback: ipinfo.io
   try {
     var resp = await fetch('https://ipinfo.io/json');
     var data = await resp.json();

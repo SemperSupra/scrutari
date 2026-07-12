@@ -52,7 +52,7 @@ async function captureFromPage(page) {
   await page.waitForTimeout(1000);
 
   // Set submission source so automated data is labeled in the research dataset
-  await page.evaluate(() => { window.__SUBMISSION_SOURCE = 'automation_baseline'; });
+  await page.evaluate(() => { window.__SUBMISSION_SOURCE = 'automation_playwright'; });
 
   // Instead of relying on button clicks (which may not work in headless),
   // call captureFingerprint() directly in the page context.
@@ -309,7 +309,8 @@ async function main() {
       await page.waitForTimeout(500);
 
       // Set submission source so automated data is labeled
-      await page.evaluate(() => { window.__SUBMISSION_SOURCE = 'automation_baseline'; });
+      // Use specific ground truth label: automation_playwright (known bot type)
+      await page.evaluate(() => { window.__SUBMISSION_SOURCE = 'automation_playwright'; });
 
       // Also capture fingerprint + Bot-or-Not for submission data
       await page.evaluate(async () => { if (typeof captureFingerprint === 'function') await captureFingerprint(); });

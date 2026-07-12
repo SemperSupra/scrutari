@@ -1,9 +1,13 @@
 [build]
-  command = "echo 'Static site only'"
+  command = "echo 'Static files only'"
   publish = "."
 
 [functions]
   directory = "functions"
+
+[[edge_functions]]
+  function = "classify"
+  path = "/api/classify"
 
 [[edge_functions]]
   function = "submit"

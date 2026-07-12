@@ -9,7 +9,12 @@ const RATE_LIMIT_MS = process.env.RATE_LIMIT_MS ? parseInt(process.env.RATE_LIMI
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const ALLOWED_SOURCES = ['manual', 'automation_baseline'];
+// Labeled sources for ground truth validation
+const ALLOWED_SOURCES = [
+  'manual', 'automation_baseline', 'automation_playwright', 'automation_playwright_stealth',
+  'automation_puppeteer', 'automation_puppeteer_stealth', 'automation_selenium',
+  'automation_selenium_stealth', 'automation_http', 'automation_curl',
+];
 const MAX_DB_SIZE = 800 * 1024 * 1024; // 800MB
 
 // Rate limiter
