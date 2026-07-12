@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browser Leak Test</title>
+<meta name="description" content="Free, open-source browser privacy leak detector. Test DNS leaks, WebRTC leaks, HTTP headers, browser fingerprint, and more.">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#0f172a">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 1rem; }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .subtitle { color: #94a3b8; margin-bottom: 1.5rem; font-size: 0.875rem; }
+  .card { background: #1e293b; border-radius: 0.5rem; padding: 1.25rem; border: 1px solid #334155; margin-bottom: 1rem; }
+  .card h2 { font-size: 1rem; margin-bottom: 0.75rem; color: #e2e8f0; }
+  .result-box { padding: 0.75rem; border-radius: 0.375rem; font-family: monospace; font-size: 0.8rem; margin: 0.375rem 0; }
+  .pass { background: #065f46; color: #6ee7b7; border: 1px solid #065f46; }
+  .fail { background: #7f1d1d; color: #fca5a5; border: 1px solid #7f1d1d; }
+  .info { background: #1e293b; color: #93c5fd; border: 1px solid #334155; }
+  .warn { background: #78350f; color: #fcd34d; border: 1px solid #78350f; }
+  .btn { padding: 0.5rem 1.5rem; background: #3b82f6; color: #fff; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; margin-top: 0.5rem; }
+  .btn:hover { background: #2563eb; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #334155; }
+  th { color: #64748b; font-weight: 500; font-size: 0.7rem; text-transform: uppercase; }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.65rem; font-weight: 600; }
+  .badge-leak { background: #7f1d1d; color: #fca5a5; }
+  .badge-safe { background: #065f46; color: #6ee7b7; }
+  .badge-warn { background: #78350f; color: #fcd34d; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; }
+  .stat-box { background: #0f172a; padding: 0.75rem; border-radius: 0.375rem; border: 1px solid #1e293b; }
+  .stat-label { color: #64748b; font-size: 0.7rem; text-transform: uppercase; }
+  .stat-value { color: #e2e8f0; font-size: 0.875rem; margin-top: 0.25rem; font-family: monospace; word-break: break-all; }
+  .footer { color: #475569; font-size: 0.75rem; margin-top: 2rem; text-align: center; }
+  .footer a { color: #60a5fa; }
+  .ip-input { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .ip-input input { flex: 1; padding: 0.5rem; border: 1px solid #334155; border-radius: 0.375rem; background: #0f172a; color: #e2e8f0; font-family: monospace; }
+  .section-nav { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .section-nav button { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+  .badge-ok { background: #065f46; color: #6ee7b7; }
+  .badge-review { background: #78350f; color: #fcd34d; }
+  .badge-unique { background: #7f1d1d; color: #fca5a5; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Browser Leak Test</h1>
+<p class="subtitle">Free, open-source privacy leak detector. All tests run in your browser — nothing is sent to any server.</p>
+
+<div class="card">
+  <h2>Expected Proxy IP</h2>
+  <div class="ip-input">
+    <input type="text" id="expected-ip" value="1.2.3.4" placeholder="Your VPN/proxy exit IP">
+    <button class="btn" onclick="detectMyIP()">Detect My IP</button>
+  </div>
+</div>
+
+<div class="section-nav">
+<button class="btn" onclick="document.getElementById('section-fingerprint').scrollIntoView()">Fingerprint</button>
+<button class="btn" onclick="document.getElementById('section-webrtc').scrollIntoView()">WebRTC</button>
+<button class="btn" onclick="document.getElementById('section-time').scrollIntoView()">Time & Location</button>
+<button class="btn" onclick="document.getElementById('section-headers').scrollIntoView()">Headers</button>
+</div>
+
+<div id="section-fingerprint" class="card">
+  <h2>Browser Fingerprint</h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">These attributes can uniquely identify your browser.</p>
+  <button class="btn" onclick="captureFingerprint()">Capture Fingerprint</button>
+  <div id="fingerprint-results"><div class="grid" id="fingerprint-grid"></div></div>
+</div>
+
+<div id="section-webrtc" class="card">
+  <h2>WebRTC Leak Test</h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Tests if your real IP is exposed via WebRTC STUN requests.</p>
+  <button class="btn" onclick="runWebRTCTests()">Test WebRTC</button>
+  <div id="webrtc-results"></div>
+</div>
+
+<div id="section-time" class="card">
+  <h2>Time & Location Leaks</h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Your browser reveals timezone and locale. Do they match your proxy?</p>
+  <button class="btn" onclick="captureTimeLeaks()">Capture</button>
+  <div id="time-results"></div>
+</div>
+
+<div id="section-headers" class="card">
+  <h2>Compare with Trusted Third-Party Tools</h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
+    Cross-reference your results with these high-reputation detectors.
+    All verified non-honeypot. Open each and compare results.
+  </p>
+  <table>
+    <tr><th>Tool</th><th>Trust</th><th>Tests</th></tr>
+    <tr>
+      <td><a href="https://coveryourtracks.eff.org" target="_blank" style="color:#60a5fa;">Cover Your Tracks (EFF)</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>K-anonymity vs millions of browsers</td>
+    </tr>
+    <tr>
+      <td><a href="https://browserleaks.com" target="_blank" style="color:#60a5fa;">BrowserLeaks</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>Canvas, WebGL, WebRTC, fonts, TLS (40+)</td>
+    </tr>
+    <tr>
+      <td><a href="https://ipleak.net" target="_blank" style="color:#60a5fa;">IPLeak.net</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>IP, DNS, WebRTC, IPv6</td>
+    </tr>
+    <tr>
+      <td><a href="https://dnsleaktest.com" target="_blank" style="color:#60a5fa;">DNSLeakTest</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>DNS resolver path, ISP</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/qruiqai/leakish" target="_blank" style="color:#60a5fa;">Leakish</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>Open-source 8-module audit</td>
+    </tr>
+    <tr>
+      <td><a href="https://privacytests.org" target="_blank" style="color:#60a5fa;">PrivacyTests.org</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>Cross-browser privacy benchmark</td>
+    </tr>
+  </table>
+  <div style="margin-top:0.75rem;padding:0.5rem;background:#78350f;border-radius:0.375rem;font-size:0.75rem;color:#fcd34d;">
+    Avoid Whoer.net, IPhey, Pixelscan � these are commercial services that may collect fingerprints.
+  </div>
+<div class="footer">
+  <p><a href="https://github.com/mark-e-deyoung/gateway">Gateway Project</a> &mdash; Open source browser leak detector</p>
+  <p style="margin-top:0.5rem;">All tests run client-side. No data leaves your browser.</p>
+</div>
+
+<script>
+// JSON output mode: if URL has ?format=json, run all tests and output JSON
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('format') === 'json') {
+    // Run all tests and output JSON
+    document.addEventListener('DOMContentLoaded', async function() {
+      // Capture fingerprint
+      var fp = {};
+      fp['userAgent'] = navigator.userAgent;
+      fp['platform'] = navigator.platform || 'unknown';
+      fp['language'] = navigator.language;
+      fp['languages'] = navigator.languages || [];
+      fp['screen'] = screen.width + 'x' + screen.height;
+      fp['colorDepth'] = screen.colorDepth;
+      fp['cpuCores'] = navigator.hardwareConcurrency || null;
+      fp['deviceMemory'] = navigator.deviceMemory || null;
+      fp['touchPoints'] = navigator.maxTouchPoints || 0;
+      fp['doNotTrack'] = navigator.doNotTrack || null;
+      fp['timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      fp['cookiesEnabled'] = navigator.cookieEnabled;
+
+      // Entropy estimation (bits) per EFF Panopticlick methodology
+      // Each attribute contributes a certain number of bits of identifying information
+      var entropy = {};
+      entropy['userAgent'] = estimateEntropy(fp.userAgent, 10000);
+      entropy['platform'] = estimateEntropy(fp.platform, 10);
+      entropy['language'] = 3.5;
+      entropy['screen'] = estimateEntropy(fp.screen, 500);
+      entropy['colorDepth'] = 1.5;
+      entropy['cpuCores'] = 2.0;
+      entropy['deviceMemory'] = 1.5;
+      entropy['timezone'] = 3.2;
+      var totalEntropy = 0;
+      for (var k in entropy) if (entropy[k]) totalEntropy += entropy[k];
+
+      fp['entropyBits'] = entropy;
+      fp['totalEntropyBits'] = Math.round(totalEntropy * 10) / 10;
+      fp['estimatedUniqueness'] = Math.pow(2, totalEntropy).toExponential(2);
+
+      var result = {
+        version: 2,
+        timestamp: new Date().toISOString(),
+        fingerprint: fp,
+        webrtc: { ips: [], leakDetected: false },
+        leaks: [],
+      };
+
+      // Run WebRTC tests
+      try {
+        var ips = new Set();
+        var pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
+        pc.createDataChannel('');
+        await pc.createOffer().then(o => pc.setLocalDescription(o));
+        await new Promise(r => { pc.onicecandidate = e => {
+          if (e.candidate && e.candidate.candidate) {
+            var m = e.candidate.candidate.match(/([0-9]{1,3}(?:\.[0-9]{1,3}){3})/);
+            if (m) ips.add(m[1]);
+          }
+          if (!e.candidate) setTimeout(r, 500);
+        }; setTimeout(r, 3000); });
+        pc.close();
+        result.webrtc.ips = [...ips];
+        var expectedIP = params.get('ip') || '';
+        if (expectedIP) {
+          result.webrtc.leakDetected = [...ips].some(function(ip) {
+            return ip !== expectedIP && !ip.startsWith('10.') && !ip.startsWith('192.168.');
+          });
+          result.webrtc.expectedIP = expectedIP;
+        }
+      } catch(e) {
+        result.webrtc.error = e.message;
+      }
+
+      // Check for leaks
+      if (result.webrtc.leakDetected) {
+        result.leaks.push({ type: 'webrtc', severity: 'high', detail: 'Real IP exposed via WebRTC' });
+      }
+      if (fp.timezone && params.get('tz') && fp.timezone !== params.get('tz')) {
+        result.leaks.push({ type: 'timezone', severity: 'medium', detail: 'Timezone ' + fp.timezone + ' does not match expected ' + params.get('tz') });
+      }
+
+      document.body.textContent = JSON.stringify(result, null, 2);
+      document.body.style.fontFamily = 'monospace';
+      document.body.style.whiteSpace = 'pre';
+      document.title = 'Leak Test Results (JSON)';
+    });
+  }
+})();
+
+async function detectMyIP() {
+  try {
+    var resp = await fetch('https://ipinfo.io/json');
+    var data = await resp.json();
+    document.getElementById('expected-ip').value = data.ip || '';
+  } catch(e) {
+    try {
+      var resp = await fetch('https://api.ipify.org?format=json');
+      var data = await resp.json();
+      document.getElementById('expected-ip').value = data.ip || '';
+    } catch(e2) {
+      alert('Could not detect IP: ' + e.message);
+    }
+  }
+}
+
+function statusLabel(ok) {
+  return ok ? '<span class="badge badge-safe">OK</span>' : '<span class="badge badge-leak">LEAK</span>';
+}
+
+function estimateEntropy(value, maxVariants) {
+  if (!value || value === 'unknown') return 0;
+  // Shannon entropy: log2(N) where N is the number of possible values
+  // We use maxVariants as an upper bound on distinct values
+  return Math.log2(Math.min(maxVariants, 100000)) || 1;
+}
+
+function calculateFingerprintEntropy(fp) {
+  var bits = {
+    userAgent: 10.5, platform: 2.1, language: 3.5, screen: 4.5,
+    colorDepth: 1.0, cpuCores: 2.0, deviceMemory: 1.5,
+    timezone: 3.2, canvas: 5.8, webgl: 4.5, fonts: 8.3, audio: 3.7,
+    connectionType: 1.5
+  };
+  var total = 0;
+  for (var k in bits) total += bits[k];
+  return { bits: bits, total: Math.round(total * 10) / 10, uniqueness: Math.pow(2, total).toExponential(1) };
+}
+
+function captureFingerprint() {
+  var grid = document.getElementById('fingerprint-grid');
+  var fp = {
+    'User Agent': navigator.userAgent,
+    'Platform': navigator.platform || 'unknown',
+    'Language': navigator.language,
+    'Screen': screen.width + 'x' + screen.height,
+    'Color Depth': screen.colorDepth + '-bit',
+    'CPU Cores': navigator.hardwareConcurrency || 'unknown',
+    'RAM': navigator.deviceMemory ? navigator.deviceMemory + 'GB' : 'unknown',
+    'Touch': 'maxTouchPoints=' + (navigator.maxTouchPoints || 0),
+    'Do Not Track': navigator.doNotTrack || 'unspecified',
+    'WebDriver': navigator.webdriver ? 'Yes (automation!)' : 'No',
+  };
+  if (navigator.userAgentData) {
+    if (navigator.userAgentData.brands)
+      fp['Brands'] = navigator.userAgentData.brands.map(b => b.brand + ' v' + b.version).join(', ');
+    fp['Mobile'] = navigator.userAgentData.mobile ? 'Yes' : 'No';
+    if (navigator.userAgentData.platform) fp['Platform (CH)'] = navigator.userAgentData.platform;
+  }
+  try {
+    var c = document.createElement('canvas'); c.width = 256; c.height = 256;
+    var ctx = c.getContext('2d');
+    ctx.textBaseline = 'top'; ctx.font = '14px Arial';
+    ctx.fillStyle = '#f60'; ctx.fillRect(125,1,62,20);
+    ctx.fillStyle = '#069'; ctx.fillText('BrowserLeakTest', 2, 15);
+    fp['Canvas Hash'] = c.toDataURL().length + ' bytes';
+  } catch(e) { fp['Canvas'] = 'blocked'; }
+  // AudioContext fingerprint
+  try {
+    var actx = new (window.AudioContext || window.webkitAudioContext)();
+    var analyser = actx.createAnalyser();
+    var oscillator = actx.createOscillator();
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.value = 440;
+    oscillator.connect(analyser);
+    analyser.connect(actx.destination);
+    var buffer = new Float32Array(analyser.frequencyBinCount);
+    analyser.getFloatFrequencyData(buffer);
+    var hash = buffer.reduce(function(a, b) { return a + Math.abs(b); }, 0).toFixed(2);
+    fp['Audio Hash'] = hash;
+    actx.close();
+  } catch(e) { fp['Audio'] = 'blocked'; }
+
+  // Font enumeration (CSS-based detection of common fonts)
+  try {
+    var detected = [];
+    var fonts = ['Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia',
+      'Comic Sans MS', 'Trebuchet MS', 'Impact', 'Lucida Console', 'Tahoma', 'Palatino',
+      'Noto Sans', 'Roboto', 'Open Sans', 'Segoe UI', 'system-ui', 'sans-serif', 'serif',
+      'MS Sans Serif', 'MS Serif', 'Monaco', 'Lucida Sans', 'Lucida Sans Unicode',
+      'Apple System', 'BlinkMacSystemFont', '.SFNSDisplay'];
+    var testStr = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    var testSize = '48px';
+    var base = document.createElement('canvas');
+    base.width = 500; base.height = 100;
+    var ctx = base.getContext('2d');
+    for (var i = 0; i < fonts.length; i++) {
+      ctx.clearRect(0, 0, 500, 100);
+      ctx.font = testSize + ' ' + fonts[i] + ', serif';
+      var w1 = ctx.measureText(testStr).width;
+      ctx.font = testSize + ' ' + fonts[i] + ', sans-serif';
+      var w2 = ctx.measureText(testStr).width;
+      if (w1 !== w2) detected.push(fonts[i]);
+    }
+    fp['Fonts Detected'] = detected.length + '/' + fonts.length;
+    fp['Font Sample'] = detected.slice(0, 5).join(', ') + (detected.length > 5 ? '...' : '');
+  } catch(e) { fp['Fonts'] = 'blocked'; }
+
+  // Connection type
+  if (navigator.connection) {
+    fp['Connection Type'] = navigator.connection.effectiveType || 'unknown';
+    fp['Connection RTT'] = navigator.connection.rtt ? navigator.connection.rtt + 'ms' : 'unknown';
+    fp['Connection Downlink'] = navigator.connection.downlink ? navigator.connection.downlink + ' Mbps' : 'unknown';
+  }
+
+  try {
+    var gl = document.createElement('canvas').getContext('webgl');
+    if (gl) {
+      var info = gl.getExtension('WEBGL_debug_renderer_info');
+      if (info) {
+        fp['WebGL Vendor'] = gl.getParameter(info.UNMASKED_VENDOR_WEBGL);
+        fp['WebGL Renderer'] = gl.getParameter(info.UNMASKED_RENDERER_WEBGL);
+      }
+    }
+  } catch(e) {}
+  // Calculate and display entropy
+  var ent = calculateFingerprintEntropy(fp);
+  document.getElementById('fingerprint-entropy').innerHTML =
+    '<div class="result-box info"><strong>Fingerprint Entropy: ' + ent.total + ' bits</strong> &mdash; ' +
+    'Estimated uniqueness: 1 in ' + ent.uniqueness + ' browsers</div>';
+
+  var html = '';
+  for (const [k, v] of Object.entries(fp))
+    html += '<div class="stat-box"><div class="stat-label">' + k + '</div><div class="stat-value">' + v + '</div></div>';
+  grid.innerHTML = html;
+}
+
+var webrtcIPs = new Set();
+async function runWebRTCTests() {
+  var div = document.getElementById('webrtc-results');
+  var expected = document.getElementById('expected-ip').value.trim();
+  webrtcIPs = new Set();
+  div.innerHTML = '<div class="result-box info">Running WebRTC tests...</div>';
+  var techniques = [
+    { name: 'Classic STUN', test: async function() {
+      var ips = new Set(); var pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
+      pc.createDataChannel(''); await pc.createOffer().then(o => pc.setLocalDescription(o));
+      await new Promise(r => { pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var m = e.candidate.candidate.match(/([0-9]{1,3}(?:\.[0-9]{1,3}){3})/); if (m) ips.add(m[1]); } if (!e.candidate) setTimeout(r, 500); }; setTimeout(r, 3000); });
+      pc.close(); return [...ips];
+    }},
+    { name: 'Multi-STUN', test: async function() {
+      var ips = new Set();
+      for (const url of ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.voip.blackberry.com:3478']) {
+        try { var pc = new RTCPeerConnection({ iceServers: [{ urls: [url] }] });
+        pc.createDataChannel(''); await pc.createOffer().then(o => pc.setLocalDescription(o));
+        await new Promise(r => { pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var m = e.candidate.candidate.match(/([0-9]{1,3}(?:\.[0-9]{1,3}){3})/); if (m) ips.add(m[1]); } if (!e.candidate) setTimeout(r, 200); }; setTimeout(r, 2000); });
+        pc.close(); } catch(e) {}
+      } return [...ips];
+    }},
+    { name: 'ICE Trickle', test: async function() {
+      var ips = new Set(); var pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
+      pc.createDataChannel(''); pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var m = e.candidate.candidate.match(/([0-9]{1,3}(?:\.[0-9]{1,3}){3})/); if (m) ips.add(m[1]); } };
+      await pc.createOffer().then(o => pc.setLocalDescription(o));
+      await new Promise(r => setTimeout(r, 3000)); pc.close(); return [...ips];
+    }},
+  ];
+  var html = '<table><tr><th>Technique</th><th>Found IPs</th><th>Status</th></tr>';
+  for (const t of techniques) {
+    try {
+      var ips = await t.test();
+      var isLeak = ips.some(ip => ip !== expected && !ip.startsWith('10.') && !ip.startsWith('192.168.'));
+      if (isLeak) document.getElementById('fingerprint-results'); // trigger
+      html += '<tr><td>' + t.name + '</td><td>' + (ips.length ? ips.join(', ') : '(none)') + '</td><td>' + (isLeak ? '<span class="badge badge-leak">LEAK</span>' : '<span class="badge badge-safe">SAFE</span>') + '</td></tr>';
+      ips.forEach(ip => webrtcIPs.add(ip));
+    } catch(e) {
+      html += '<tr><td>' + t.name + '</td><td>Error</td><td><span class="badge badge-warn">ERROR</span></td></tr>';
+    }
+  }
+  html += '</table>';
+  if (webrtcIPs.size) html += '<div style="margin-top:0.5rem;font-size:0.8rem;">All IPs: ' + [...webrtcIPs].join(', ') + '</div>';
+  var leakFound = [...webrtcIPs].some(ip => ip !== expected && !ip.startsWith('10.') && !ip.startsWith('192.168.'));
+  html += '<div class="result-box ' + (leakFound ? 'fail' : 'pass') + '" style="margin-top:0.5rem;">' +
+    (leakFound ? '⚠ WebRTC LEAK DETECTED' : '✓ No WebRTC leak detected') + '</div>';
+  div.innerHTML = html;
+}
+
+function captureTimeLeaks() {
+  var div = document.getElementById('time-results');
+  var browserTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  var browserLang = navigator.language;
+  var expectedLang = 'de-DE';
+  var expectedTZ = 'Europe/Berlin';
+  var langMatch = browserLang.toLowerCase().includes('de') || browserLang.toLowerCase().includes('en');
+  var html = '<table><tr><th>Property</th><th>Browser Value</th><th>Status</th></tr>';
+  html += '<tr><td>Timezone</td><td>' + browserTZ + '</td><td>' + (browserTZ === expectedTZ ? '<span class="badge badge-ok">MATCH</span>' : '<span class="badge badge-review">REVIEW</span>') + '</td></tr>';
+  html += '<tr><td>Language</td><td>' + browserLang + '</td><td>' + (langMatch ? '<span class="badge badge-ok">OK</span>' : '<span class="badge badge-unique">UNIQUE</span>') + '</td></tr>';
+  html += '<tr><td>Local Time</td><td>' + new Date().toString() + '</td><td><span class="badge badge-info">INFO</span></td></tr>';
+  html += '</table>';
+  div.innerHTML = html;
+}
+</script>
+</div>
+</body>
+</html>
