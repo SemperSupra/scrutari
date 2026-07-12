@@ -2373,10 +2373,10 @@ async function submitResults() {
 
   var data = buildSubmissionData(__lastFingerprintData, __lastBotOrNotData);
 
-  // Endpoint: configure SUBMISSION_ENDPOINT env var or use default
-  // For production deployment, set up a serverless function that accepts POST
-  // and appends to a JSONL file. See automation/submit-endpoint/README.md
-  var endpoint = window.SUBMISSION_ENDPOINT || 'https://scrutari-submit.netlify.app/.netlify/functions/submit';
+  // Endpoint: set window.SUBMISSION_ENDPOINT in console to configure, or deploy Docker container.
+  // Default: Docker endpoint on localhost:3456. Change to your server's address in production.
+  // Deployment: docker build -t scrutari-submit submit-endpoint/ && docker run -p 3456:3456 scrutari-submit
+  var endpoint = window.SUBMISSION_ENDPOINT || localStorage.getItem('scrutari_endpoint') || 'http://localhost:3456/submit';
 
   try {
     var resp = await fetch(endpoint, {

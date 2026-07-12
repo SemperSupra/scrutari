@@ -6,3 +6,4 @@ Thumbs.db
 _deploy-tmp/
 package.json
 package-lock.json
+submit-endpoint/data/
