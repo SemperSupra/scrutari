@@ -425,6 +425,52 @@ async function analyzeExitNode() {
     html += '</div>';
   }
 
+  // ─── What leaks through VPN checklist ───
+  html += '<div style="margin-top:0.75rem;padding:0.75rem;border-radius:0.375rem;background:#0f172a;">';
+  html += '<h4 style="font-size:0.8rem;margin-bottom:0.5rem;color:#fcd34d;">🔍 What leaks through your VPN</h4>';
+  html += '<p style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">A VPN only changes your IP. These signals remain visible:</p>';
+  html += '<table style="width:100%;font-size:0.7rem;">';
+
+  // WebRTC leak check — do we have detected IPs?
+  var leakedIPs = [];
+  if (typeof webrtcIPs !== 'undefined' && webrtcIPs.size > 0) {
+    leakedIPs = Array.from(webrtcIPs).filter(function(ip) {
+      return ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.');
+    });
+  }
+  var webrtcLeak = leakedIPs.length > 0;
+  html += '<tr><td style="color:#64748b;width:140px;">Local IP via WebRTC</td>' +
+    '<td>' + (webrtcLeak
+      ? '<span style="color:#fca5a5;">⚠ Leaked: ' + leakedIPs.join(', ') + '</span>'
+      : '<span style="color:#6ee7b7;">Not detected (run WebRTC test)</span>') +
+    '</td></tr>';
+
+  html += '<tr><td style="color:#64748b;">Screen resolution</td><td><span style="color:#fca5a5;">⚠ Always leaks</span> <span style="color:#64748b;">(' + screen.width + '×' + screen.height + ')</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Timezone</td><td>' +
+    (Intl.DateTimeFormat().resolvedOptions().timeZone || '').includes('UTC')
+      ? '<span style="color:#6ee7b7;">Using UTC (Tor-like)</span>'
+      : '<span style="color:#fca5a5;">⚠ Leaks: ' + Intl.DateTimeFormat().resolvedOptions().timeZone + '</span>' +
+    '</td></tr>';
+  var lang = navigator.language;
+  html += '<tr><td style="color:#64748b;">Language / locale</td><td><span style="color:#fca5a5;">⚠ Leaks: ' + lang + '</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Installed fonts</td><td><span style="color:#fca5a5;">⚠ Always leaks</span> <span style="color:#64748b;">(OS fingerprint)</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Canvas/WebGL</td><td><span style="color:#fca5a5;">⚠ Always leaks</span> <span style="color:#64748b;">(hardware fingerprint)</span></td></tr>';
+
+  if (classification.type === 'Tor Exit') {
+    html += '<tr><td style="color:#64748b;">Tor Browser protections</td><td><span style="color:#6ee7b7;">✅ WebRTC blocked, resolution rounded, UTC time</span></td></tr>';
+  } else if (classification.type === 'VPN') {
+    html += '<tr><td style="color:#64748b;">VPN protections</td><td><span style="color:#fcd34d;">⚠ IP hidden but browser identity fully exposed. Use Tor Browser for maximum anonymity.</span></td></tr>';
+  } else if (classification.type === 'Datacenter' || classification.type === 'Datacenter (possible)') {
+    html += '<tr><td style="color:#64748b;">Datacenter risk</td><td><span style="color:#fcd34d;">⚠ Datacenter IPs are easily classified as non-residential. Some sites may block.</span></td></tr>';
+  }
+
+  html += '</table>';
+
+  html += '<div style="margin-top:0.5rem;font-size:0.65rem;color:#64748b;">';
+  html += '💡 Run the <a href="#section-webrtc" style="color:#60a5fa;">WebRTC test</a> to check if your real IP leaks through the VPN. ';
+  html += 'VPN + fingerprint randomization (like Tor Browser) is the only way to hide browser identity.';
+  html += '</div></div>';
+
   html += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:0.375rem;font-size:0.7rem;color:#64748b;background:#0f172a;">';
   html += '⚠ Your IP was sent to ipinfo.io for this analysis. Data is subject to their privacy policy.';
   html += '</div>';
