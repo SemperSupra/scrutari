@@ -7,3 +7,6 @@ _deploy-tmp/
 package.json
 package-lock.json
 submit-endpoint/data/
+
+# Local Netlify folder
+.netlify

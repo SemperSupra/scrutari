@@ -17,6 +17,9 @@
 //   vs ~500 bytes per submission for raw storage
 //   At 10K submissions with ~95% expected uniqueness: ~500KB vs ~5MB
 
+import { createHash } from 'crypto';
+import { getStore } from '@netlify/blobs';
+
 const BLOB_NAME = 'scrutari-data';
 // Labeled sources for ground truth validation
 // manual = human (self-reported), automation_* = known bot type
@@ -53,22 +56,18 @@ export default async (req, context) => {
       engine: data.engine, adblockDetected: data.adblockDetected, totalEntropyBits: data.totalEntropyBits,
       botScore: data.botScore,
     };
-    const fpJson = JSON.stringify(fp);
-    const fpHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(fpJson))
-      .then(h => Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16));
+    const fpHash = require('crypto').createHash('sha256').update(JSON.stringify(fp)).digest('hex').substring(0, 16);
 
     // Load existing store
-    const store = context.env.STORE;
+    const store = getStore('scrutari-data');
     let db = { version: 2, created: new Date().toISOString().split('T')[0], updated: null,
       totalSubmissions: 0, uniqueFingerprints: 0,
       fingerprints: {}, distributions: {} };
 
-    if (store) {
-      try {
-        const raw = await store.get(BLOB_NAME, { type: 'json' });
-        if (raw && raw.version) db = raw;
-      } catch { /* first submission */ }
-    }
+    try {
+      const raw = await store.get(BLOB_NAME, { type: 'json' });
+      if (raw && raw.version) db = raw;
+    } catch { /* first submission */ }
 
     // Update deduplicated fingerprint store
     db.totalSubmissions = (db.totalSubmissions || 0) + 1;
@@ -116,9 +115,7 @@ export default async (req, context) => {
     const remainingGB = ((MAX_BLOB_SIZE_BYTES - blobSize) / (1024 * 1024 * 1024)).toFixed(3);
 
     // Write back to blob
-    if (store) {
-      await store.set(BLOB_NAME, db);
-    }
+    await store.set(BLOB_NAME, db);
 
     // Compute research stats
     const totalFP = db.totalSubmissions;

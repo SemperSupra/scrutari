@@ -1,6 +1,3 @@
-# Netlify configuration for Scrutari SPA + API
-# deploy: npx netlify deploy --prod --dir . --functions submit-endpoint/netlify/functions
-
 [build]
   command = "echo 'Static files only'"
   publish = "."
@@ -8,11 +5,12 @@
 [functions]
   directory = "submit-endpoint/netlify/functions"
 
-# Edge Functions
+# Edge: GeoIP + IP classification (replaces ipinfo.io)
 [[edge_functions]]
   function = "classify"
   path = "/api/classify"
 
+# Edge: Bot honeypots — hidden paths that only crawlers find
 [[edge_functions]]
   function = "honeypot"
   path = "/admin"
