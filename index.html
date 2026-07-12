@@ -127,7 +127,7 @@
     </tr>
   </table>
   <div style="margin-top:0.75rem;padding:0.5rem;background:#78350f;border-radius:0.375rem;font-size:0.75rem;color:#fcd34d;">
-    Avoid Whoer.net, IPhey, Pixelscan ï¿½ these are commercial services that may collect fingerprints.
+    Avoid Whoer.net, IPhey, Pixelscan - these are commercial services that may collect fingerprints.
   </div>
 <div class="footer">
   <p><a href="https://github.com/mark-e-deyoung/gateway">Gateway Project</a> &mdash; Open source browser leak detector</p>
@@ -450,6 +450,44 @@ function captureFingerprint() {
       }
     }
   } catch(e) { fp['Speech'] = 'blocked'; }
+
+  // Proof-of-Work benchmark — measures WASM/hash performance
+  // Reveals CPU architecture, browser engine differences, and headless detection
+  try {
+    var challenge = Array(32).fill(0).map(function() { return Math.random().toString(36)[2]; }).join('');
+    var targetZeros = 16; // How many leading zero bits to require
+    var nonce = 0;
+    var maxAttempts = 50000;
+    var powStart = performance.now();
+    var powResult = null;
+
+    // Use Web Crypto API for SHA256 hashing (available in all modern browsers)
+    var encoder = new TextEncoder();
+
+    for (nonce = 0; nonce < maxAttempts; nonce++) {
+      var input = challenge + nonce.toString(16);
+      var hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(input));
+      var hashArray = Array.from(new Uint8Array(hashBuffer));
+
+      // Check how many leading zero bits we have
+      var bits = 0;
+      for (var bi = 0; bi < 32; bi++) {
+        if (hashArray[bi] === 0) { bits += 8; }
+        else {
+          var b = hashArray[bi];
+          while ((b & 0x80) === 0) { bits++; b <<= 1; }
+          break;
+        }
+      }
+      if (bits >= targetZeros) { powResult = nonce; break; }
+    }
+
+    var powTime = performance.now() - powStart;
+    fp['PoW Found'] = powResult !== null ? 'Yes (nonce=' + powResult + ')' : 'No (max=' + maxAttempts + ')';
+    fp['PoW Time'] = powTime.toFixed(1) + 'ms';
+    fp['PoW Speed'] = (maxAttempts / (powTime / 1000)).toFixed(0) + ' hashes/sec';
+    fp['PoW Hashing'] = 'SHA-256 via Web Crypto API';
+  } catch(e) { fp['PoW Benchmark'] = 'error: ' + e.message; }
 
   try {
     var gl = document.createElement('canvas').getContext('webgl');
