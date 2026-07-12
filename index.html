@@ -1337,6 +1337,9 @@ async function captureFingerprint() {
 
   // Compute Bot-or-Not rating
   var bon = computeBotOrNot(fp);
+  // Set globals for submission section
+  __lastFingerprintData = fp;
+  __lastBotOrNotData = bon;
   var bonDiv = document.getElementById('botornot-results');
   bonDiv.innerHTML = renderBotOrNot(bon);
 
