@@ -43,6 +43,11 @@
   function = "honeypot"
   path = "/api/health"
 
+# Edge: Dynamic OG image for social sharing
+[[edge_functions]]
+  function = "og-image"
+  path = "/api/og"
+
 # Security headers
 [[headers]]
   for = "/*"

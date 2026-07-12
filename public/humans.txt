@@ -1,0 +1,16 @@
+# Scrutari — Browser Leak Detector
+# https://sempersupra.github.io/scrutari/
+
+## Team
+  Developer: Mark E. DeYoung
+  Site: https://github.com/mark-e-deyoung
+
+## Project
+  Source: https://github.com/SemperSupra/scrutari
+  License: Apache 2.0
+  Language: HTML, JavaScript
+
+## Thanks
+  EFF (Panopticlick methodology)
+  Google (WWW 2024 fingerprinting research)
+  Tor Project (exit node data)

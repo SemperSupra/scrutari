@@ -12,6 +12,44 @@
 <meta property="og:title" content="Scrutari — Bot-or-Not™">
 <meta property="og:description" content="Test how human-like your browser appears. Free, open-source privacy tool.">
 <meta property="og:type" content="website">
+<meta property="og:image" content="https://sempersupra.github.io/scrutari/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Scrutari — Bot-or-Not™">
+<meta name="twitter:description" content="Free browser leak detector with Bot-or-Not human-vs-bot rating. All tests run client-side.">
+<script type="application/ld+json">
+[{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Scrutari",
+  "alternateName": "Bot-or-Not",
+  "description": "Free, open-source browser privacy leak detector with Bot-or-Not human-vs-bot rating. Tests DNS leaks, WebRTC leaks, browser fingerprint, and behavioral analysis.",
+  "url": "https://sempersupra.github.io/scrutari/",
+  "applicationCategory": "SecurityApplication",
+  "operatingSystem": "All",
+  "browserRequirements": "JavaScript enabled",
+  "author": {
+    "@type": "Organization",
+    "name": "SemperSupra"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+},
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Network Analysis", "item": "https://sempersupra.github.io/scrutari/#network"},
+    {"@type": "ListItem", "position": 2, "name": "Fingerprint Capture", "item": "https://sempersupra.github.io/scrutari/#fingerprint"},
+    {"@type": "ListItem", "position": 3, "name": "Behavioral Analysis", "item": "https://sempersupra.github.io/scrutari/#behavior"},
+    {"@type": "ListItem", "position": 4, "name": "Bot-or-Not Results", "item": "https://sempersupra.github.io/scrutari/#results"}
+  ]
+}]
+</script>
+<link rel="canonical" href="https://sempersupra.github.io/scrutari/">
+<link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); color: #e2e8f0; min-height: 100vh; }
@@ -1639,6 +1677,7 @@ function renderBotOrNot(bon) {
   html += '<button class="share-btn share-linkedin" onclick="shareScore(\'linkedin\')">in Post score</button>';
   html += '<button class="share-btn share-bluesky" onclick="shareScore(\'bluesky\')">🦋 Post score</button>';
   html += '<button class="share-btn share-mastodon" onclick="shareScore(\'mastodon\')">M Post score</button>';
+  html += '<button class="share-btn" style="background:#334155;color:#e2e8f0;" onclick="downloadScoreCard()">⬇ Download card</button>';
   html += '</div>';
 
   return html;
@@ -2438,12 +2477,20 @@ function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function getOGImageURL() {
+  var pct = __lastBotOrNotData?.botProbability;
+  if (pct === undefined) return '';
+  var siteUrl = window.location.origin;
+  return siteUrl + '/api/og?score=' + pct + '&engine=' + encodeURIComponent(__lastFingerprintData?.['JS Engine'] || 'unknown');
+}
+
 function shareScore(platform) {
   var pct = __lastBotOrNotData?.botProbability;
   if (pct === undefined) { alert('Run Bot-or-Not first!'); return; }
   var inv = 100 - pct;
-  var text = 'I just ran Scrutari Bot-or-Not™ and my browser scored ' + pct + '% bot-like, ' + inv + '% human-like. How does yours compare?';
-  var url = 'https://sempersupra.github.io/scrutari/';
+  var engine = __lastFingerprintData?.['JS Engine'] || 'unknown';
+  var text = 'I just ran Scrutari Bot-or-Not™ and my browser scored ' + pct + '% bot-like, ' + inv + '% human-like. Engine: ' + engine;
+  var url = window.location.origin + '/?score=' + pct;
   var encoded = encodeURIComponent(text);
   var encodedUrl = encodeURIComponent(url);
   var links = {
@@ -2453,6 +2500,71 @@ function shareScore(platform) {
     mastodon: 'https://mastodon.social/share?text=' + encoded + '%20' + encodedUrl,
   };
   window.open(links[platform], '_blank', 'width=600,height=500');
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+
+function downloadScoreCard() {
+  var pct = __lastBotOrNotData?.botProbability;
+  if (pct === undefined) { alert('Run Bot-or-Not first!'); return; }
+  var inv = 100 - pct;
+  var engine = __lastFingerprintData?.['JS Engine'] || 'unknown';
+  var cat = pct <= 15 ? 'Likely Human' : pct <= 35 ? 'Mostly Human' : pct <= 55 ? 'Uncertain' : pct <= 80 ? 'Bot-like' : 'Likely Bot';
+
+  // Render to canvas and download as PNG
+  var c = document.createElement('canvas');
+  c.width = 520; c.height = 320;
+  var ctx = c.getContext('2d');
+  var w = c.width, h = c.height;
+
+  // Background
+  var grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
+  ctx.fillStyle = grad; roundRect(ctx, 0, 0, w, h, 16); ctx.fill();
+
+  // Title
+  ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('🔍 Scrutari Bot-or-Not™', w/2, 44);
+
+  // Category
+  var catColor = pct <= 15 ? '#22c55e' : pct <= 35 ? '#84cc16' : pct <= 55 ? '#eab308' : pct <= 80 ? '#f97316' : '#ef4444';
+  ctx.font = '40px sans-serif'; ctx.fillText(pct <= 15 ? '🧑' : pct <= 35 ? '🙂' : pct <= 55 ? '🤷' : pct <= 80 ? '🤖' : '⚙️', w/2, 90);
+  ctx.font = 'bold 18px sans-serif'; ctx.fillStyle = catColor; ctx.fillText(cat, w/2, 130);
+  ctx.font = '13px sans-serif'; ctx.fillStyle = '#94a3b8'; ctx.fillText(inv + '% human · ' + pct + '% bot', w/2, 160);
+
+  // Gauge
+  var gx = 60, gy = 180, gw = 400, gh = 18;
+  ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.roundRect(gx, gy, gw, gh, 9); ctx.fill();
+  var barGrad = ctx.createLinearGradient(gx, 0, gx+gw, 0);
+  barGrad.addColorStop(0, '#22c55e'); barGrad.addColorStop(0.25, '#84cc16'); barGrad.addColorStop(0.5, '#eab308'); barGrad.addColorStop(0.75, '#f97316'); barGrad.addColorStop(1, '#ef4444');
+  var bw = (pct/100) * gw;
+  ctx.fillStyle = barGrad; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.roundRect(gx, gy, bw, gh, 9); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#0f172a'; ctx.globalAlpha = 0.4; ctx.beginPath(); ctx.roundRect(gx+bw, gy, gw-bw, gh, 9); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.font = '11px sans-serif'; ctx.fillStyle = '#94a3b8';
+  ctx.textAlign = 'left'; ctx.fillText('Human', gx, gy+34);
+  ctx.textAlign = 'center'; ctx.fillText('Uncertain', gx+gw/2, gy+34);
+  ctx.textAlign = 'right'; ctx.fillText('Bot', gx+gw, gy+34);
+
+  // Footer
+  ctx.textAlign = 'center';
+  ctx.font = '12px sans-serif'; ctx.fillStyle = '#94a3b8'; ctx.fillText('Engine: ' + engine, w/2, 240);
+  ctx.font = '11px sans-serif'; ctx.fillText('Check your browser at scrutari.netlify.app', w/2, 280);
+  ctx.font = '9px sans-serif'; ctx.fillStyle = '#475569'; ctx.fillText('Free & open source', w/2, 300);
+
+  // Download
+  var link = document.createElement('a');
+  link.download = 'scrutari-score-' + pct + '-pct-bot.png';
+  link.href = c.toDataURL('image/png');
+  link.click();
 }
 
 async function submitResults() {
