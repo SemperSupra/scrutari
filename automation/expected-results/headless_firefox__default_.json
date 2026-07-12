@@ -1,16 +1,16 @@
 {
   "test": "Headless Firefox (default)",
-  "timestamp": "2026-07-12T18-25-43-065Z",
+  "timestamp": "2026-07-12T18-49-07-122Z",
   "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0",
   "platform": "Win32",
   "botOrNot": {
-    "botProbability": 46,
+    "botProbability": 53,
     "confidence": "High",
-    "coverage": 90,
-    "testsRun": 22,
-    "testsTotal": 25,
-    "totalWeight": 71,
-    "maxWeight": 79,
+    "coverage": 91,
+    "testsRun": 28,
+    "testsTotal": 31,
+    "totalWeight": 78,
+    "maxWeight": 86,
     "results": [
       {
         "name": "WebDriver flag",
@@ -63,10 +63,10 @@
       },
       {
         "name": "Canvas rendering",
-        "bot": false,
+        "bot": true,
         "weight": 4,
         "isBotSignal": false,
-        "detail": "Bot-like"
+        "detail": "Human-like"
       },
       {
         "name": "Screen resolution is human-typical",
@@ -165,6 +165,48 @@
         "weight": 1,
         "isBotSignal": false,
         "detail": "Human-like"
+      },
+      {
+        "name": "HTTP Referrer present",
+        "bot": true,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "CSS Houdini Paint API",
+        "bot": true,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "CSS :has() selector",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "CSS Container Queries",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "IPv6 connectivity",
+        "bot": true,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "IP version (v4/v6)",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
       }
     ]
   },
@@ -179,7 +221,7 @@
     "Touch": "maxTouchPoints=0",
     "Do Not Track": "unspecified",
     "WebDriver": "Yes (automation!)",
-    "Canvas Hash": "2526 bytes",
+    "Canvas Hash": "2530 bytes",
     "Audio Hash": "Infinity",
     "Fonts Detected": "7/27",
     "Font Sample": "Palatino, Noto Sans, Roboto, Open Sans, Monaco...",
@@ -213,9 +255,9 @@
     "Hover Capable": "Yes",
     "Storage Used": "0.0 MB",
     "Storage Quota": "10240.0 MB",
-    "PoW Found": "Yes (nonce=38429)",
-    "PoW Time": "808.0ms",
-    "PoW Speed": "61881 hashes/sec",
+    "PoW Found": "Yes (nonce=9521)",
+    "PoW Time": "202.0ms",
+    "PoW Speed": "247525 hashes/sec",
     "PoW Hashing": "SHA-256 via Web Crypto API",
     "WebGL Vendor": "Google Inc. (NVIDIA)",
     "WebGL Renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
@@ -228,6 +270,24 @@
     "CPU Cores Class": "Normal (16)",
     "Connection RTT Present": "API unavailable",
     "Screen Orientation": "landscape-primary",
+    "HTTP Referrer": "(empty - direct visit, bookmark, or automation)",
+    "CSS Grid": "Yes",
+    "CSS Subgrid": "No",
+    "CSS :has()": "Yes",
+    "CSS Container Queries": "Yes",
+    "CSS scroll() timeline": "No",
+    "CSS view transitions": "Yes",
+    "CSS initial-letter": "No",
+    "CSS P3 color": "Yes",
+    "CSS -webkit-scrollbar": "No",
+    "CSS -moz-appearance": "Yes (Gecko)",
+    "CSS Houdini paint": "No",
+    "CSS prefers-reduced-data": "No",
+    "CSS forced-colors": "No",
+    "CSS inverted-colors": "No",
+    "IPv6 Available": "No",
+    "IP Version": "unknown",
+    "DNS Features": "SW DNS cache",
     "_webdriver": true,
     "_pluginsLen": 0,
     "_languages": "en-US,en",
@@ -235,8 +295,8 @@
     "_historyLen": 1,
     "_pdfViewer": false,
     "_cookieEnabled": true,
-    "_botGaugeTitle": "Uncertain",
-    "_botGaugeSubtitle": "46% bot-like · 54% human-like High confidence"
+    "_botGaugeTitle": "Probably Bot",
+    "_botGaugeSubtitle": "53% bot-like · 47% human-like High confidence"
   },
   "totalEntropyBits": null
 }

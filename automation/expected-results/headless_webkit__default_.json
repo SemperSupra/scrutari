@@ -1,16 +1,16 @@
 {
   "test": "Headless WebKit (default)",
-  "timestamp": "2026-07-12T18-26-01-371Z",
+  "timestamp": "2026-07-12T18-49-20-367Z",
   "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
   "platform": "Win32",
   "botOrNot": {
-    "botProbability": 23,
+    "botProbability": 25,
     "confidence": "High",
     "coverage": 94,
-    "testsRun": 23,
-    "testsTotal": 25,
-    "totalWeight": 74,
-    "maxWeight": 79,
+    "testsRun": 29,
+    "testsTotal": 31,
+    "totalWeight": 81,
+    "maxWeight": 86,
     "results": [
       {
         "name": "WebDriver flag",
@@ -172,6 +172,48 @@
         "weight": 1,
         "isBotSignal": false,
         "detail": "Human-like"
+      },
+      {
+        "name": "HTTP Referrer present",
+        "bot": true,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "CSS Houdini Paint API",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "CSS :has() selector",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "CSS Container Queries",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "IPv6 connectivity",
+        "bot": true,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "IP version (v4/v6)",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
       }
     ]
   },
@@ -218,9 +260,9 @@
     "Color Gamut": "sRGB",
     "Pointer Type": "Fine",
     "Hover Capable": "Yes",
-    "PoW Found": "No (max=50000)",
-    "PoW Time": "6252.0ms",
-    "PoW Speed": "7997 hashes/sec",
+    "PoW Found": "Yes (nonce=9469)",
+    "PoW Time": "1159.0ms",
+    "PoW Speed": "43141 hashes/sec",
     "PoW Hashing": "SHA-256 via Web Crypto API",
     "WebGL Vendor": "Apple Inc.",
     "WebGL Renderer": "Apple GPU",
@@ -233,6 +275,24 @@
     "CPU Cores Class": "Normal (8)",
     "Connection RTT Present": "API unavailable",
     "Screen Orientation": "landscape-primary",
+    "HTTP Referrer": "(empty - direct visit, bookmark, or automation)",
+    "CSS Grid": "Yes",
+    "CSS Subgrid": "No",
+    "CSS :has()": "Yes",
+    "CSS Container Queries": "Yes",
+    "CSS scroll() timeline": "Yes",
+    "CSS view transitions": "Yes",
+    "CSS initial-letter": "No",
+    "CSS P3 color": "Yes",
+    "CSS -webkit-scrollbar": "Yes (WebKit/Blink)",
+    "CSS -moz-appearance": "No",
+    "CSS Houdini paint": "Yes (Chrome)",
+    "CSS prefers-reduced-data": "No",
+    "CSS forced-colors": "No",
+    "CSS inverted-colors": "No",
+    "IPv6 Available": "No",
+    "IP Version": "unknown",
+    "DNS Features": "SW DNS cache",
     "_webdriver": true,
     "_pluginsLen": 5,
     "_languages": "en-US",
@@ -241,7 +301,7 @@
     "_pdfViewer": true,
     "_cookieEnabled": true,
     "_botGaugeTitle": "Probably Human",
-    "_botGaugeSubtitle": "23% bot-like · 77% human-like High confidence"
+    "_botGaugeSubtitle": "25% bot-like · 75% human-like High confidence"
   },
   "totalEntropyBits": null
 }

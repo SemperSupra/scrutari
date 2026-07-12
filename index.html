@@ -148,7 +148,7 @@
 
 <div id="section-botornot" class="card gauge-card">
   <h2>Bot-or-Not™ <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; rating how human-like your connection appears</span></h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 31+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 35+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
   <div id="botornot-results">
     <div class="gauge-container" style="opacity:0.5;">
       <div class="gauge-emoji">🤖</div>
@@ -1076,6 +1076,39 @@ async function captureFingerprint() {
     fp['DNS Features'] = dnsFeatures.length > 0 ? dnsFeatures.join(', ') : 'standard (no advanced DNS APIs)';
   } catch(e) { fp['DNS Features'] = 'error'; }
 
+  // Advanced browser API detection — reveals browser, version, and privacy settings
+  try {
+    fp['Cookies Enabled'] = navigator.cookieEnabled ? 'Yes' : 'No';
+    // Check if cookies are partitioned (CHIPS — Chrome-only)
+    try { var cp = document.cookie; fp['Cookies Accessible'] = cp !== undefined ? 'Yes' : 'No'; } catch(ce) { fp['Cookies Accessible'] = 'Blocked'; }
+    // localStorage
+    try { localStorage.setItem('_scr_test', '1'); localStorage.removeItem('_scr_test'); fp['localStorage'] = 'Yes'; } catch(e) { fp['localStorage'] = 'Blocked'; }
+    // sessionStorage
+    try { sessionStorage.setItem('_scr_test', '1'); sessionStorage.removeItem('_scr_test'); fp['sessionStorage'] = 'Yes'; } catch(e) { fp['sessionStorage'] = 'Blocked'; }
+    // indexedDB
+    try { fp['IndexedDB'] = typeof indexedDB !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['IndexedDB'] = 'error'; }
+    // Cache API
+    try { fp['Cache API'] = typeof caches !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['Cache API'] = 'error'; }
+    // Service Worker
+    try { fp['Service Worker'] = 'serviceWorker' in navigator ? 'Yes' : 'No'; } catch(e) { fp['Service Worker'] = 'error'; }
+    // BroadcastChannel (cross-tab communication)
+    try { fp['BroadcastChannel'] = typeof BroadcastChannel !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['BroadcastChannel'] = 'error'; }
+    // SharedWorker
+    try { fp['SharedWorker'] = typeof SharedWorker !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['SharedWorker'] = 'error'; }
+    // WebLocks API
+    try { fp['Web Locks'] = navigator.locks !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Web Locks'] = 'error'; }
+    // File System Access
+    try { fp['File System Access'] = typeof showOpenFilePicker !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['File System Access'] = 'error'; }
+    // Navigation API (new)
+    try { fp['Navigation API'] = typeof Navigation !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['Navigation API'] = 'error'; }
+    // USB — only available in secure contexts, reveals Chrome
+    try { fp['WebUSB'] = navigator.usb !== undefined ? 'Yes' : 'No'; } catch(e) { fp['WebUSB'] = 'error'; }
+    // Bluetooth — mobile/Chrome
+    try { fp['Bluetooth'] = navigator.bluetooth !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Bluetooth'] = 'error'; }
+    // Serial API
+    try { fp['Web Serial'] = navigator.serial !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Web Serial'] = 'error'; }
+  } catch(e) { fp['Advanced APIs'] = 'error'; }
+
   var ent = calculateFingerprintEntropy(fp);
   document.getElementById('fingerprint-entropy').innerHTML =
     '<div class="result-box info"><strong>Fingerprint Entropy: ' + ent.total + ' bits</strong> &mdash; ' +
@@ -1302,9 +1335,29 @@ function computeBotOrNot(fp) {
     return true; // neutral — doesn't affect score
   });
 
+  // 32. Adblock detected — real users often have adblock, bots usually don't
+  test(2, 'Adblock detected', false, function() {
+    return fp['Adblock Detected'] === 'Yes';
+  });
+
+  // 33. localStorage available — privacy-conscious users block it, bots usually don't
+  test(1, 'localStorage available', false, function() {
+    return fp['localStorage'] === 'Yes';
+  });
+
+  // 34. Cookies enabled — almost all real users have cookies, bots might not
+  test(1, 'Cookies enabled', false, function() {
+    return fp['Cookies Enabled'] === 'Yes';
+  });
+
+  // 35. Service Worker support — modern browsers only
+  test(1, 'Service Worker support', false, function() {
+    return fp['Service Worker'] === 'Yes';
+  });
+
   // === COMPUTE SCORE ===
   var botProb = totalWeight > 0 ? (botWeight / totalWeight) : 0.5;
-  var maxPossibleWeight = 86; // sum of all test weights
+  var maxPossibleWeight = 91; // sum of all test weights
   var coverage = totalWeight / maxPossibleWeight;
   var confidence = coverage >= 0.8 ? 'High' : (coverage >= 0.5 ? 'Medium' : 'Low');
 
@@ -1313,7 +1366,7 @@ function computeBotOrNot(fp) {
     confidence: confidence,
     coverage: Math.round(coverage * 100),
     testsRun: results.length,
-    testsTotal: 31,
+    testsTotal: 35,
     totalWeight: totalWeight,
     maxWeight: maxPossibleWeight,
     results: results
@@ -1803,11 +1856,77 @@ function analyzeBehavior(events) {
     });
   }
 
+  // --- Form, honeypot, visibility signals ---
+  var inp = events.input || [];
+  var formC = events.formClicks || [];
+  var v = events.visibility || [];
+  var inputF = events.inputFocus || [];
+
+  // Hidden field check
+  t(4, 'Extra field untouched', false, function() {
+    for (var i = 0; i < inp.length; i++) if (inp[i].id === 'input-ext' && inp[i].valueLen > 0) return false;
+    return true;
+  });
+  // Decoy button clicks
+  t(3, 'Extra buttons not clicked', false, function() {
+    var decoyIds = ['btn-opt-1', 'btn-opt-2', 'btn-opt-3'];
+    for (var i = 0; i < formC.length; i++) if (decoyIds.indexOf(formC[i].id) >= 0) return false;
+    return true;
+  });
+  // Typing hesitation
+  t(3, 'Natural typing hesitation', false, function() {
+    if (inputF.length < 2 || inp.length < 1) return null;
+    for (var fi = 0; fi < inputF.length; fi++) {
+      if (inputF[fi].type === 'focus') {
+        var fieldId = inputF[fi].id, focusTime = inputF[fi].t;
+        for (var ii = 0; ii < inp.length; ii++) {
+          if (inp[ii].id === fieldId && inp[ii].t > focusTime) return (inp[ii].t - focusTime) >= 100;
+        }
+      }
+    }
+    return null;
+  });
+  // Typing corrections — humans backspace/delete (~5-15% of keystrokes)
+  t(2, 'Typing corrections (backspace)', false, function() {
+    var corrections = 0;
+    for (var i = 0; i < inp.length; i++) {
+      if (inp[i].inputType && inp[i].inputType.indexOf('delete') >= 0) corrections++;
+    }
+    return corrections > 0;
+  });
+  // Tab visibility
+  t(2, 'Tab switches detected', true, function() {
+    if (v.length < 1) return null;
+    var wasHidden = false;
+    for (var i = 0; i < v.length; i++) wasHidden = wasHidden || v[i].hidden === true;
+    return !wasHidden;
+  });
+  // Page timing
+  try {
+    var navType = __behavior.navType || 'navigate';
+    var loadMs = __behavior.pageLoadMs || 0;
+    t(1, 'Page navigation type', true, function() { return navType !== 'navigate'; });
+    t(1, 'Natural page load time', false, function() { return loadMs > 200; });
+  } catch(e) {}
+  // Per-character typing speed
+  if (inp.length >= 3) {
+    t(3, 'Natural typing speed', false, function() {
+      var intervals = [];
+      for (var i = 1; i < inp.length; i++) {
+        var gap = inp[i].t - inp[i-1].t;
+        if (gap > 0 && gap < 2000 && inp[i].id === inp[i-1].id) intervals.push(gap);
+      }
+      if (intervals.length < 3) return null;
+      var avg = intervals.reduce(function(a,b){return a+b;},0)/intervals.length;
+      return avg >= 30 && avg <= 500;
+    });
+  }
+
   var bp = totalWeight > 0 ? (botWeight / totalWeight) : 0.5;
-  var coverage = totalWeight / 48;
+  var coverage = totalWeight / 63;
   return {
-    botProbability: Math.round(bp * 100), confidence: coverage >= 0.7 ? 'High' : (coverage >= 0.4 ? 'Medium' : 'Low'),
-    signals: signals, totalWeight: totalWeight, maxWeight: 48,
+    botProbability: Math.round(bp * 100), confidence: coverage >= 0.6 ? 'High' : (coverage >= 0.35 ? 'Medium' : 'Low'),
+    signals: signals, totalWeight: totalWeight, maxWeight: 63,
     eventCount: { mouse: m.length, scroll: s.length, clicks: c.length, keys: k.length, focus: f.length, resize: rsz.length,
       input: inp.length, formClicks: formC.length, visibilityEvents: v.length }
   };
