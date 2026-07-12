@@ -1,0 +1,247 @@
+{
+  "test": "Chrome macOS desktop",
+  "timestamp": "2026-07-12T18-25-28-716Z",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  "platform": "Win32",
+  "botOrNot": {
+    "botProbability": 44,
+    "confidence": "High",
+    "coverage": 90,
+    "testsRun": 22,
+    "testsTotal": 25,
+    "totalWeight": 71,
+    "maxWeight": 79,
+    "results": [
+      {
+        "name": "WebDriver flag",
+        "bot": true,
+        "weight": 5,
+        "isBotSignal": true,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Automation framework detected",
+        "bot": false,
+        "weight": 5,
+        "isBotSignal": true,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Iframe webdriver leak",
+        "bot": true,
+        "weight": 5,
+        "isBotSignal": true,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Fonts detected",
+        "bot": false,
+        "weight": 4,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Real GPU (not software)",
+        "bot": true,
+        "weight": 4,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Browser plugins present",
+        "bot": true,
+        "weight": 4,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Plugins have content",
+        "bot": true,
+        "weight": 4,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Canvas rendering",
+        "bot": true,
+        "weight": 4,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Screen resolution is human-typical",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Timezone is region-specific",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Language matches timezone region",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Browser language list",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Device memory API available",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "PoW timing is human-typical",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Built-in PDF viewer",
+        "bot": true,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Speech voices available",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Non-empty browser storage",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "OS preference signals present",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "CPU core count is human-typical",
+        "bot": false,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Browsing history present",
+        "bot": false,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Network RTT measurable",
+        "bot": true,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "WASM feature level expected",
+        "bot": true,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      }
+    ]
+  },
+  "fingerprint": {
+    "User Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Platform": "Win32",
+    "Language": "en-US",
+    "Screen": "1512x982",
+    "Color Depth": "24-bit",
+    "CPU Cores": "16",
+    "RAM": "32GB",
+    "Touch": "maxTouchPoints=0",
+    "Do Not Track": "unspecified",
+    "WebDriver": "Yes (automation!)",
+    "Brands": "HeadlessChrome v149, Chromium v149, Not)A;Brand v24",
+    "Mobile": "No",
+    "Platform (CH)": "macOS",
+    "Canvas Hash": "5510 bytes",
+    "Audio Hash": "Infinity",
+    "Fonts Detected": "7/27",
+    "Font Sample": "Palatino, Noto Sans, Roboto, Open Sans, Monaco...",
+    "Connection Type": "4g",
+    "Connection RTT": "unknown",
+    "Connection Downlink": "9.7 Mbps",
+    "Adblock Detected": "No",
+    "Plugins": "none",
+    "Plugin Count": "0",
+    "PDF Viewer": "No",
+    "JS APIs": "7/7 available",
+    "WASM Test": "error",
+    "ECMAScript Version": "ES15 (ES6-ES15 supported)",
+    "ES Unsupported": "ES16",
+    "WASM MVP": "No",
+    "WASM SIMD": "No",
+    "WASM Bulk Memory": "No",
+    "WASM Reference Types": "No",
+    "WASM Tail Call": "No",
+    "WASM Exceptions": "No",
+    "WASM Features": "0/6",
+    "WASM Version": "WASM 1.0",
+    "JS Engine": "V8/Blink (Chrome/Edge)",
+    "BigInt Perf": "0.20ms",
+    "Math Sin": "0.94381821",
+    "Math Tan": "2.85602984",
+    "Math Log": "4.0915",
+    "Dark Mode": "No",
+    "Reduced Motion": "No",
+    "High Contrast": "No",
+    "HDR Display": "No",
+    "Color Gamut": "sRGB",
+    "Pointer Type": "Fine",
+    "Hover Capable": "Yes",
+    "PoW Found": "Yes (nonce=26318)",
+    "PoW Time": "207.9ms",
+    "PoW Speed": "240500 hashes/sec",
+    "PoW Hashing": "SHA-256 via Web Crypto API",
+    "WebGL Vendor": "Google Inc. (Google)",
+    "WebGL Renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "Automation Frameworks": "none detected",
+    "Iframe WebDriver Leak": "Yes (automation!)",
+    "History Length": "2",
+    "Screen Resolution": "1512x982",
+    "Screen Common": "Uncommon",
+    "Timezone/Lang Aligned": "Yes",
+    "CPU Cores Class": "Normal (16)",
+    "Connection RTT Present": "Yes (0ms)",
+    "Screen Orientation": "landscape-primary",
+    "_webdriver": true,
+    "_pluginsLen": 0,
+    "_languages": "en-US",
+    "_deviceMemory": 32,
+    "_hardwareConcurrency": 16,
+    "_historyLen": 2,
+    "_pdfViewer": false,
+    "_cookieEnabled": true,
+    "_botGaugeTitle": "Uncertain",
+    "_botGaugeSubtitle": "44% bot-like · 56% human-like High confidence"
+  },
+  "totalEntropyBits": null
+}
