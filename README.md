@@ -1,5 +1,8 @@
 # Scrutari — Browser Leak Detector
 
+**🌐 Live site:** https://scrutari-submit-1783887159.netlify.app/
+**📖 GitHub Pages:** https://sempersupra.github.io/scrutari/
+
 **Scrutari** (Latin: *to search, examine, explore*) is a free, open-source browser privacy leak detector. It runs entirely in your browser — no data leaves your machine.
 
 ## Features
