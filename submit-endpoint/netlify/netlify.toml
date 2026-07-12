@@ -1,0 +1,10 @@
+[build]
+  command = "echo 'Static site only'"
+  publish = "."
+
+[functions]
+  directory = "functions"
+
+[[edge_functions]]
+  function = "submit"
+  path = "/api/submit"
