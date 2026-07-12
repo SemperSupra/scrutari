@@ -399,6 +399,58 @@ function captureFingerprint() {
     }
   } catch(e) { fp['WASM Test'] = 'error'; }
 
+  // Math fingerprint — sin/tan differences between browsers
+  try {
+    fp['Math Sin'] = Math.sin(1.234).toFixed(8);
+    fp['Math Tan'] = Math.tan(1.234).toFixed(8);
+    fp['Math Log'] = Math.log10(12345).toFixed(4);
+  } catch(e) { fp['Math'] = 'error'; }
+
+  // OS-level preferences — dark mode, reduced motion, contrast, color gamut
+  try {
+    fp['Dark Mode'] = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Yes' : 'No';
+    fp['Reduced Motion'] = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'Yes' : 'No';
+    fp['High Contrast'] = window.matchMedia('(prefers-contrast: more)').matches ? 'Yes' : 'No';
+    fp['HDR Display'] = window.matchMedia('(dynamic-range: high)').matches ? 'Yes' : 'No';
+    fp['Color Gamut'] = window.matchMedia('(color-gamut: p3)').matches ? 'P3' : 'sRGB';
+    fp['Pointer Type'] = window.matchMedia('(pointer: fine)').matches ? 'Fine' : 'Coarse';
+    fp['Hover Capable'] = window.matchMedia('(hover: hover)').matches ? 'Yes' : 'No';
+  } catch(e) { fp['OS Prefs'] = 'error'; }
+
+  // Battery API — reveals charging status and level (mobile fingerprint)
+  try {
+    if (navigator.getBattery) {
+      navigator.getBattery().then(function(b) {
+        fp['Battery Charging'] = b.charging ? 'Yes' : 'No';
+        fp['Battery Level'] = Math.round(b.level * 100) + '%';
+      });
+    }
+  } catch(e) { fp['Battery'] = 'blocked'; }
+
+  // Storage estimation — reveals disk usage patterns
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      navigator.storage.estimate().then(function(s) {
+        fp['Storage Used'] = (s.usage / (1024*1024)).toFixed(1) + ' MB';
+        fp['Storage Quota'] = (s.quota / (1024*1024)).toFixed(1) + ' MB';
+      });
+    }
+  } catch(e) { fp['Storage'] = 'blocked'; }
+
+  // Speech synthesis — reveals installed voice packs (OS/language signal)
+  try {
+    if (window.speechSynthesis) {
+      var voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        var voiceNames = [];
+        for (var vi = 0; vi < Math.min(voices.length, 8); vi++) {
+          voiceNames.push(voices[vi].name);
+        }
+        fp['Speech Voices'] = voiceNames.join(', ');
+      }
+    }
+  } catch(e) { fp['Speech'] = 'blocked'; }
+
   try {
     var gl = document.createElement('canvas').getContext('webgl');
     if (gl) {
