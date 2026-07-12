@@ -1,0 +1,149 @@
+{
+  "test": "Human-like behavioral (headless Chrome)",
+  "timestamp": "2026-07-12T18:57:38.053Z",
+  "behavioralScore": 28,
+  "behavioralTitle": "Mostly Human",
+  "behavioralEvents": "Events: 47 mouse, 27 scroll, 2 clicks, 58 keys, 29 input",
+  "signals": [
+    {
+      "name": "Mouse movement present",
+      "bot": true,
+      "weight": 1,
+      "value": false,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Mouse speed variance",
+      "bot": false,
+      "weight": 4,
+      "value": false,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Mouse path curvature",
+      "bot": false,
+      "weight": 4,
+      "value": false,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Mouse pause frequency",
+      "bot": false,
+      "weight": 3,
+      "value": false,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Mouse speed",
+      "bot": true,
+      "weight": 2,
+      "value": true,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Scrolling present",
+      "bot": false,
+      "weight": 1,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Scroll reading pauses",
+      "bot": false,
+      "weight": 3,
+      "value": false,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Scroll direction changes",
+      "bot": false,
+      "weight": 2,
+      "value": false,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Clicks detected",
+      "bot": false,
+      "weight": 1,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Time to first interaction",
+      "bot": false,
+      "weight": 3,
+      "value": false,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Tab switching",
+      "bot": true,
+      "weight": 2,
+      "value": true,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Window resize",
+      "bot": true,
+      "weight": 2,
+      "value": true,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Keyboard input detected",
+      "bot": false,
+      "weight": 1,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Typing speed variance",
+      "bot": true,
+      "weight": 3,
+      "value": true,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Extra field untouched",
+      "bot": false,
+      "weight": 4,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Extra buttons not clicked",
+      "bot": false,
+      "weight": 3,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Typing corrections (backspace)",
+      "bot": true,
+      "weight": 2,
+      "value": false,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Page navigation type",
+      "bot": false,
+      "weight": 1,
+      "value": false,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Natural page load time",
+      "bot": true,
+      "weight": 1,
+      "value": false,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Natural typing speed",
+      "bot": false,
+      "weight": 3,
+      "value": true,
+      "humanLabel": "Human-like"
+    }
+  ]
+}

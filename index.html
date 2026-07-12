@@ -1109,6 +1109,53 @@ async function captureFingerprint() {
     try { fp['Web Serial'] = navigator.serial !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Web Serial'] = 'error'; }
   } catch(e) { fp['Advanced APIs'] = 'error'; }
 
+  // Security & integrity checks — detect if page is compromised or framed
+  try {
+    // Frame check — are we in an iframe? (clickjacking detection)
+    fp['In Iframe'] = window !== window.top ? 'Yes (framed!)' : 'No';
+    fp['Parent Domain'] = window !== window.top ? (document.referrer || 'unknown') : 'N/A';
+    // Cross-origin isolation status
+    fp['Cross-Origin Isolated'] = window.crossOriginIsolated ? 'Yes' : 'No';
+    // Global Privacy Control (GPC) — privacy signal
+    try { fp['GPC Signal'] = navigator.globalPrivacyControl ? 'Yes' : 'No'; } catch(gpc) { fp['GPC Signal'] = 'unsupported'; }
+    // Do Not Track
+    fp['Do Not Track'] = navigator.doNotTrack || 'unspecified';
+    // Opener check — was window opened by another site?
+    try {
+      fp['Opener Present'] = window.opener !== null ? 'Yes' : 'No';
+      if (window.opener) fp['Opener Origin'] = 'cross-origin (potential CSRF)';
+    } catch(oe) { fp['Opener Present'] = 'Blocked (cross-origin)'; }
+    // Performance entry analysis — check for injected scripts/extensions
+    var injected = [];
+    try {
+      var entries = performance.getEntriesByType('resource') || [];
+      var knownExtensions = ['tampermonkey', 'violentmonkey', 'greasemonkey', 'grammarly', 'lastpass',
+        '1password', 'bitwarden', 'ublock', 'adblock', 'react-devtools', 'redux-devtools'];
+      for (var ei = 0; ei < entries.length; ei++) {
+        var url = entries[ei].name || '';
+        for (var ki = 0; ki < knownExtensions.length; ki++) {
+          if (url.toLowerCase().indexOf(knownExtensions[ki]) >= 0) {
+            if (injected.indexOf(knownExtensions[ki]) < 0) injected.push(knownExtensions[ki]);
+          }
+        }
+      }
+    } catch(pe) {}
+    fp['Detected Extensions'] = injected.length > 0 ? injected.join(', ') : 'none detected';
+    fp['Resource Entries'] = entries ? (entries.length || '0') : 'blocked';
+
+    // Check for DOM modifications by extensions (known injection patterns)
+    try {
+      var domExtras = [];
+      // Check for common extension-injected elements
+      if (document.querySelector('#_hjRemoteVarsFrame')) domExtras.push('HotJar');
+      if (document.querySelector('#__BVID__')) domExtras.push('BootstrapVue');
+      if (document.querySelector('.grammarly-desktop-integration')) domExtras.push('Grammarly');
+      if (document.querySelector('#web-developer-toolbar')) domExtras.push('WebDeveloper');
+      if (document.querySelector('[data-reactroot]') && !document.querySelector('#fingerprint-grid')) domExtras.push('React');
+      fp['Extension DOM Traces'] = domExtras.length > 0 ? domExtras.join(', ') : 'none';
+    } catch(de) { fp['Extension DOM Traces'] = 'error'; }
+  } catch(e) { fp['Security Checks'] = 'error'; }
+
   var ent = calculateFingerprintEntropy(fp);
   document.getElementById('fingerprint-entropy').innerHTML =
     '<div class="result-box info"><strong>Fingerprint Entropy: ' + ent.total + ' bits</strong> &mdash; ' +
@@ -2053,6 +2100,8 @@ function buildSubmissionData(fp, bon) {
   else safe.gpuClass = 'other';
   // Timestamp (anonymized to day)
   safe.submitted = new Date().toISOString().split('T')[0]; // date only, no time
+  // Source — set by automation baselines to distinguish human vs automated submissions
+  safe.source = window.__SUBMISSION_SOURCE || 'manual';
 
   safe.version = 1;
   return safe;

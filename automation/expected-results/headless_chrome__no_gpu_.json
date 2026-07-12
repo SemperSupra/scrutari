@@ -1,16 +1,16 @@
 {
   "test": "Headless Chrome (no GPU)",
-  "timestamp": "2026-07-12T18-48-16-707Z",
+  "timestamp": "2026-07-12T18-56-22-503Z",
   "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36",
   "platform": "Win32",
   "botOrNot": {
-    "botProbability": 51,
+    "botProbability": 50,
     "confidence": "High",
     "coverage": 92,
-    "testsRun": 29,
-    "testsTotal": 31,
-    "totalWeight": 79,
-    "maxWeight": 86,
+    "testsRun": 33,
+    "testsTotal": 35,
+    "totalWeight": 84,
+    "maxWeight": 91,
     "results": [
       {
         "name": "WebDriver flag",
@@ -214,6 +214,34 @@
         "weight": 1,
         "isBotSignal": false,
         "detail": "Bot-like"
+      },
+      {
+        "name": "Adblock detected",
+        "bot": true,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "localStorage available",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Cookies enabled",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Service Worker support",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
       }
     ]
   },
@@ -255,7 +283,7 @@
     "WASM Features": "0/6",
     "WASM Version": "WASM 1.0",
     "JS Engine": "V8/Blink (Chrome/Edge)",
-    "BigInt Perf": "0.10ms",
+    "BigInt Perf": "0.00ms",
     "Math Sin": "0.94381821",
     "Math Tan": "2.85602984",
     "Math Log": "4.0915",
@@ -267,8 +295,8 @@
     "Pointer Type": "Fine",
     "Hover Capable": "Yes",
     "PoW Found": "No (max=50000)",
-    "PoW Time": "339.4ms",
-    "PoW Speed": "147319 hashes/sec",
+    "PoW Time": "378.9ms",
+    "PoW Speed": "131961 hashes/sec",
     "PoW Hashing": "SHA-256 via Web Crypto API",
     "WebGL Vendor": "Google Inc. (Google)",
     "WebGL Renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
@@ -303,6 +331,21 @@
     "IPv6 Available": "No",
     "IP Version": "unknown",
     "DNS Features": "SW DNS cache",
+    "Cookies Enabled": "Yes",
+    "Cookies Accessible": "Yes",
+    "localStorage": "Yes",
+    "sessionStorage": "Yes",
+    "IndexedDB": "Yes",
+    "Cache API": "Yes",
+    "Service Worker": "Yes",
+    "BroadcastChannel": "Yes",
+    "SharedWorker": "Yes",
+    "Web Locks": "Yes",
+    "File System Access": "Yes",
+    "Navigation API": "Yes",
+    "WebUSB": "Yes",
+    "Bluetooth": "Yes",
+    "Web Serial": "Yes",
     "_webdriver": true,
     "_pluginsLen": 0,
     "_languages": "en-US",
@@ -311,8 +354,8 @@
     "_historyLen": 2,
     "_pdfViewer": false,
     "_cookieEnabled": true,
-    "_botGaugeTitle": "Probably Bot",
-    "_botGaugeSubtitle": "51% bot-like · 49% human-like High confidence"
+    "_botGaugeTitle": "Uncertain",
+    "_botGaugeSubtitle": "50% bot-like · 50% human-like High confidence"
   },
   "totalEntropyBits": null
 }

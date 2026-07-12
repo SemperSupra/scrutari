@@ -1,16 +1,16 @@
 {
   "test": "Headless Firefox (default)",
-  "timestamp": "2026-07-12T18-49-07-122Z",
+  "timestamp": "2026-07-12T18-57-12-512Z",
   "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0",
   "platform": "Win32",
   "botOrNot": {
-    "botProbability": 53,
+    "botProbability": 52,
     "confidence": "High",
     "coverage": 91,
-    "testsRun": 28,
-    "testsTotal": 31,
-    "totalWeight": 78,
-    "maxWeight": 86,
+    "testsRun": 32,
+    "testsTotal": 35,
+    "totalWeight": 83,
+    "maxWeight": 91,
     "results": [
       {
         "name": "WebDriver flag",
@@ -207,6 +207,34 @@
         "weight": 1,
         "isBotSignal": false,
         "detail": "Bot-like"
+      },
+      {
+        "name": "Adblock detected",
+        "bot": true,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "localStorage available",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Cookies enabled",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Service Worker support",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
       }
     ]
   },
@@ -242,7 +270,7 @@
     "WASM Features": "0/6",
     "WASM Version": "WASM 1.0",
     "JS Engine": "V8/Blink (Chrome/Edge)",
-    "BigInt Perf": "0.00ms",
+    "BigInt Perf": "1.00ms",
     "Math Sin": "0.94381821",
     "Math Tan": "2.85602984",
     "Math Log": "4.0915",
@@ -255,9 +283,9 @@
     "Hover Capable": "Yes",
     "Storage Used": "0.0 MB",
     "Storage Quota": "10240.0 MB",
-    "PoW Found": "Yes (nonce=9521)",
-    "PoW Time": "202.0ms",
-    "PoW Speed": "247525 hashes/sec",
+    "PoW Found": "Yes (nonce=2248)",
+    "PoW Time": "58.0ms",
+    "PoW Speed": "862069 hashes/sec",
     "PoW Hashing": "SHA-256 via Web Crypto API",
     "WebGL Vendor": "Google Inc. (NVIDIA)",
     "WebGL Renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
@@ -288,6 +316,21 @@
     "IPv6 Available": "No",
     "IP Version": "unknown",
     "DNS Features": "SW DNS cache",
+    "Cookies Enabled": "Yes",
+    "Cookies Accessible": "Yes",
+    "localStorage": "Yes",
+    "sessionStorage": "Yes",
+    "IndexedDB": "Yes",
+    "Cache API": "Yes",
+    "Service Worker": "Yes",
+    "BroadcastChannel": "Yes",
+    "SharedWorker": "Yes",
+    "Web Locks": "Yes",
+    "File System Access": "No",
+    "Navigation API": "Yes",
+    "WebUSB": "No",
+    "Bluetooth": "No",
+    "Web Serial": "Yes",
     "_webdriver": true,
     "_pluginsLen": 0,
     "_languages": "en-US,en",
@@ -296,7 +339,7 @@
     "_pdfViewer": false,
     "_cookieEnabled": true,
     "_botGaugeTitle": "Probably Bot",
-    "_botGaugeSubtitle": "53% bot-like · 47% human-like High confidence"
+    "_botGaugeSubtitle": "52% bot-like · 48% human-like High confidence"
   },
   "totalEntropyBits": null
 }

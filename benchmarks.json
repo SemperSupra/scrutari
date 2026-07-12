@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-12T18:26:27.505Z",
+  "generated": "2026-07-12T18:59:49.989Z",
   "totalConfigs": 12,
   "sources": [
     "http-clients.sh",
@@ -43,28 +43,28 @@
       "source": "container-baselines.sh"
     },
     {
-      "name": "Headless Chrome (no GPU)",
+      "name": "Headless Firefox (default)",
       "botScore": 52,
       "confidence": "High",
-      "testsRun": 22,
-      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
+      "testsRun": 32,
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0",
       "topBotSignals": [
         "WebDriver flag",
         "Iframe webdriver leak",
-        "Real GPU (not software)"
+        "Browser plugins present"
       ],
       "topHumanSignals": [
         "Automation framework detected",
         "Fonts detected",
-        "Screen resolution is human-typical"
+        "Real GPU (not software)"
       ],
       "source": "Playwright baselines"
     },
     {
       "name": "Chrome mobile (Pixel 5)",
-      "botScore": 48,
+      "botScore": 50,
       "confidence": "High",
-      "testsRun": 22,
+      "testsRun": 33,
       "userAgent": "Mozilla/5.0 (Linux; Android 14; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) ",
       "topBotSignals": [
         "WebDriver flag",
@@ -80,9 +80,9 @@
     },
     {
       "name": "Headless Chrome (default)",
-      "botScore": 48,
+      "botScore": 50,
       "confidence": "High",
-      "testsRun": 22,
+      "testsRun": 33,
       "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
       "topBotSignals": [
         "WebDriver flag",
@@ -97,28 +97,28 @@
       "source": "Playwright baselines"
     },
     {
-      "name": "Headless Firefox (default)",
-      "botScore": 46,
+      "name": "Headless Chrome (no GPU)",
+      "botScore": 50,
       "confidence": "High",
-      "testsRun": 22,
-      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0",
+      "testsRun": 33,
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
       "topBotSignals": [
         "WebDriver flag",
         "Iframe webdriver leak",
-        "Browser plugins present"
+        "Real GPU (not software)"
       ],
       "topHumanSignals": [
         "Automation framework detected",
         "Fonts detected",
-        "Real GPU (not software)"
+        "Screen resolution is human-typical"
       ],
       "source": "Playwright baselines"
     },
     {
       "name": "Chrome macOS desktop",
-      "botScore": 44,
+      "botScore": 46,
       "confidence": "High",
-      "testsRun": 22,
+      "testsRun": 33,
       "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like ",
       "topBotSignals": [
         "WebDriver flag",
@@ -134,9 +134,9 @@
     },
     {
       "name": "Chrome Windows desktop",
-      "botScore": 44,
+      "botScore": 46,
       "confidence": "High",
-      "testsRun": 22,
+      "testsRun": 33,
       "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
       "topBotSignals": [
         "WebDriver flag",
@@ -152,9 +152,9 @@
     },
     {
       "name": "Headless WebKit (default)",
-      "botScore": 23,
+      "botScore": 26,
       "confidence": "High",
-      "testsRun": 23,
+      "testsRun": 33,
       "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, lik",
       "topBotSignals": [
         "WebDriver flag",

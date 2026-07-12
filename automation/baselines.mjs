@@ -51,6 +51,9 @@ async function captureFromPage(page) {
   // Wait a bit for the page to fully initialize
   await page.waitForTimeout(1000);
 
+  // Set submission source so automated data is labeled in the research dataset
+  await page.evaluate(() => { window.__SUBMISSION_SOURCE = 'automation_baseline'; });
+
   // Instead of relying on button clicks (which may not work in headless),
   // call captureFingerprint() directly in the page context.
   // This also avoids timing issues with the button being visible.
@@ -60,6 +63,14 @@ async function captureFromPage(page) {
       return true;
     }
     return false;
+  });
+
+  // Auto-submit anonymized data to research endpoint
+  await page.evaluate(async () => {
+    if (typeof submitResults === 'function' && typeof __lastFingerprintData !== 'undefined' && __lastFingerprintData) {
+      // Don't fail the test if submission fails (endpoint may not be deployed)
+      try { await submitResults(); } catch(e) {}
+    }
   });
 
   if (!ran) {
@@ -296,6 +307,13 @@ async function main() {
       const page = await ctx.newPage();
       await page.goto(BASE, { waitUntil: 'networkidle', timeout: 15000 });
       await page.waitForTimeout(500);
+
+      // Set submission source so automated data is labeled
+      await page.evaluate(() => { window.__SUBMISSION_SOURCE = 'automation_baseline'; });
+
+      // Also capture fingerprint + Bot-or-Not for submission data
+      await page.evaluate(async () => { if (typeof captureFingerprint === 'function') await captureFingerprint(); });
+      await page.waitForTimeout(2000);
 
       // Start behavioral recording
       await page.evaluate(() => { if (typeof toggleBehaviorRecording === 'function') toggleBehaviorRecording(); });

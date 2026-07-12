@@ -1,16 +1,16 @@
 {
   "test": "Headless WebKit (default)",
-  "timestamp": "2026-07-12T18-49-20-367Z",
+  "timestamp": "2026-07-12T18-57-24-997Z",
   "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
   "platform": "Win32",
   "botOrNot": {
-    "botProbability": 25,
+    "botProbability": 26,
     "confidence": "High",
-    "coverage": 94,
-    "testsRun": 29,
-    "testsTotal": 31,
-    "totalWeight": 81,
-    "maxWeight": 86,
+    "coverage": 95,
+    "testsRun": 33,
+    "testsTotal": 35,
+    "totalWeight": 86,
+    "maxWeight": 91,
     "results": [
       {
         "name": "WebDriver flag",
@@ -214,6 +214,34 @@
         "weight": 1,
         "isBotSignal": false,
         "detail": "Bot-like"
+      },
+      {
+        "name": "Adblock detected",
+        "bot": true,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "localStorage available",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Cookies enabled",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Service Worker support",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
       }
     ]
   },
@@ -260,9 +288,9 @@
     "Color Gamut": "sRGB",
     "Pointer Type": "Fine",
     "Hover Capable": "Yes",
-    "PoW Found": "Yes (nonce=9469)",
-    "PoW Time": "1159.0ms",
-    "PoW Speed": "43141 hashes/sec",
+    "PoW Found": "Yes (nonce=3671)",
+    "PoW Time": "449.0ms",
+    "PoW Speed": "111359 hashes/sec",
     "PoW Hashing": "SHA-256 via Web Crypto API",
     "WebGL Vendor": "Apple Inc.",
     "WebGL Renderer": "Apple GPU",
@@ -293,6 +321,21 @@
     "IPv6 Available": "No",
     "IP Version": "unknown",
     "DNS Features": "SW DNS cache",
+    "Cookies Enabled": "Yes",
+    "Cookies Accessible": "Yes",
+    "localStorage": "Yes",
+    "sessionStorage": "Yes",
+    "IndexedDB": "Yes",
+    "Cache API": "Yes",
+    "Service Worker": "Yes",
+    "BroadcastChannel": "Yes",
+    "SharedWorker": "Yes",
+    "Web Locks": "Yes",
+    "File System Access": "No",
+    "Navigation API": "Yes",
+    "WebUSB": "No",
+    "Bluetooth": "No",
+    "Web Serial": "No",
     "_webdriver": true,
     "_pluginsLen": 5,
     "_languages": "en-US",
@@ -301,7 +344,7 @@
     "_pdfViewer": true,
     "_cookieEnabled": true,
     "_botGaugeTitle": "Probably Human",
-    "_botGaugeSubtitle": "25% bot-like · 75% human-like High confidence"
+    "_botGaugeSubtitle": "26% bot-like · 74% human-like High confidence"
   },
   "totalEntropyBits": null
 }
