@@ -20,7 +20,10 @@
 import { createHash } from 'crypto';
 import { getStore } from '@netlify/blobs';
 
+// Blob store configuration
 const BLOB_NAME = 'scrutari-data';
+const SITE_ID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
+const DEPLOY_ID = process.env.DEPLOY_ID || 'dev';
 // Labeled sources for ground truth validation
 // manual = human (self-reported), automation_* = known bot type
 const ALLOWED_SOURCES = [
@@ -56,10 +59,11 @@ export default async (req, context) => {
       engine: data.engine, adblockDetected: data.adblockDetected, totalEntropyBits: data.totalEntropyBits,
       botScore: data.botScore,
     };
-    const fpHash = require('crypto').createHash('sha256').update(JSON.stringify(fp)).digest('hex').substring(0, 16);
+    const fpHash = createHash('sha256').update(JSON.stringify(fp)).digest('hex').substring(0, 16);
 
     // Load existing store
-    const store = getStore('scrutari-data');
+    console.log(`[Scrutari] Site: ${SITE_ID}, Deploy: ${DEPLOY_ID}`);
+    const store = getStore({ name: 'scrutari-data', siteID: SITE_ID });
     let db = { version: 2, created: new Date().toISOString().split('T')[0], updated: null,
       totalSubmissions: 0, uniqueFingerprints: 0,
       fingerprints: {}, distributions: {} };
@@ -67,7 +71,9 @@ export default async (req, context) => {
     try {
       const raw = await store.get(BLOB_NAME, { type: 'json' });
       if (raw && raw.version) db = raw;
-    } catch { /* first submission */ }
+    } catch (e) {
+      console.log(`[Scrutari] First submission or blob read error: ${e.message}`);
+    }
 
     // Update deduplicated fingerprint store
     db.totalSubmissions = (db.totalSubmissions || 0) + 1;
@@ -114,8 +120,12 @@ export default async (req, context) => {
     const blobSize = new TextEncoder().encode(JSON.stringify(db)).length;
     const remainingGB = ((MAX_BLOB_SIZE_BYTES - blobSize) / (1024 * 1024 * 1024)).toFixed(3);
 
-    // Write back to blob
-    await store.set(BLOB_NAME, db);
+    // Write back to blob (must JSON.stringify — SDK requires string values)
+    try {
+      await store.set(BLOB_NAME, JSON.stringify(db));
+    } catch (e) {
+      console.log(`[Scrutari] Blob write error: ${e.message}`);
+    }
 
     // Compute research stats
     const totalFP = db.totalSubmissions;
