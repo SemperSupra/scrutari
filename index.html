@@ -2370,6 +2370,9 @@ function buildSubmissionData(fp, bon) {
   // Source — set by automation baselines to distinguish human vs automated submissions
   safe.source = window.__SUBMISSION_SOURCE || 'manual';
 
+  // Detector version — tracks methodology changes over time
+  // See DETECTOR_CHANGELOG.md when this changes
+  safe.detectorVersion = 1;
   safe.version = 1;
   return safe;
 }

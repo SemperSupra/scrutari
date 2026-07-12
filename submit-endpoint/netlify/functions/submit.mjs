@@ -45,6 +45,7 @@ export default async (req, context) => {
 
     // Build deduplication key: SHA-256 of normalized fingerprint attributes
     const fp = {
+      detectorVersion: data.detectorVersion || 1,
       screenClass: data.screenClass,
       hasWASM: data.hasWASM, hasWebGL: data.hasWebGL, hasCanvas: data.hasCanvas, hasAudio: data.hasAudio,
       fontCount: data.fontCount, gpuClass: data.gpuClass, tzRegion: data.tzRegion,

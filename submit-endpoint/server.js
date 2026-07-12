@@ -70,7 +70,7 @@ function anonymizeIP(ip) {
 
 function computeHash(data) {
   const fp = {
-    screenClass: data.screenClass, hasWASM: data.hasWASM, hasWebGL: data.hasWebGL,
+    detectorVersion: data.detectorVersion || 1, screenClass: data.screenClass, hasWASM: data.hasWASM, hasWebGL: data.hasWebGL,
     hasCanvas: data.hasCanvas, hasAudio: data.hasAudio, fontCount: data.fontCount,
     gpuClass: data.gpuClass, tzRegion: data.tzRegion, cpuCores: data.cpuCores,
     deviceMemory: data.deviceMemory, darkMode: data.darkMode, engine: data.engine,
