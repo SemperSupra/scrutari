@@ -278,6 +278,131 @@ async function main() {
     }
   }
 
+  // ─── Behavioral tests ───
+  console.log('\n═══════════════════════════════════════');
+  console.log('  BEHAVIORAL TESTS (honeypots, forms, mouse)');
+  console.log('═══════════════════════════════════════');
+
+  const behavioralTests = [
+    { name: 'Bot behavioral (headless Chrome)', behavior: 'bot', engine: chromium },
+    { name: 'Human-like behavioral (headless Chrome)', behavior: 'human', engine: chromium },
+  ];
+
+  for (const bt of behavioralTests) {
+    console.log(`\n▶ ${bt.name}`);
+    try {
+      const browser = await bt.engine.launch({ headless: true });
+      const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+      const page = await ctx.newPage();
+      await page.goto(BASE, { waitUntil: 'networkidle', timeout: 15000 });
+      await page.waitForTimeout(500);
+
+      // Start behavioral recording
+      await page.evaluate(() => { if (typeof toggleBehaviorRecording === 'function') toggleBehaviorRecording(); });
+      await page.waitForTimeout(500);
+
+      if (bt.behavior === 'bot') {
+        // Simulate bot behavior
+        // 1. Click all the buttons (including decoys)
+        await page.click('#btn-opt-1', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(50);
+        await page.click('#btn-opt-2', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(50);
+        await page.click('#btn-opt-3', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(50);
+        await page.click('#btn-primary', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(50);
+        // 2. Fill the hidden honeypot field
+        const hp = page.locator('#input-ext');
+        await hp.fill('scraped by bot', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(50);
+        // 3. Type in fields instantly (no delay = programmatic)
+        await page.fill('#input-main', 'automated fill test data', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(50);
+        await page.fill('#input-email', 'bot@example.com', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(50);
+        // 4. No scrolling, no mouse movement (bot-like)
+      } else {
+        // Simulate human-like behavior
+        // 1. Mouse movement — move naturally between elements
+        for (let step = 0; step < 5; step++) {
+          const x = 200 + Math.floor(Math.random() * 400);
+          const y = 200 + Math.floor(Math.random() * 400);
+          await page.mouse.move(x, y, { steps: 8 });
+          await page.waitForTimeout(100 + Math.floor(Math.random() * 200));
+        }
+        // 2. Scroll with pauses
+        await page.evaluate(() => window.scrollBy({ top: 300, behavior: 'smooth' }));
+        await page.waitForTimeout(800);
+        await page.evaluate(() => window.scrollBy({ top: -100, behavior: 'smooth' }));
+        await page.waitForTimeout(600);
+        // 3. Click only the normal button
+        await page.mouse.move(300, 350, { steps: 5 });
+        await page.waitForTimeout(200);
+        await page.click('#btn-primary', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+        // 4. Type in fields with delay (natural)
+        await page.click('#input-main', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(400);
+        await page.type('#input-main', 'hello, this is a human typing', { delay: 80, timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        // 5. Do NOT touch honeypot or decoy buttons
+      }
+
+      // Stop recording — click the stop button
+      await page.evaluate(() => { if (typeof toggleBehaviorRecording === 'function') toggleBehaviorRecording(); });
+      await page.waitForTimeout(1000);
+
+      // Extract behavioral results from DOM
+      const behResult = await page.evaluate(() => {
+        const inner = document.getElementById('behavior-results-inner');
+        const title = inner?.querySelector('div:nth-child(2)')?.textContent || '';
+        const subtitle = inner?.querySelector('div:nth-child(3)')?.textContent || '';
+        const events = inner?.querySelector('div:nth-child(6)')?.textContent || '';
+        // Try to get the behavioral analysis engine's last result
+        let score = null;
+        const match = subtitle.match(/(\d+)%/);
+        if (match) score = parseInt(match[1]);
+        return { title, subtitle, score, events };
+      });
+
+      // Also compute what the behavioral analysis returned
+      const fullResult = await page.evaluate(() => {
+        if (typeof __lastBehaviorResult !== 'undefined') return __lastBehaviorResult;
+        // Try to read from the display
+        const items = document.querySelectorAll('#beh-signals .beh-signal-item');
+        const signals = [];
+        items.forEach(el => {
+          const spans = el.querySelectorAll('span');
+          signals.push({
+            name: spans[1]?.textContent || '',
+            result: spans[2]?.textContent || '',
+            weight: (spans[3]?.textContent || '').replace('w', ''),
+          });
+        });
+        return { signals };
+      });
+
+      await browser.close();
+
+      const saved = {
+        test: bt.name,
+        timestamp: new Date().toISOString(),
+        behavioralScore: behResult.score,
+        behavioralTitle: behResult.title,
+        behavioralEvents: behResult.events,
+        signals: fullResult?.signals || [],
+      };
+      const slug = bt.name.replace(/[^a-z0-9-]/gi, '_').toLowerCase();
+      writeFileSync(join(OUT, `${slug}.json`), JSON.stringify(saved, null, 2));
+      console.log(`    Behavioral score: ${behResult.score !== null ? behResult.score + '% bot' : 'N/A'}`);
+      console.log(`    ${behResult.events}`);
+      console.log(`    ✓ saved → ${slug}.json`);
+    } catch (err) {
+      console.error(`  ✗ Error: ${err.message}`);
+    }
+  }
+
   if (!SKIP_SERVER) stopServer();
 
   console.log('\n═══════════════════════════════════════');

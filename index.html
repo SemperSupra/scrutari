@@ -93,7 +93,17 @@
   .field-preview { font-family: monospace; font-size: 0.7rem; background: #0f172a; padding: 0.5rem; border-radius: 0.375rem; max-height: 200px; overflow-y: auto; margin: 0.5rem 0; white-space: pre-wrap; word-break: break-all; }
   .field-check { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; font-size: 0.75rem; cursor: pointer; }
   .field-check input { accent-color: #3b82f6; }
-
+  .click-flash { position:fixed;width:20px;height:20px;border-radius:50%;border:2px solid #60a5fa;pointer-events:none;z-index:9999;animation:flashOut 0.6s ease-out forwards; }
+  @keyframes flashOut { 0% { transform:scale(0.5);opacity:1; } 100% { transform:scale(2);opacity:0; } }
+  .mouse-dot { position:fixed;width:6px;height:6px;border-radius:50%;background:#60a5fa;pointer-events:none;z-index:9999;opacity:0.5; }
+  .mouse-dot.fade { animation:dotFade 1.5s ease-out forwards; }
+  @keyframes dotFade { 0% { opacity:0.5; } 100% { opacity:0;transform:scale(0.3); } }
+  .beh-indicator { display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.5rem; }
+  .beh-tag { display:inline-block;padding:0.1rem 0.4rem;border-radius:0.25rem;font-size:0.6rem;background:#1e293b;color:#64748b;transition:all 0.3s; }
+  .beh-tag.active { color:#6ee7b7;background:#065f46; }
+  .beh-tag.warn { color:#fcd34d;background:#78350f; }
+  .beh-tag.danger { color:#fca5a5;background:#7f1d1d; }
+</style>
 </head>
 <body>
 <div class="container">
@@ -166,27 +176,27 @@
   <div id="behavior-results">
     <div class="gauge-container" style="text-align:center;">
       <div class="gauge-emoji">🎯</div>
-      <div class="gauge-title" id="behavior-status">Ready to record</div>
-      <div class="gauge-subtitle" id="behavior-substatus">Click "Start Recording" and interact naturally for 15 seconds</div>
+      <div class="gauge-title" id="behavior-status">Interaction analysis</div>
+      <div class="gauge-subtitle" id="behavior-substatus">Click start and interact with the page normally</div>
       <div id="behavior-progress" style="display:none;">
         <div class="rec-progress"><div class="rec-fill" id="behavior-bar" style="width:0%;"></div></div>
         <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events recorded</div>
       </div>
-      <button class="btn" id="behavior-btn" onclick="toggleBehaviorRecording()">▶ Start Recording (15s)</button>
-      <!-- Behavioral test targets: form inputs and honeypot buttons -->
+      <button class="btn" id="behavior-btn" onclick="toggleBehaviorRecording()">▶ Start analysis</button>
+      <!-- form section for interaction analysis -->
       <div id="behavior-test-area" style="margin-top:1rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;text-align:left;opacity:0.6;transition:opacity 0.3s;">
         <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">Try interacting with these during the recording:</div>
         <div style="display:flex;flex-direction:column;gap:0.5rem;">
-          <input type="text" id="beh-input-1" placeholder="Type something here (typing analysis)" autocomplete="off" style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
-          <input type="text" id="beh-input-2" placeholder="Fake email address (not sent anywhere)" autocomplete="off" style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
+          <input type="text" id="input-main" placeholder="Type something here (typing analysis)" autocomplete="off" style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
+          <input type="text" id="input-email" placeholder="Fake email address (not sent anywhere)" autocomplete="off" style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
           <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;" id="beh-btn-real">✅ Normal Button</button>
-            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#7f1d1d;color:#fca5a5;" id="beh-btn-honey1">🎁 Click here for a prize!</button>
-            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#78350f;color:#fcd34d;" id="beh-btn-honey2">🚨 DO NOT click this button</button>
-            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#1e293b;color:#64748b;border:1px dashed #334155;" id="beh-btn-honey3">How many R's in "strawberry"?</button>
+            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;" id="btn-primary">✅ Normal Button</button>
+            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#7f1d1d;color:#fca5a5;" id="btn-opt-1">Reset settings</button>
+            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#78350f;color:#fcd34d;" id="btn-opt-2">Clear data</button>
+            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#1e293b;color:#64748b;border:1px dashed #334155;" id="btn-opt-3">Export report</button>
           </div>
-          <!-- Hidden honeypot field — invisible to humans, visible to bots that scan every input -->
-          <input type="text" id="beh-honeypot" tabindex="-1" style="position:absolute;left:-9999px;opacity:0;height:0;width:0;" placeholder="Leave this blank">
+          <!-- extra hidden field -->
+          <input type="text" id="input-ext" tabindex="-1" style="position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;margin:-1px;overflow:hidden;" placeholder="Extra" autocomplete="off">
         </div>
       </div>
       <div id="behavior-results-inner"></div>
@@ -1565,7 +1575,12 @@ var __behavior = { running: false, timer: null, timeout: null, duration: 15000, 
   events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [], input: [], formClicks: [], inputFocus: [] }, count: 0 };
 
 function __trackMouse(e) { if (!__behavior.running) return;
-  __behavior.events.mouse.push({ x: e.clientX, y: e.clientY, t: performance.now() }); __behavior.count++; __updateBehaviorUI(); }
+  __behavior.events.mouse.push({ x: e.clientX, y: e.clientY, t: performance.now() }); __behavior.count++; __updateBehaviorUI();
+  // Visual mouse trail dot
+  var dot = document.createElement('div'); dot.className = 'mouse-dot';
+  dot.style.left = e.clientX + 'px'; dot.style.top = e.clientY + 'px';
+  document.body.appendChild(dot);
+  requestAnimationFrame(function() { dot.classList.add('fade'); setTimeout(function() { dot.remove(); }, 1500); }); }
 function __trackScroll() { if (!__behavior.running) return;
   __behavior.events.scroll.push({ y: window.scrollY, t: performance.now() }); __behavior.count++; __updateBehaviorUI(); }
 function __trackClick(e) { if (!__behavior.running) return;
@@ -1574,6 +1589,11 @@ function __trackClick(e) { if (!__behavior.running) return;
   var tag = el.tagName || '';
   var text = (el.textContent || '').trim().substring(0, 30);
   __behavior.events.click.push({ x: e.clientX, y: e.clientY, t: performance.now(), target: tag, id: id, text: text }); __behavior.count++; __updateBehaviorUI();
+  // Visual click flash
+  var flash = document.createElement('div'); flash.className = 'click-flash';
+  flash.style.left = (e.clientX - 10) + 'px'; flash.style.top = (e.clientY - 10) + 'px';
+  document.body.appendChild(flash);
+  setTimeout(function() { flash.remove(); }, 600);
   // Also track honeypot/form button clicks specifically
   if (id.startsWith('beh-btn-')) {
     __behavior.events.formClicks.push({ id: id, text: text, t: performance.now() });
@@ -1586,13 +1606,13 @@ function __trackResize() { if (!__behavior.running) return;
   __behavior.events.resize.push({ w: window.innerWidth, h: window.innerHeight, t: performance.now() }); }
 function __trackInput(e) { if (!__behavior.running) return;
   var el = e.target;
-  if (el.id === 'beh-input-1' || el.id === 'beh-input-2' || el.id === 'beh-honeypot') {
+  if (el.id === 'input-main' || el.id === 'input-email' || el.id === 'input-ext') {
     __behavior.events.input.push({ id: el.id, valueLen: el.value.length, t: performance.now(), inputType: e.inputType || '' });
     __behavior.count++; __updateBehaviorUI();
   } }
 function __trackInputFocus(e) { if (!__behavior.running) return;
   var el = e.target;
-  if (el.id === 'beh-input-1' || el.id === 'beh-input-2') {
+  if (el.id === 'input-main' || el.id === 'input-email') {
     __behavior.events.inputFocus.push({ id: el.id, type: e.type, t: performance.now() });
   } }
 function __trackVisibility() { if (!__behavior.running) return;
@@ -1606,6 +1626,27 @@ function __updateBehaviorUI() {
   document.getElementById('behavior-bar').style.width = pct + '%';
   document.getElementById('behavior-timer').textContent = remaining + 's';
   document.getElementById('behavior-events').textContent = __behavior.count;
+  // Real-time signal indicators
+  var e = __behavior.events;
+  var tags = [];
+  if (e.mouse.length > 20) tags.push({label:'Mouse',cls:'active'});
+  else if (e.mouse.length > 0) tags.push({label:'Mouse',cls:'warn'});
+  if (e.scroll.length > 3) tags.push({label:'Scroll',cls:'active'});
+  if (e.clicks.length > 0) tags.push({label:'Clicks',cls:'active'});
+  if (e.key.length > 10) tags.push({label:'Typing',cls:'active'});
+  if (e.input.length > 3) tags.push({label:'Form',cls:'active'});
+  if (e.formClicks.length > 0) {
+    var hasDecoy = e.formClicks.some(function(f) { return f.id !== 'btn-primary'; });
+    tags.push({label: hasDecoy ? 'Extra' : 'Buttons', cls: hasDecoy ? 'danger' : 'active'});
+  }
+  if (e.resize.length > 0) tags.push({label:'Resize',cls:'active'});
+  if (e.focus.length > 1) tags.push({label:'Tab switch',cls:'active'});
+  if (document.getElementById('input-ext') && document.getElementById('input-ext').value.length > 0) {
+    tags.push({label:'Extra field',cls:'danger'});
+  }
+  var html = '<div class="beh-indicator">' + tags.map(function(t) { return '<span class="beh-tag ' + t.cls + '">' + t.label + '</span>'; }).join('') + '</div>';
+  var el = document.getElementById('behavior-indicators');
+  if (el) el.innerHTML = html;
 }
 
 function toggleBehaviorRecording() { __behavior.running ? stopBehaviorRecording() : startBehaviorRecording(); }
@@ -1613,10 +1654,10 @@ function toggleBehaviorRecording() { __behavior.running ? stopBehaviorRecording(
 function startBehaviorRecording() {
   __behavior = { running: true, timer: null, timeout: null, duration: 15000, startTime: performance.now(),
     events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [], input: [], formClicks: [], inputFocus: [] }, count: 0 };
-  document.getElementById('behavior-btn').textContent = '⏹ Stop Recording';
+  document.getElementById('behavior-btn').textContent = '⏹ Stop';
   document.getElementById('behavior-progress').style.display = 'block';
-  document.getElementById('behavior-status').textContent = '🔴 Recording...';
-  document.getElementById('behavior-substatus').textContent = 'Interact with the form fields and buttons below naturally';
+  document.getElementById('behavior-status').textContent = '⚡ Active';
+  document.getElementById('behavior-substatus').textContent = 'Interact with the page naturally';
   document.getElementById('behavior-bar').style.width = '0%';
   document.getElementById('behavior-dot').className = 'rec-dot';
   document.getElementById('behavior-bar').className = 'rec-fill';
@@ -1624,20 +1665,20 @@ function startBehaviorRecording() {
   // Highlight test area during recording
   var testArea = document.getElementById('behavior-test-area');
   if (testArea) testArea.style.opacity = '1';
-  document.addEventListener('mousemove', __trackMouse);
-  document.addEventListener('scroll', __trackScroll);
-  document.addEventListener('click', __trackClick);
-  document.addEventListener('keydown', __trackKey);
-  document.addEventListener('keyup', __trackKey);
+  document.addEventListener('mousemove', __trackMouse, {passive: true});
+  document.addEventListener('scroll', __trackScroll, {passive: true});
+  document.addEventListener('click', __trackClick, {passive: true});
+  document.addEventListener('keydown', __trackKey, {passive: true});
+  document.addEventListener('keyup', __trackKey, {passive: true});
   window.addEventListener('focus', __trackFocus);
   window.addEventListener('blur', __trackFocus);
-  window.addEventListener('resize', __trackResize);
+  window.addEventListener('resize', __trackResize, {passive: true});
   // Form input tracking
-  document.addEventListener('input', __trackInput);
-  document.getElementById('beh-input-1')?.addEventListener('focus', __trackInputFocus);
-  document.getElementById('beh-input-1')?.addEventListener('blur', __trackInputFocus);
-  document.getElementById('beh-input-2')?.addEventListener('focus', __trackInputFocus);
-  document.getElementById('beh-input-2')?.addEventListener('blur', __trackInputFocus);
+  document.addEventListener('input', __trackInput, {passive: true});
+  document.getElementById('input-main')?.addEventListener('focus', __trackInputFocus);
+  document.getElementById('input-main')?.addEventListener('blur', __trackInputFocus);
+  document.getElementById('input-email')?.addEventListener('focus', __trackInputFocus);
+  document.getElementById('input-email')?.addEventListener('blur', __trackInputFocus);
   document.addEventListener('visibilitychange', __trackVisibility);
   // Capture page navigation / performance timing
   try {
@@ -1664,16 +1705,17 @@ function stopBehaviorRecording() {
   window.removeEventListener('blur', __trackFocus);
   window.removeEventListener('resize', __trackResize);
   document.removeEventListener('input', __trackInput);
-  document.getElementById('beh-input-1')?.removeEventListener('focus', __trackInputFocus);
-  document.getElementById('beh-input-1')?.removeEventListener('blur', __trackInputFocus);
-  document.getElementById('beh-input-2')?.removeEventListener('focus', __trackInputFocus);
-  document.getElementById('beh-input-2')?.removeEventListener('blur', __trackInputFocus);
+  document.getElementById('input-main')?.removeEventListener('focus', __trackInputFocus);
+  document.getElementById('input-main')?.removeEventListener('blur', __trackInputFocus);
+  document.getElementById('input-email')?.removeEventListener('focus', __trackInputFocus);
+  document.getElementById('input-email')?.removeEventListener('blur', __trackInputFocus);
   document.removeEventListener('visibilitychange', __trackVisibility);
-  document.getElementById('behavior-btn').textContent = '▶ Start Recording (15s)';
+  document.getElementById('behavior-btn').textContent = '▶ Start analysis';
   document.getElementById('behavior-status').textContent = '✅ Recording complete';
   document.getElementById('behavior-dot').className = 'rec-dot done';
   document.getElementById('behavior-bar').className = 'rec-fill rec-complete';
-  displayBehaviorResults(analyzeBehavior(__behavior.events));
+  __lastBehaviorResult = analyzeBehavior(__behavior.events);
+  displayBehaviorResults(__lastBehaviorResult);
 }
 
 function analyzeBehavior(events) {
@@ -1804,6 +1846,7 @@ function displayBehaviorResults(r) {
 
 // ===== SUBMISSION ENGINE =====
 var __lastFingerprintData = null;
+var __lastBehaviorResult = null;
 var __lastBotOrNotData = null;
 
 // Hook into captureFingerprint to store data for submission
