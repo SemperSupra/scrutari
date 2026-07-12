@@ -127,16 +127,15 @@
   </div>
 </div>
 
-<div class="section-nav">
-<button class="btn" onclick="document.getElementById('section-exit-node').scrollIntoView()">Exit Node</button>
-<button class="btn" onclick="document.getElementById('section-fingerprint').scrollIntoView()">Fingerprint</button>
-<button class="btn" onclick="document.getElementById('section-webrtc').scrollIntoView()">WebRTC</button>
-<button class="btn" onclick="document.getElementById('section-time').scrollIntoView()">Time & Location</button>
-<button class="btn" onclick="document.getElementById('section-headers').scrollIntoView()">Headers</button>
-<button class="btn" onclick="document.getElementById('section-botornot').scrollIntoView()">Bot-or-Not</button>
-<button class="btn" onclick="document.getElementById('section-benchmarks').scrollIntoView()">Benchmarks</button>
-<button class="btn" onclick="document.getElementById('section-behavior').scrollIntoView()">Behavior</button>
-<button class="btn" onclick="document.getElementById('section-submit').scrollIntoView()">Submit</button>
+<div class="section-nav" id="wizard-nav">
+<button class="btn" onclick="navigateTo('section-exit-node')">1. Network</button>
+<button class="btn" onclick="navigateTo('section-fingerprint')">2. Fingerprint</button>
+<button class="btn" onclick="navigateTo('section-webrtc')">3. WebRTC</button>
+<button class="btn" onclick="navigateTo('section-behavior')">4. Behavior</button>
+<button class="btn" onclick="navigateTo('section-botornot')">5. Results</button>
+</div>
+<div style="margin-top:0.5rem;font-size:0.7rem;color:#64748b;text-align:center;">
+  <span id="page-indicator">Page: 1/5</span> &middot; Navigate through sections in order for behavioral analysis
 </div>
 
 <div id="section-fingerprint" class="card">
@@ -197,6 +196,48 @@
           </div>
           <!-- extra hidden field -->
           <input type="text" id="input-ext" tabindex="-1" style="position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;margin:-1px;overflow:hidden;" placeholder="Extra" autocomplete="off">
+        </div>
+      </div>
+      <!-- Challenge form: UX friction traps that slow humans but bots auto-solve -->
+      <div id="challenge-form" style="margin-top:0.75rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;text-align:left;opacity:0.6;transition:opacity 0.3s;">
+        <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">Challenge form (format validation + corrections):</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+          <div>
+            <input type="email" id="challenge-email" placeholder="Email address" spellcheck="false"
+              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;"
+              oninput="this.setCustomValidity('');if(!this.validity.valid)this.setCustomValidity('Invalid email format')">
+            <small style="color:#64748b;font-size:0.6rem;">Format: name@domain.com (no typos!)</small>
+          </div>
+          <div>
+            <input type="email" id="challenge-email-confirm" placeholder="Confirm email address" spellcheck="false"
+              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;">
+            <small style="color:#ef4444;font-size:0.6rem;">Must match email above (humans always mess this up)</small>
+          </div>
+          <div style="display:flex;gap:0.5rem;">
+            <input type="password" id="challenge-password" placeholder="Create password" spellcheck="false"
+              style="flex:1;padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
+            <input type="password" id="challenge-password-confirm" placeholder="Confirm password" spellcheck="false"
+              style="flex:1;padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
+          </div>
+          <div>
+            <input type="text" id="challenge-date" placeholder="Date (MM/DD/YYYY)" spellcheck="false"
+              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;"
+              pattern="\d{2}/\d{2}/\d{4}" oninput="this.setCustomValidity('');if(!this.validity.valid)this.setCustomValidity('Format: MM/DD/YYYY')">
+            <small style="color:#64748b;font-size:0.6rem;">Format: MM/DD/YYYY (most users get this wrong)</small>
+          </div>
+          <div>
+            <input type="tel" id="challenge-phone" placeholder="Phone (555-123-4567)" spellcheck="false"
+              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;"
+              pattern="\d{3}-\d{3}-\d{4}" oninput="this.setCustomValidity('');if(!this.validity.valid)this.setCustomValidity('Use dashes: 555-123-4567')">
+            <small style="color:#64748b;font-size:0.6rem;">Format: 555-123-4567 (dashes required)</small>
+          </div>
+          <div>
+            <input type="text" id="challenge-confirm" placeholder='Type "CONFIRM" to proceed' spellcheck="false"
+              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;">
+            <small style="color:#64748b;font-size:0.6rem;">Type: CONFIRM (all caps, no typos)</small>
+          </div>
+          <textarea id="challenge-spellcheck" spellcheck="true" placeholder="Type a paragraph here (spellcheck is ON — see the red underlines)"
+            style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;min-height:60px;resize:vertical;"></textarea>
         </div>
       </div>
       <div id="behavior-results-inner"></div>
@@ -1133,6 +1174,22 @@ async function captureFingerprint() {
     try { fp['Bluetooth'] = navigator.bluetooth !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Bluetooth'] = 'error'; }
     // Serial API
     try { fp['Web Serial'] = navigator.serial !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Web Serial'] = 'error'; }
+    // Installed Related Apps (Chrome) — reveals installed PWAs/native apps (privacy signal)
+    try { if (navigator.getInstalledRelatedApps) {
+      navigator.getInstalledRelatedApps().then(function(apps) {
+        fp['Installed Apps'] = apps.length > 0 ? apps.map(function(a){return a.id||a.platform||'?'}).join(', ') : 'none';
+      }).catch(function(){});
+    }} catch(e) {}
+    // Tracking / ad technology detectable in window scope
+    try {
+      var adTech = [];
+      if (window.googletag) adTech.push('GPT');
+      if (window.ga) adTech.push('GA');
+      if (window.gtag) adTech.push('gtag');
+      if (window.fbq) adTech.push('Facebook Pixel');
+      if (window.dataLayer) adTech.push('GTM');
+      fp['Ad Tech Detected'] = adTech.length > 0 ? adTech.join(', ') : 'none';
+    } catch(e) { fp['Ad Tech Detected'] = 'error'; }
   } catch(e) { fp['Advanced APIs'] = 'error'; }
 
   // Security & integrity checks — detect if page is compromised or framed
@@ -1746,9 +1803,18 @@ function __trackFocus(e) { if (!__behavior.running) return;
   __behavior.events.focus.push({ t: performance.now(), type: e.type }); }
 function __trackResize() { if (!__behavior.running) return;
   __behavior.events.resize.push({ w: window.innerWidth, h: window.innerHeight, t: performance.now() }); }
+function __trackZoom() { if (!__behavior.running) return;
+  __behavior.events.zoom = __behavior.events.zoom || [];
+  __behavior.events.zoom.push({ dpr: window.devicePixelRatio, t: performance.now() }); }
+function __trackPageNav(e) { if (!__behavior.running) return;
+  __behavior.events.pageNav = __behavior.events.pageNav || [];
+  __behavior.events.pageNav.push({ from: window.location.hash || '(top)', to: e.target?.hash || '', t: performance.now() }); }
 function __trackInput(e) { if (!__behavior.running) return;
   var el = e.target;
-  if (el.id === 'input-main' || el.id === 'input-email' || el.id === 'input-ext') {
+  if (el.id === 'input-main' || el.id === 'input-email' || el.id === 'input-ext' ||
+      el.id === 'challenge-email' || el.id === 'challenge-date' || el.id === 'challenge-phone' ||
+      el.id === 'challenge-confirm' || el.id === 'challenge-spellcheck' ||
+      el.id === 'challenge-email-confirm' || el.id === 'challenge-password' || el.id === 'challenge-password-confirm') {
     __behavior.events.input.push({ id: el.id, valueLen: el.value.length, t: performance.now(), inputType: e.inputType || '' });
     __behavior.count++; __updateBehaviorUI();
   } }
@@ -1793,6 +1859,20 @@ function __updateBehaviorUI() {
 
 function toggleBehaviorRecording() { __behavior.running ? stopBehaviorRecording() : startBehaviorRecording(); }
 
+// Wizard page navigation — tracks navigation path for behavioral analysis
+function navigateTo(sectionId) {
+  var el = document.getElementById(sectionId);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth' });
+    // Set hash for page tracking
+    window.location.hash = sectionId.replace('section-', '');
+    // Update page indicator
+    var order = ['section-exit-node', 'section-fingerprint', 'section-webrtc', 'section-behavior', 'section-botornot'];
+    var idx = order.indexOf(sectionId);
+    if (idx >= 0) document.getElementById('page-indicator').textContent = 'Page: ' + (idx + 1) + '/' + order.length;
+  }
+}
+
 function startBehaviorRecording() {
   __behavior = { running: true, timer: null, timeout: null, duration: 15000, startTime: performance.now(),
     events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [], input: [], formClicks: [], inputFocus: [] }, count: 0 };
@@ -1817,6 +1897,9 @@ function startBehaviorRecording() {
   window.addEventListener('resize', __trackResize, {passive: true});
   // Form input tracking
   document.addEventListener('input', __trackInput, {passive: true});
+  // Zoom and page navigation tracking
+  window.matchMedia('(resolution: 1dppx)').addEventListener('change', __trackZoom);
+  window.addEventListener('hashchange', __trackPageNav);
   document.getElementById('input-main')?.addEventListener('focus', __trackInputFocus);
   document.getElementById('input-main')?.addEventListener('blur', __trackInputFocus);
   document.getElementById('input-email')?.addEventListener('focus', __trackInputFocus);
@@ -1847,6 +1930,8 @@ function stopBehaviorRecording() {
   window.removeEventListener('blur', __trackFocus);
   window.removeEventListener('resize', __trackResize);
   document.removeEventListener('input', __trackInput);
+  window.matchMedia('(resolution: 1dppx)').removeEventListener('change', __trackZoom);
+  window.removeEventListener('hashchange', __trackPageNav);
   document.getElementById('input-main')?.removeEventListener('focus', __trackInputFocus);
   document.getElementById('input-main')?.removeEventListener('blur', __trackInputFocus);
   document.getElementById('input-email')?.removeEventListener('focus', __trackInputFocus);
@@ -2011,10 +2096,136 @@ function analyzeBehavior(events) {
     });
   }
 
+  // --- Pattern-of-life / sequence signals ---
+  var zn = events.zoom || [];
+  var pg = events.pageNav || [];
+  var inputF = events.inputFocus || [];
+
+  // Zoom change — humans zoom in/out, bots never do
+  t(2, 'Zoom level changes', true, function() {
+    return zn.length === 0;
+  });
+
+  // Page navigation — humans navigate between sections
+  t(2, 'Page / section navigation', true, function() {
+    return pg.length === 0;
+  });
+
+  // Multi-field navigation — humans tab between fields in natural order
+  if (inputF.length >= 2) {
+    t(2, 'Multi-field navigation', false, function() {
+      // Check if user visited multiple different form fields
+      var fields = {};
+      for (var fi = 0; fi < inputF.length; fi++) {
+        if (inputF[fi].type === 'focus') fields[inputF[fi].id] = true;
+      }
+      var fieldCount = Object.keys(fields).length;
+      return fieldCount >= 2;
+    });
+  }
+
+  // Field re-visit — humans go back to fix things
+  if (inputF.length >= 4) {
+    t(2, 'Field re-visit (correction)', false, function() {
+      var seq = [];
+      for (var fi = 0; fi < inputF.length; fi++) {
+        if (inputF[fi].type === 'focus') seq.push(inputF[fi].id);
+      }
+      for (var si = 1; si < seq.length; si++) {
+        // Check if we saw this field before (not consecutive)
+        for (var sj = 0; sj < si - 1; sj++) {
+          if (seq[sj] === seq[si]) return true; // re-visited = human
+        }
+      }
+      return false;
+    });
+  }
+
+  // Common typos — humans make predictable errors (teh, recieve, etc.)
+  // Check for known keyboard-proximity typos and edit distance
+  if (inp.length >= 5) {
+    t(2, 'Common typos detected', false, function() {
+      // Reconstruct what was typed from input events
+      var textByField = {};
+      for (var ii = 0; ii < inp.length; ii++) {
+        var e = inp[ii];
+        if (!e.id || e.id === 'input-ext') continue;
+        // Track value length changes to detect deletions
+        textByField[e.id] = textByField[e.id] || { len: 0, corrections: 0 };
+        if (e.inputType && e.inputType.indexOf('delete') >= 0) {
+          textByField[e.id].corrections++;
+        }
+      }
+      var hasCorrections = false;
+      for (var f in textByField) {
+        if (textByField[f].corrections > 0) hasCorrections = true;
+      }
+      return hasCorrections;
+    });
+  }
+
+  // --- Challenge form signals ---
+  var challengeFields = ['challenge-email', 'challenge-email-confirm', 'challenge-date', 'challenge-phone', 'challenge-confirm', 'challenge-spellcheck', 'challenge-password', 'challenge-password-confirm'];
+  var challengeInteractions = inp.filter(function(i) { return challengeFields.indexOf(i.id) >= 0; });
+  var challengeUnique = {};
+  challengeInteractions.forEach(function(i) { challengeUnique[i.id] = (challengeUnique[i.id]||0) + 1; });
+  var challengeCount = Object.keys(challengeUnique).length;
+
+  t(2, 'Challenge form interaction', false, function() { return challengeCount >= 2; });
+
+  if (challengeUnique['challenge-email']) {
+    t(3, 'Email format corrections', true, function() {
+      var ei = challengeInteractions.filter(function(i){return i.id==='challenge-email';});
+      var c = ei.filter(function(i){return i.inputType&&i.inputType.indexOf('delete')>=0;});
+      return c.length === 0;
+    });
+  }
+  // Email confirmation match check
+  if (challengeUnique['challenge-email'] && challengeUnique['challenge-email-confirm']) {
+    t(3, 'Email confirmation match', true, function() {
+      var elA = document.getElementById('challenge-email');
+      var elB = document.getElementById('challenge-email-confirm');
+      if (!elA || !elB) return null;
+      var vA = elA.value, vB = elB.value;
+      if (!vA || !vB) return null;
+      return vA === vB;
+    });
+  }
+  // Password confirmation match
+  if (challengeUnique['challenge-password'] && challengeUnique['challenge-password-confirm']) {
+    t(2, 'Password confirmation match', true, function() {
+      var p1 = document.getElementById('challenge-password');
+      var p2 = document.getElementById('challenge-password-confirm');
+      if (!p1 || !p2) return null;
+      var v1 = p1.value, v2 = p2.value;
+      if (!v1 || !v2) return null;
+      return v1 === v2;
+    });
+  }
+  if (challengeUnique['challenge-date']) {
+    t(3, 'Date format hesitation', true, function() {
+      var di = challengeInteractions.filter(function(i){return i.id==='challenge-date';});
+      var d = di.filter(function(i){return i.inputType&&i.inputType.indexOf('delete')>=0;});
+      return d.length === 0;
+    });
+  }
+  if (challengeUnique['challenge-confirm']) {
+    t(2, 'Confirmation hesitation', true, function() {
+      var ci = challengeInteractions.filter(function(i){return i.id==='challenge-confirm';});
+      if (ci.length < 2) return null;
+      return ci[ci.length-1].t - ci[0].t < 1000;
+    });
+  }
+  if (challengeUnique['challenge-spellcheck']) {
+    t(1, 'Spellcheck active', false, function() {
+      try { var ta = document.getElementById('challenge-spellcheck'); return ta && ta.spellcheck === true; } catch(e) { return null; }
+    });
+  }
+
   var bp = totalWeight > 0 ? (botWeight / totalWeight) : 0.5;
-  var coverage = totalWeight / 63;
+  var coverage = totalWeight / 82;
   return {
-    botProbability: Math.round(bp * 100), confidence: coverage >= 0.6 ? 'High' : (coverage >= 0.35 ? 'Medium' : 'Low'),
+    botProbability: Math.round(bp * 100), confidence: coverage >= 0.55 ? 'High' : (coverage >= 0.3 ? 'Medium' : 'Low'),
     signals: signals, totalWeight: totalWeight, maxWeight: 63,
     eventCount: { mouse: m.length, scroll: s.length, clicks: c.length, keys: k.length, focus: f.length, resize: rsz.length,
       input: inp.length, formClicks: formC.length, visibilityEvents: v.length }

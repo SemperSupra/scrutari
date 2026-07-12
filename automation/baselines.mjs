@@ -317,7 +317,17 @@ async function main() {
 
       // Start behavioral recording
       await page.evaluate(() => { if (typeof toggleBehaviorRecording === 'function') toggleBehaviorRecording(); });
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(200);
+      // Extend recording duration for human test (must happen AFTER startBehaviorRecording creates the object)
+      if (bt.behavior === 'human') {
+        await page.evaluate(() => { __behavior.duration = 45000; });
+        // Also clear and reset the auto-stop timeout
+        await page.evaluate(() => {
+          clearTimeout(__behavior.timeout);
+          __behavior.timeout = setTimeout(stopBehaviorRecording, 45000);
+        });
+      }
+      await page.waitForTimeout(300);
 
       if (bt.behavior === 'bot') {
         // Simulate bot behavior
@@ -342,63 +352,104 @@ async function main() {
         // 4. No scrolling, no mouse movement (bot-like)
       } else {
         // Simulate human-like behavior
-        // 1. Mouse movement — move naturally between elements
-        for (let step = 0; step < 5; step++) {
-          const x = 200 + Math.floor(Math.random() * 400);
-          const y = 200 + Math.floor(Math.random() * 400);
-          await page.mouse.move(x, y, { steps: 8 });
-          await page.waitForTimeout(100 + Math.floor(Math.random() * 200));
-        }
-        // 2. Scroll with pauses
-        await page.evaluate(() => window.scrollBy({ top: 300, behavior: 'smooth' }));
-        await page.waitForTimeout(800);
-        await page.evaluate(() => window.scrollBy({ top: -100, behavior: 'smooth' }));
-        await page.waitForTimeout(600);
-        // 3. Click only the normal button
-        await page.mouse.move(300, 350, { steps: 5 });
-        await page.waitForTimeout(200);
-        await page.click('#btn-primary', { timeout: 1000 }).catch(() => {});
-        await page.waitForTimeout(300);
-        // 4. Type in fields with delay (natural)
-        await page.click('#input-main', { timeout: 1000 }).catch(() => {});
+        // 1. Navigate through wizard pages in order (humans follow UI flow)
+        await page.evaluate(() => navigateTo('section-exit-node'));
+        await page.waitForTimeout(400 + Math.floor(Math.random() * 500));
+        await page.evaluate(() => navigateTo('section-fingerprint'));
+        await page.waitForTimeout(300 + Math.floor(Math.random() * 400));
+        await page.evaluate(() => navigateTo('section-webrtc'));
+        await page.waitForTimeout(200 + Math.floor(Math.random() * 300));
+        // Go back to fingerprint (human re-checking something)
+        await page.evaluate(() => navigateTo('section-fingerprint'));
+        await page.waitForTimeout(300 + Math.floor(Math.random() * 300));
+        await page.evaluate(() => navigateTo('section-behavior'));
         await page.waitForTimeout(400);
-        await page.type('#input-main', 'hello, this is a human typing', { delay: 80, timeout: 5000 }).catch(() => {});
+
+        // 2. Mouse movement — more moves with noisy paths and varied speed
+        for (let step = 0; step < 20; step++) {
+          const x = 100 + Math.floor(Math.random() * 700);
+          const y = 100 + Math.floor(Math.random() * 700);
+          // Use more steps for slower, more natural-looking movement
+          const steps = 10 + Math.floor(Math.random() * 15);
+          await page.mouse.move(x + (Math.random() - 0.5) * 20,
+                                y + (Math.random() - 0.5) * 20, { steps });
+          await page.waitForTimeout(80 + Math.floor(Math.random() * 250));
+        }
+        // 2. More scrolling with natural reading pauses
+        for (let s = 0; s < 3; s++) {
+          await page.evaluate(() => window.scrollBy({ top: 200 + Math.floor(Math.random() * 200), behavior: 'smooth' }));
+          await page.waitForTimeout(600 + Math.floor(Math.random() * 900));
+        }
+        // 3. Scroll back up a bit (humans re-scan)
+        await page.evaluate(() => window.scrollBy({ top: -120, behavior: 'smooth' }));
+        await page.waitForTimeout(500 + Math.floor(Math.random() * 300));
+        // 4. Click only the normal button
+        await page.mouse.move(280, 350, { steps: 12 });
+        await page.waitForTimeout(150 + Math.floor(Math.random() * 200));
+        await page.click('#btn-primary', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(400 + Math.floor(Math.random() * 300));
+        // 5. Type in first field with varied delay (human-like: pauses vary)
+        await page.mouse.move(200, 220, { steps: 10 });
+        await page.waitForTimeout(200 + Math.floor(Math.random() * 300));
+        await page.click('#input-main', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300 + Math.floor(Math.random() * 400));
+        // Type with variable delay — humans average 120ms between keystrokes
+        const text = 'hello there, this is a human typing test';
+        for (const char of text) {
+          await page.type('#input-main', char, { delay: 60 + Math.floor(Math.random() * 180) });
+          // Occasionally pause longer (like thinking)
+          if (Math.random() < 0.08) await page.waitForTimeout(400 + Math.floor(Math.random() * 600));
+        }
         await page.waitForTimeout(200);
-        // 5. Do NOT touch honeypot or decoy buttons
+        // 6. Make a typing correction (humans backspace sometimes)
+        await page.type('#input-main', ' and', { delay: 70 + Math.floor(Math.random() * 120) });
+        await page.waitForTimeout(150);
+        // Oops, wrong word — backspace!
+        await page.keyboard.press('Backspace');
+        await page.keyboard.press('Backspace');
+        await page.keyboard.press('Backspace');
+        await page.keyboard.press('Backspace');
+        await page.waitForTimeout(200 + Math.floor(Math.random() * 300));
+        // Continue with corrected text
+        for (const char of ' plus more text with varied timing') {
+          await page.type('#input-main', char, { delay: 50 + Math.floor(Math.random() * 160) });
+        }
+        await page.waitForTimeout(300);
+        // 7. Tab to email field (humans use tab between fields) then type with natural pause
+        await page.keyboard.press('Tab');
+        await page.waitForTimeout(200 + Math.floor(Math.random() * 300));
+        // Oops, tab went too far — shift+tab back
+        await page.keyboard.press('Shift');
+        await page.keyboard.press('Tab');
+        await page.keyboard.up('Shift');
+        await page.waitForTimeout(150 + Math.floor(Math.random() * 200));
+        // Now forward to email
+        await page.keyboard.press('Tab');
+        await page.waitForTimeout(250 + Math.floor(Math.random() * 300));
+        const email = 'user' + Math.floor(Math.random() * 100) + '@example.com';
+        for (const char of email) {
+          await page.type('#input-email', char, { delay: 40 + Math.floor(Math.random() * 140) });
+        }
+        await page.waitForTimeout(100);
+        // 8. Scroll one more time (human checking their work)
+        await page.evaluate(() => window.scrollBy({ top: 100, behavior: 'smooth' }));
+        await page.waitForTimeout(300);
+        // 9. Resize window (humans occasionally resize)
+        await page.setViewportSize({ width: 1800, height: 900 });
+        await page.waitForTimeout(200);
+        await page.setViewportSize({ width: 1920, height: 1050 });
+        await page.waitForTimeout(100);
+        // 10. Do NOT touch honeypot field or decoy buttons
       }
 
       // Stop recording — click the stop button
       await page.evaluate(() => { if (typeof toggleBehaviorRecording === 'function') toggleBehaviorRecording(); });
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(1500);
 
-      // Extract behavioral results from DOM
-      const behResult = await page.evaluate(() => {
-        const inner = document.getElementById('behavior-results-inner');
-        const title = inner?.querySelector('div:nth-child(2)')?.textContent || '';
-        const subtitle = inner?.querySelector('div:nth-child(3)')?.textContent || '';
-        const events = inner?.querySelector('div:nth-child(6)')?.textContent || '';
-        // Try to get the behavioral analysis engine's last result
-        let score = null;
-        const match = subtitle.match(/(\d+)%/);
-        if (match) score = parseInt(match[1]);
-        return { title, subtitle, score, events };
-      });
-
-      // Also compute what the behavioral analysis returned
+      // Extract behavioral results from the analysis engine directly
       const fullResult = await page.evaluate(() => {
         if (typeof __lastBehaviorResult !== 'undefined') return __lastBehaviorResult;
-        // Try to read from the display
-        const items = document.querySelectorAll('#beh-signals .beh-signal-item');
-        const signals = [];
-        items.forEach(el => {
-          const spans = el.querySelectorAll('span');
-          signals.push({
-            name: spans[1]?.textContent || '',
-            result: spans[2]?.textContent || '',
-            weight: (spans[3]?.textContent || '').replace('w', ''),
-          });
-        });
-        return { signals };
+        return { error: '__lastBehaviorResult not found', botProbability: null, signals: [], eventCount: {} };
       });
 
       await browser.close();
@@ -406,15 +457,25 @@ async function main() {
       const saved = {
         test: bt.name,
         timestamp: new Date().toISOString(),
-        behavioralScore: behResult.score,
-        behavioralTitle: behResult.title,
-        behavioralEvents: behResult.events,
+        behavioralScore: fullResult?.botProbability,
+        behavioralTitle: fullResult?.botProbability !== null
+          ? (fullResult.botProbability <= 15 ? 'Human-like Behavior' :
+             fullResult.botProbability <= 35 ? 'Mostly Human' :
+             fullResult.botProbability <= 55 ? 'Uncertain' :
+             fullResult.botProbability <= 80 ? 'Bot-like Behavior' : 'Automated Behavior')
+          : 'N/A',
+        behavioralEvents: fullResult?.eventCount
+          ? `Events: ${fullResult.eventCount.mouse||0} mouse, ${fullResult.eventCount.scroll||0} scroll, ${fullResult.eventCount.clicks||0} clicks, ${fullResult.eventCount.keys||0} keys${fullResult.eventCount.input ? ', '+fullResult.eventCount.input+' input' : ''}`
+          : '',
         signals: fullResult?.signals || [],
       };
       const slug = bt.name.replace(/[^a-z0-9-]/gi, '_').toLowerCase();
       writeFileSync(join(OUT, `${slug}.json`), JSON.stringify(saved, null, 2));
-      console.log(`    Behavioral score: ${behResult.score !== null ? behResult.score + '% bot' : 'N/A'}`);
-      console.log(`    ${behResult.events}`);
+      console.log(`    Behavioral score: ${fullResult?.botProbability !== null && fullResult?.botProbability !== undefined ? fullResult.botProbability + '% bot' : 'N/A'}`);
+      if (fullResult?.eventCount) {
+        const ev = fullResult.eventCount;
+        console.log(`    Events: ${ev.mouse||0} mouse, ${ev.scroll||0} scroll, ${ev.clicks||0} clicks, ${ev.keys||0} keys${ev.input ? ', '+ev.input+' input' : ''}`);
+      }
       console.log(`    ✓ saved → ${slug}.json`);
     } catch (err) {
       console.error(`  ✗ Error: ${err.message}`);

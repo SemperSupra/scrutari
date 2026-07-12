@@ -1,16 +1,16 @@
 {
   "test": "Human-like behavioral (headless Chrome)",
-  "timestamp": "2026-07-12T19:06:15.003Z",
-  "behavioralScore": 28,
-  "behavioralTitle": "Mostly Human",
-  "behavioralEvents": "Events: 47 mouse, 27 scroll, 2 clicks, 58 keys, 29 input",
+  "timestamp": "2026-07-12T19:24:53.441Z",
+  "behavioralScore": 12,
+  "behavioralTitle": "Human-like Behavior",
+  "behavioralEvents": "Events: 393 mouse, 205 scroll, 2 clicks, 209 keys, 100 input",
   "signals": [
     {
       "name": "Mouse movement present",
-      "bot": true,
+      "bot": false,
       "weight": 1,
-      "value": false,
-      "humanLabel": "Bot-like"
+      "value": true,
+      "humanLabel": "Human-like"
     },
     {
       "name": "Mouse speed variance",
@@ -35,10 +35,10 @@
     },
     {
       "name": "Mouse speed",
-      "bot": true,
+      "bot": false,
       "weight": 2,
-      "value": true,
-      "humanLabel": "Bot-like"
+      "value": false,
+      "humanLabel": "Human-like"
     },
     {
       "name": "Scrolling present",
@@ -84,10 +84,10 @@
     },
     {
       "name": "Window resize",
-      "bot": true,
+      "bot": false,
       "weight": 2,
-      "value": true,
-      "humanLabel": "Bot-like"
+      "value": false,
+      "humanLabel": "Human-like"
     },
     {
       "name": "Keyboard input detected",
@@ -98,10 +98,10 @@
     },
     {
       "name": "Typing speed variance",
-      "bot": true,
+      "bot": false,
       "weight": 3,
-      "value": true,
-      "humanLabel": "Bot-like"
+      "value": false,
+      "humanLabel": "Human-like"
     },
     {
       "name": "Extra field untouched",
@@ -118,11 +118,18 @@
       "humanLabel": "Human-like"
     },
     {
+      "name": "Natural typing hesitation",
+      "bot": false,
+      "weight": 3,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
       "name": "Typing corrections (backspace)",
-      "bot": true,
+      "bot": false,
       "weight": 2,
-      "value": false,
-      "humanLabel": "Bot-like"
+      "value": true,
+      "humanLabel": "Human-like"
     },
     {
       "name": "Page navigation type",
@@ -142,6 +149,41 @@
       "name": "Natural typing speed",
       "bot": false,
       "weight": 3,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Zoom level changes",
+      "bot": true,
+      "weight": 2,
+      "value": true,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Page / section navigation",
+      "bot": false,
+      "weight": 2,
+      "value": false,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Multi-field navigation",
+      "bot": false,
+      "weight": 2,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Field re-visit (correction)",
+      "bot": true,
+      "weight": 2,
+      "value": false,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Common typos detected",
+      "bot": false,
+      "weight": 2,
       "value": true,
       "humanLabel": "Human-like"
     }

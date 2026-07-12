@@ -1,6 +1,6 @@
 {
   "test": "Bot behavioral (headless Chrome)",
-  "timestamp": "2026-07-12T19:06:02.836Z",
+  "timestamp": "2026-07-12T19:24:10.669Z",
   "behavioralScore": 68,
   "behavioralTitle": "Bot-like Behavior",
   "behavioralEvents": "Events: 4 mouse, 1 scroll, 4 clicks, 0 keys, 3 input",
@@ -95,6 +95,27 @@
       "weight": 1,
       "value": false,
       "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Zoom level changes",
+      "bot": true,
+      "weight": 2,
+      "value": true,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Page / section navigation",
+      "bot": true,
+      "weight": 2,
+      "value": true,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Multi-field navigation",
+      "bot": false,
+      "weight": 2,
+      "value": true,
+      "humanLabel": "Human-like"
     }
   ]
 }
