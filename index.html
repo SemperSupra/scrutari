@@ -2435,8 +2435,8 @@ function buildSubmissionData(fp, bon) {
   // JS capabilities (boolean arrays, not version numbers)
   safe.hasWASM = typeof WebAssembly !== 'undefined';
   safe.hasWebGL = fp['webgl'] === true || fp['WebGL Renderer'] !== undefined;
-  safe.hasCanvas = !!(fp['Canvas Hash'] && !fp['Canvas Hash'].includes('blocked'));
-  safe.hasAudio = !!(fp['Audio Hash'] && !fp['Audio'].includes('blocked'));
+  safe.hasCanvas = !!(fp['Canvas Hash'] && (fp['Canvas Hash'] + '').indexOf('blocked') < 0);
+  safe.hasAudio = !!(fp['Audio Hash'] && (fp['Audio'] || '').indexOf('blocked') < 0);
   safe.hasServiceWorker = 'serviceWorker' in navigator;
   // Font count (not which fonts)
   var fontMatch = (fp['Fonts Detected'] || '').match(/\d+/);

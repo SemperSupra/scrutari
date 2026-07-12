@@ -5,54 +5,81 @@
 [functions]
   directory = "submit-endpoint/netlify/functions"
 
-# Edge: GeoIP + IP classification (replaces ipinfo.io)
+# Edge Functions
 [[edge_functions]]
   function = "classify"
   path = "/api/classify"
-
-# Edge: Bot honeypots — hidden paths that only crawlers find
 [[edge_functions]]
   function = "honeypot"
   path = "/admin"
-
 [[edge_functions]]
   function = "honeypot"
   path = "/admin/"
-
 [[edge_functions]]
   function = "honeypot"
   path = "/.env"
-
 [[edge_functions]]
   function = "honeypot"
   path = "/wp-admin"
-
 [[edge_functions]]
   function = "honeypot"
   path = "/wp-admin/"
-
 [[edge_functions]]
   function = "honeypot"
   path = "/backup"
-
 [[edge_functions]]
   function = "honeypot"
   path = "/backup/"
-
 [[edge_functions]]
   function = "honeypot"
   path = "/api/health"
-
-# Edge: Dynamic OG image for social sharing
+[[edge_functions]]
+  function = "honeypot"
+  path = "/config.json"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/credentials.json"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/login"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/login/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/.git/config"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/.git/HEAD"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/staging"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/staging/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/dev"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/dev/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/healthz"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/version"
 [[edge_functions]]
   function = "og-image"
   path = "/api/og"
 
-# Redirect: /api/submit → serverless function (cleaner URL)
-[[redirects]]
-  from = "/api/submit"
-  to = "/.netlify/functions/submit"
-  status = 200
+# Redirect: /api/submit -> serverless function
 [[redirects]]
   from = "/api/submit"
   to = "/.netlify/functions/submit"
