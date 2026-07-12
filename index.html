@@ -148,7 +148,7 @@
 
 <div id="section-botornot" class="card gauge-card">
   <h2>Bot-or-Not™ <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; rating how human-like your connection appears</span></h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 35+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 36+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
   <div id="botornot-results">
     <div class="gauge-container" style="opacity:0.5;">
       <div class="gauge-emoji">🤖</div>
@@ -950,15 +950,41 @@ async function captureFingerprint() {
 
   // === BOT DETECTION SIGNALS ===
 
-  // Automation framework globals — strong bot indicators
+  // Automation framework classification — detect AND name the specific framework
   try {
     var autoFrameworks = [];
-    if (window.cdc_adoQpoasnfa76pfcZLmcfl_Array) autoFrameworks.push('Selenium');
-    if (window.__pwInitScripts || window.__playwright__) autoFrameworks.push('Playwright');
-    if (window.__puppeteer_evaluate_script || window.__puppeteer) autoFrameworks.push('Puppeteer');
-    if (window.__webdriver_evaluate || window.__selenium_evaluate) autoFrameworks.push('WebDriver');
-    if (window.domAutomation || window.domAutomationController) autoFrameworks.push('Chrome Automation');
+    var cd = window.cdc_adoQpoasnfa76pfcZLmcfl_Array ? 'cdc_' : null;
+    // Selenium: checks for the cdc_ property and webdriver-specific eval
+    if (cd || window.__webdriver_evaluate || window.__selenium_evaluate || window.__webdriver_script_fn) {
+      autoFrameworks.push('Selenium');
+    }
+    // Playwright: uses __pwInitScripts or __playwright__ global
+    if (window.__pwInitScripts || window.__playwright__ || window.__pwManualScript) {
+      autoFrameworks.push('Playwright');
+    }
+    // Puppeteer: uses __puppeteer_evaluate_script or puppeteer-specific globals
+    if (window.__puppeteer_evaluate_script || window.__puppeteer) {
+      autoFrameworks.push('Puppeteer');
+    }
+    // Chrome automation (chrome.test / domAutomation)
+    if (window.domAutomation || window.domAutomationController || window.chrome && chrome.automation) {
+      autoFrameworks.push('Chrome Automation');
+    }
+    // Nodriver / undetected-chromedriver — zero CDP footprint, harder to detect
+    // Camoufox / rebrowser — patch known globals but leave unique traces
+    if (window.__nightmare) autoFrameworks.push('NightmareJS');
+    if (window.__selenium) autoFrameworks.push('Selenium (legacy)');
+    // Headless Chrome detection via chrome.runtime discrepancies
+    try {
+      if (window.chrome && chrome.runtime && chrome.runtime.id === undefined) {
+        // Stealth plugins patch this — if missing entirely it's headless
+      }
+    } catch(ch) {}
+    // PhantomJS-specific checks (legacy)
+    if (window.callPhantom || window._phantom) autoFrameworks.push('PhantomJS');
+
     fp['Automation Frameworks'] = autoFrameworks.length > 0 ? autoFrameworks.join(', ') : 'none detected';
+    fp['Automation Count'] = autoFrameworks.length;
   } catch(e) { fp['Automation Frameworks'] = 'error'; }
 
   // Iframe webdriver leak — stealth plugins patch main frame but miss iframes
@@ -1202,9 +1228,25 @@ function computeBotOrNot(fp) {
   // 1. navigator.webdriver
   test(5, 'WebDriver flag', true, function() { return navigator.webdriver === true; });
 
-  // 2. Automation framework globals
+  // 2. Automation framework globals — weighted by number of frameworks found
   test(5, 'Automation framework detected', true, function() {
-    return !!(window.cdc_adoQpoasnfa76pfcZLmcfl_Array || window.__pwInitScripts || window.__playwright__ || window.__puppeteer_evaluate_script || window.domAutomation);
+    var count = 0;
+    if (window.cdc_adoQpoasnfa76pfcZLmcfl_Array || window.__webdriver_evaluate) count++;
+    if (window.__pwInitScripts || window.__playwright__) count++;
+    if (window.__puppeteer_evaluate_script) count++;
+    if (window.domAutomation || window.domAutomationController) count++;
+    return count > 0;
+  });
+  // 2b. Multiple automation frameworks = definite automation
+  test(4, 'Multiple automation frameworks', true, function() {
+    var count = 0;
+    if (window.cdc_adoQpoasnfa76pfcZLmcfl_Array || window.__webdriver_evaluate) count++;
+    if (window.__pwInitScripts || window.__playwright__) count++;
+    if (window.__puppeteer_evaluate_script) count++;
+    if (window.domAutomation || window.domAutomationController) count++;
+    if (window.__nightmare) count++;
+    if (window.callPhantom) count++;
+    return count >= 2;
   });
 
   // 3. Iframe webdriver leak
@@ -1404,7 +1446,7 @@ function computeBotOrNot(fp) {
 
   // === COMPUTE SCORE ===
   var botProb = totalWeight > 0 ? (botWeight / totalWeight) : 0.5;
-  var maxPossibleWeight = 91; // sum of all test weights
+  var maxPossibleWeight = 95; // sum of all test weights
   var coverage = totalWeight / maxPossibleWeight;
   var confidence = coverage >= 0.8 ? 'High' : (coverage >= 0.5 ? 'Medium' : 'Low');
 
@@ -1413,7 +1455,7 @@ function computeBotOrNot(fp) {
     confidence: confidence,
     coverage: Math.round(coverage * 100),
     testsRun: results.length,
-    testsTotal: 35,
+    testsTotal: 36,
     totalWeight: totalWeight,
     maxWeight: maxPossibleWeight,
     results: results
