@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-12T18:59:49.989Z",
+  "generated": "2026-07-12T19:07:01.069Z",
   "totalConfigs": 12,
   "sources": [
     "http-clients.sh",
@@ -44,9 +44,9 @@
     },
     {
       "name": "Headless Firefox (default)",
-      "botScore": 52,
+      "botScore": 49,
       "confidence": "High",
-      "testsRun": 32,
+      "testsRun": 33,
       "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0",
       "topBotSignals": [
         "WebDriver flag",
@@ -55,16 +55,16 @@
       ],
       "topHumanSignals": [
         "Automation framework detected",
-        "Fonts detected",
-        "Real GPU (not software)"
+        "Multiple automation frameworks",
+        "Fonts detected"
       ],
       "source": "Playwright baselines"
     },
     {
       "name": "Chrome mobile (Pixel 5)",
-      "botScore": 50,
+      "botScore": 48,
       "confidence": "High",
-      "testsRun": 33,
+      "testsRun": 34,
       "userAgent": "Mozilla/5.0 (Linux; Android 14; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) ",
       "topBotSignals": [
         "WebDriver flag",
@@ -73,16 +73,16 @@
       ],
       "topHumanSignals": [
         "Automation framework detected",
-        "Fonts detected",
-        "Screen resolution is human-typical"
+        "Multiple automation frameworks",
+        "Fonts detected"
       ],
       "source": "Playwright baselines"
     },
     {
       "name": "Headless Chrome (default)",
-      "botScore": 50,
+      "botScore": 48,
       "confidence": "High",
-      "testsRun": 33,
+      "testsRun": 34,
       "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
       "topBotSignals": [
         "WebDriver flag",
@@ -91,16 +91,16 @@
       ],
       "topHumanSignals": [
         "Automation framework detected",
-        "Fonts detected",
-        "Screen resolution is human-typical"
+        "Multiple automation frameworks",
+        "Fonts detected"
       ],
       "source": "Playwright baselines"
     },
     {
       "name": "Headless Chrome (no GPU)",
-      "botScore": 50,
+      "botScore": 48,
       "confidence": "High",
-      "testsRun": 33,
+      "testsRun": 34,
       "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
       "topBotSignals": [
         "WebDriver flag",
@@ -109,16 +109,16 @@
       ],
       "topHumanSignals": [
         "Automation framework detected",
-        "Fonts detected",
-        "Screen resolution is human-typical"
+        "Multiple automation frameworks",
+        "Fonts detected"
       ],
       "source": "Playwright baselines"
     },
     {
       "name": "Chrome macOS desktop",
-      "botScore": 46,
+      "botScore": 44,
       "confidence": "High",
-      "testsRun": 33,
+      "testsRun": 34,
       "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like ",
       "topBotSignals": [
         "WebDriver flag",
@@ -127,16 +127,16 @@
       ],
       "topHumanSignals": [
         "Automation framework detected",
-        "Fonts detected",
-        "Screen resolution is human-typical"
+        "Multiple automation frameworks",
+        "Fonts detected"
       ],
       "source": "Playwright baselines"
     },
     {
       "name": "Chrome Windows desktop",
-      "botScore": 46,
+      "botScore": 44,
       "confidence": "High",
-      "testsRun": 33,
+      "testsRun": 34,
       "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
       "topBotSignals": [
         "WebDriver flag",
@@ -145,16 +145,16 @@
       ],
       "topHumanSignals": [
         "Automation framework detected",
-        "Fonts detected",
-        "Screen resolution is human-typical"
+        "Multiple automation frameworks",
+        "Fonts detected"
       ],
       "source": "Playwright baselines"
     },
     {
       "name": "Headless WebKit (default)",
-      "botScore": 26,
+      "botScore": 24,
       "confidence": "High",
-      "testsRun": 33,
+      "testsRun": 34,
       "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, lik",
       "topBotSignals": [
         "WebDriver flag",
@@ -163,8 +163,8 @@
       ],
       "topHumanSignals": [
         "Automation framework detected",
-        "Fonts detected",
-        "Real GPU (not software)"
+        "Multiple automation frameworks",
+        "Fonts detected"
       ],
       "source": "Playwright baselines"
     }

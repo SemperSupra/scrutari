@@ -1,16 +1,16 @@
 {
   "test": "Headless WebKit (default)",
-  "timestamp": "2026-07-12T18-57-24-997Z",
+  "timestamp": "2026-07-12T19-05-57-017Z",
   "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
   "platform": "Win32",
   "botOrNot": {
-    "botProbability": 26,
+    "botProbability": 24,
     "confidence": "High",
     "coverage": 95,
-    "testsRun": 33,
-    "testsTotal": 35,
-    "totalWeight": 86,
-    "maxWeight": 91,
+    "testsRun": 34,
+    "testsTotal": 36,
+    "totalWeight": 90,
+    "maxWeight": 95,
     "results": [
       {
         "name": "WebDriver flag",
@@ -23,6 +23,13 @@
         "name": "Automation framework detected",
         "bot": false,
         "weight": 5,
+        "isBotSignal": true,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Multiple automation frameworks",
+        "bot": false,
+        "weight": 4,
         "isBotSignal": true,
         "detail": "Human-like"
       },
@@ -288,13 +295,14 @@
     "Color Gamut": "sRGB",
     "Pointer Type": "Fine",
     "Hover Capable": "Yes",
-    "PoW Found": "Yes (nonce=3671)",
-    "PoW Time": "449.0ms",
-    "PoW Speed": "111359 hashes/sec",
+    "PoW Found": "No (max=50000)",
+    "PoW Time": "5766.0ms",
+    "PoW Speed": "8672 hashes/sec",
     "PoW Hashing": "SHA-256 via Web Crypto API",
     "WebGL Vendor": "Apple Inc.",
     "WebGL Renderer": "Apple GPU",
     "Automation Frameworks": "none detected",
+    "Automation Count": "0",
     "Iframe WebDriver Leak": "Yes (automation!)",
     "History Length": "2",
     "Screen Resolution": "1280x720",
@@ -336,6 +344,14 @@
     "WebUSB": "No",
     "Bluetooth": "No",
     "Web Serial": "No",
+    "In Iframe": "No",
+    "Parent Domain": "N/A",
+    "Cross-Origin Isolated": "No",
+    "GPC Signal": "No",
+    "Opener Present": "No",
+    "Detected Extensions": "none detected",
+    "Resource Entries": "1",
+    "Extension DOM Traces": "none",
     "_webdriver": true,
     "_pluginsLen": 5,
     "_languages": "en-US",
@@ -344,7 +360,7 @@
     "_pdfViewer": true,
     "_cookieEnabled": true,
     "_botGaugeTitle": "Probably Human",
-    "_botGaugeSubtitle": "26% bot-like · 74% human-like High confidence"
+    "_botGaugeSubtitle": "24% bot-like · 76% human-like High confidence"
   },
   "totalEntropyBits": null
 }

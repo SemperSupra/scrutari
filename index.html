@@ -1871,7 +1871,7 @@ function analyzeBehavior(events) {
 
   var m = events.mouse || [], s = events.scroll || [], c = events.click || [], k = events.key || [], f = events.focus || [], rsz = events.resize || [];
 
-  t(1, 'Mouse movement present', false, function() { return m.length >= 50; });
+  t(1, 'Mouse movement present', false, function() { return m.length >= 30; });
 
   if (m.length >= 5) {
     var spd = [];
