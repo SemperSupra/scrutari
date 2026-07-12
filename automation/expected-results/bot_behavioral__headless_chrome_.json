@@ -1,7 +1,7 @@
 {
   "test": "Bot behavioral (headless Chrome)",
-  "timestamp": "2026-07-12T19:24:10.669Z",
-  "behavioralScore": 68,
+  "timestamp": "2026-07-12T19:30:05.705Z",
+  "behavioralScore": 70,
   "behavioralTitle": "Bot-like Behavior",
   "behavioralEvents": "Events: 4 mouse, 1 scroll, 4 clicks, 0 keys, 3 input",
   "signals": [
@@ -116,6 +116,13 @@
       "weight": 2,
       "value": true,
       "humanLabel": "Human-like"
+    },
+    {
+      "name": "Challenge form interaction",
+      "bot": true,
+      "weight": 2,
+      "value": false,
+      "humanLabel": "Bot-like"
     }
   ]
 }
