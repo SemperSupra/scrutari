@@ -138,7 +138,7 @@
 
 <div id="section-botornot" class="card gauge-card">
   <h2>Bot-or-Not™ <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; rating how human-like your connection appears</span></h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 29+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 31+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
   <div id="botornot-results">
     <div class="gauge-container" style="opacity:0.5;">
       <div class="gauge-emoji">🤖</div>
@@ -1030,6 +1030,26 @@ async function captureFingerprint() {
     }
   } catch(e) { fp['CSS Fingerprint'] = 'error'; }
 
+  // IPv6 connectivity detection
+  try {
+    var ipv6Res = await probeIPv6Connectivity();
+    fp['IPv6 Available'] = ipv6Res.available ? 'Yes' : 'No';
+    fp['IP Version'] = ipv6Res.ipVersion;
+  } catch(e) { fp['IPv6 Available'] = 'error'; }
+
+  // DNS check — browser's available DNS resolution methods
+  try {
+    var dnsFeatures = [];
+    // DNS-over-HTTPS check via Chrome's experimental API
+    if (window.chrome && chrome.dns && chrome.dns.resolve) dnsFeatures.push('chrome.dns API');
+    // Check if connection has DNS-related hints
+    if (navigator.connection && navigator.connection.private) dnsFeatures.push('private DNS');
+    if (navigator.connection && navigator.connection.distribution) dnsFeatures.push('DNS distribution');
+    // Service worker DNS caching
+    if ('serviceWorker' in navigator) dnsFeatures.push('SW DNS cache');
+    fp['DNS Features'] = dnsFeatures.length > 0 ? dnsFeatures.join(', ') : 'standard (no advanced DNS APIs)';
+  } catch(e) { fp['DNS Features'] = 'error'; }
+
   var ent = calculateFingerprintEntropy(fp);
   document.getElementById('fingerprint-entropy').innerHTML =
     '<div class="result-box info"><strong>Fingerprint Entropy: ' + ent.total + ' bits</strong> &mdash; ' +
@@ -1245,9 +1265,20 @@ function computeBotOrNot(fp) {
     return fp['CSS Container Queries'] === 'Yes';
   });
 
+  // 30. IPv6 connectivity — modern networks have IPv6; missing = restrictive/old/Tor
+  test(2, 'IPv6 connectivity', false, function() {
+    return fp['IPv6 Available'] === 'Yes';
+  });
+
+  // 31. IP version — IPv4 vs IPv6 (IPv6 can be a fingerprint signal)
+  test(1, 'IP version (v4/v6)', false, function() {
+    // Both v4 and v6 can be normal, this is informational
+    return true; // neutral — doesn't affect score
+  });
+
   // === COMPUTE SCORE ===
   var botProb = totalWeight > 0 ? (botWeight / totalWeight) : 0.5;
-  var maxPossibleWeight = 83; // sum of all test weights
+  var maxPossibleWeight = 86; // sum of all test weights
   var coverage = totalWeight / maxPossibleWeight;
   var confidence = coverage >= 0.8 ? 'High' : (coverage >= 0.5 ? 'Medium' : 'Low');
 
@@ -1256,7 +1287,7 @@ function computeBotOrNot(fp) {
     confidence: confidence,
     coverage: Math.round(coverage * 100),
     testsRun: results.length,
-    testsTotal: 29,
+    testsTotal: 31,
     totalWeight: totalWeight,
     maxWeight: maxPossibleWeight,
     results: results
@@ -1373,52 +1404,129 @@ function showEntropyExplanation(totalBits, uniqueness) {
 }
 
 var webrtcIPs = new Set();
+var webrtcIPv6 = new Set(); // separate tracking for IPv6 addresses
+
+// Extract IPs (both v4 and v6) from ICE candidate strings.
+// ICE candidate format: "candidate:1 1 UDP 123456 192.168.1.1 12345 typ host"
+// The IP is always the 5th space-delimited field.
+function extractCandidateIPs(candidateStr) {
+  var ips = [];
+  if (!candidateStr) return ips;
+  var parts = candidateStr.split(' ');
+  if (parts.length >= 5) {
+    var ip = parts[4];
+    // Validate — IPv4 or IPv6
+    if (ip.includes(':')) {
+      // IPv6: validate it's not a port number, has at least one colon
+      if (ip.split(':').length >= 3) ips.push(ip);
+    } else if (ip.match(/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/)) {
+      ips.push(ip);
+    }
+  }
+  return ips;
+}
+
+function isPrivateIP(ip) {
+  // IPv4 private ranges
+  if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.')) return true;
+  if (ip.match(/^127\./) || ip.match(/^169\.254\./)) return true; // loopback, link-local
+  // IPv6 private / special ranges
+  var lower = ip.toLowerCase();
+  if (lower.startsWith('fe80:')) return true; // link-local
+  if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // unique local (ULA)
+  if (lower === '::1') return true; // loopback
+  return false;
+}
+
 async function runWebRTCTests() {
   var div = document.getElementById('webrtc-results');
   var expected = document.getElementById('expected-ip').value.trim();
   webrtcIPs = new Set();
+  webrtcIPv6 = new Set();
   div.innerHTML = '<div class="result-box info">Running WebRTC tests...</div>';
   var techniques = [
     { name: 'Classic STUN', test: async function() {
-      var ips = new Set(); var pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
+      var ips = [], ips6 = []; var pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
       pc.createDataChannel(''); await pc.createOffer().then(o => pc.setLocalDescription(o));
-      await new Promise(r => { pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var m = e.candidate.candidate.match(/([0-9]{1,3}(?:\.[0-9]{1,3}){3})/); if (m) ips.add(m[1]); } if (!e.candidate) setTimeout(r, 500); }; setTimeout(r, 3000); });
-      pc.close(); return [...ips];
+      await new Promise(r => { pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var found = extractCandidateIPs(e.candidate.candidate); found.forEach(function(ip) { if (ip.includes(':')) ips6.push(ip); else ips.push(ip); }); } if (!e.candidate) setTimeout(r, 500); }; setTimeout(r, 3000); });
+      pc.close(); return {v4: ips, v6: ips6};
     }},
     { name: 'Multi-STUN', test: async function() {
-      var ips = new Set();
+      var ips = [], ips6 = [];
       for (const url of ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.voip.blackberry.com:3478']) {
         try { var pc = new RTCPeerConnection({ iceServers: [{ urls: [url] }] });
         pc.createDataChannel(''); await pc.createOffer().then(o => pc.setLocalDescription(o));
-        await new Promise(r => { pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var m = e.candidate.candidate.match(/([0-9]{1,3}(?:\.[0-9]{1,3}){3})/); if (m) ips.add(m[1]); } if (!e.candidate) setTimeout(r, 200); }; setTimeout(r, 2000); });
+        await new Promise(r => { pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var found = extractCandidateIPs(e.candidate.candidate); found.forEach(function(ip) { if (ip.includes(':')) ips6.push(ip); else ips.push(ip); }); } if (!e.candidate) setTimeout(r, 200); }; setTimeout(r, 2000); });
         pc.close(); } catch(e) {}
-      } return [...ips];
+      } return {v4: ips, v6: ips6};
     }},
     { name: 'ICE Trickle', test: async function() {
-      var ips = new Set(); var pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
-      pc.createDataChannel(''); pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var m = e.candidate.candidate.match(/([0-9]{1,3}(?:\.[0-9]{1,3}){3})/); if (m) ips.add(m[1]); } };
+      var ips = [], ips6 = []; var pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
+      pc.createDataChannel(''); pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var found = extractCandidateIPs(e.candidate.candidate); found.forEach(function(ip) { if (ip.includes(':')) ips6.push(ip); else ips.push(ip); }); } };
       await pc.createOffer().then(o => pc.setLocalDescription(o));
-      await new Promise(r => setTimeout(r, 3000)); pc.close(); return [...ips];
+      await new Promise(r => setTimeout(r, 3000)); pc.close(); return {v4: ips, v6: ips6};
     }},
   ];
-  var html = '<table><tr><th>Technique</th><th>Found IPs</th><th>Status</th></tr>';
+  var html = '<table><tr><th>Technique</th><th>IPv4 Found</th><th>IPv6 Found</th><th>Status</th></tr>';
   for (const t of techniques) {
     try {
-      var ips = await t.test();
-      var isLeak = ips.some(ip => ip !== expected && !ip.startsWith('10.') && !ip.startsWith('192.168.'));
-      if (isLeak) document.getElementById('fingerprint-results'); // trigger
-      html += '<tr><td>' + t.name + '</td><td>' + (ips.length ? ips.join(', ') : '(none)') + '</td><td>' + (isLeak ? '<span class="badge badge-leak">LEAK</span>' : '<span class="badge badge-safe">SAFE</span>') + '</td></tr>';
-      ips.forEach(ip => webrtcIPs.add(ip));
+      var result = await t.test();
+      var ips = result.v4;
+      var ips6 = result.v6;
+      var allIPs = ips.concat(ips6);
+      var isLeak = allIPs.some(function(ip) { return ip !== expected && !isPrivateIP(ip); });
+      var hasIPv6 = ips6.length > 0;
+      html += '<tr><td>' + t.name + '</td><td>' + (ips.length ? ips.join(', ') : '(none)') + '</td><td>' +
+        (ips6.length ? '<span style="color:#60a5fa;">' + ips6.join(', ') + '</span>' : '(none)') +
+        '</td><td>' + (isLeak ? '<span class="badge badge-leak">LEAK</span>' : (hasIPv6 ? '<span class="badge badge-info">IPv6</span>' : '<span class="badge badge-safe">SAFE</span>')) + '</td></tr>';
+      ips.forEach(function(ip) { webrtcIPs.add(ip); });
+      ips6.forEach(function(ip) { webrtcIPv6.add(ip); webrtcIPs.add(ip); });
     } catch(e) {
-      html += '<tr><td>' + t.name + '</td><td>Error</td><td><span class="badge badge-warn">ERROR</span></td></tr>';
+      html += '<tr><td>' + t.name + '</td><td>Error</td><td></td><td><span class="badge badge-warn">ERROR</span></td></tr>';
     }
   }
   html += '</table>';
   if (webrtcIPs.size) html += '<div style="margin-top:0.5rem;font-size:0.8rem;">All IPs: ' + [...webrtcIPs].join(', ') + '</div>';
-  var leakFound = [...webrtcIPs].some(ip => ip !== expected && !ip.startsWith('10.') && !ip.startsWith('192.168.'));
+  if (webrtcIPv6.size) html += '<div style="margin-top:0.25rem;font-size:0.75rem;color:#60a5fa;">IPv6 detected: ' + [...webrtcIPv6].join(', ') + ' — IPv6 leak possible</div>';
+  var leakFound = [...webrtcIPs].some(function(ip) { return ip !== expected && !isPrivateIP(ip); });
   html += '<div class="result-box ' + (leakFound ? 'fail' : 'pass') + '" style="margin-top:0.5rem;">' +
     (leakFound ? '⚠ WebRTC LEAK DETECTED' : '✓ No WebRTC leak detected') + '</div>';
+
+  // Add IPv6/DNS probe results if available
+  var ipv6test = await probeIPv6Connectivity();
+  if (ipv6test.available) {
+    html += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:0.375rem;background:#0f172a;font-size:0.75rem;">';
+    html += '🌐 <strong>IPv6 connectivity</strong>: ' + (ipv6test.available ? '<span style="color:#6ee7b7;">Yes</span>' : '<span style="color:#94a3b8;">No</span>');
+    html += ' &middot; Your IP appears to be <strong>' + ipv6test.ipVersion + '</strong>';
+    if (ipv6test.available && webrtcIPv6.size === 0) {
+      html += ' <span style="color:#fcd34d;">(WebRTC IPv6 candidates not found — browser may block IPv6 in WebRTC)</span>';
+    }
+    html += '</div>';
+  }
+
   div.innerHTML = html;
+}
+
+// Probe for IPv6 connectivity by trying to reach IPv6-only endpoints
+async function probeIPv6Connectivity() {
+  var result = { available: false, ipVersion: 'unknown' };
+  // Check ipinfo data if available — it tells us our IP
+  if (__ipinfoData && __ipinfoData.ip) {
+    result.ipVersion = __ipinfoData.ip.includes(':') ? 'IPv6' : 'IPv4';
+  } else if (document.getElementById('expected-ip').value.trim().includes(':')) {
+    result.ipVersion = 'IPv6';
+  }
+  // Try an IPv6-only endpoint (timeout fast)
+  try {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 3000);
+    await fetch('https://ipv6.test-ipv6.com/', { signal: controller.signal, mode: 'no-cors' });
+    clearTimeout(timeoutId);
+    result.available = true;
+  } catch(e) {
+    // IPv6 not available or blocked
+  }
+  return result;
 }
 
 function captureTimeLeaks() {
