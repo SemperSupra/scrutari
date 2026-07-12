@@ -21,6 +21,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 NETLIFY_DIR="$SCRIPT_DIR/netlify"
 NEW_SITE=false
 PROD_FLAG=""
@@ -72,8 +73,17 @@ cd "$NETLIFY_DIR"
 echo "Enabling Blob Storage..."
 npx netlify blob:enable 2>/dev/null || echo "  (Blob Storage may already be enabled)"
 
-# Deploy function only
-npx netlify deploy $PROD_FLAG --functions functions --dir . --json 2>&1 | tee /tmp/netlify-deploy.log
+# Deploy SPA + functions together
+echo "Deploying from repo root (SPA + functions)..."
+cd "$REPO_ROOT"
+# Functions are in submit-endpoint/netlify/functions/
+# Edge functions are in submit-endpoint/netlify/edge-functions/
+# Config (netlify.toml) is in repo root for Netlify to find
+cp "$NETLIFY_DIR/netlify.toml" "$REPO_ROOT/netlify.toml" 2>/dev/null || true
+npx netlify deploy $PROD_FLAG \
+  --dir . \
+  --functions submit-endpoint/netlify/functions \
+  --json 2>&1 | tee /tmp/netlify-deploy.log
 
 # Extract and show the endpoint URL
 DEPLOY_URL=$(grep -o 'https://[^"]*\.netlify\.app' /tmp/netlify-deploy.log | head -1)

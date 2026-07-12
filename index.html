@@ -331,6 +331,11 @@
 <div class="footer">
   <p><a href="https://github.com/mark-e-deyoung/gateway">Gateway Project</a> &mdash; Open source browser leak detector</p>
   <p style="margin-top:0.5rem;">All tests run client-side. No data leaves your browser.</p>
+  <!-- Honeypot links — hidden from humans, visible to crawlers -->
+  <a href="/admin/" style="display:none" aria-hidden="true">Admin</a>
+  <a href="/backup/" style="display:none" aria-hidden="true">Backup</a>
+  <a href="/.env" style="display:none" aria-hidden="true">Config</a>
+  <a href="/wp-admin/" style="display:none" aria-hidden="true">Login</a>
 </div>
 
 <script>
@@ -2393,7 +2398,7 @@ async function submitResults() {
   // Endpoint: set window.SUBMISSION_ENDPOINT in console to configure, or deploy Docker container.
   // Default: Docker endpoint on localhost:3456. Change to your server's address in production.
   // Deployment: docker build -t scrutari-submit submit-endpoint/ && docker run -p 3456:3456 scrutari-submit
-  var endpoint = window.SUBMISSION_ENDPOINT || localStorage.getItem('scrutari_endpoint') || 'http://localhost:3456/submit';
+  var endpoint = window.SUBMISSION_ENDPOINT || localStorage.getItem('scrutari_endpoint') || '/api/submit';
 
   try {
     var resp = await fetch(endpoint, {

@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /backup/
+Disallow: /.env
+Disallow: /wp-admin/
+
+Sitemap: https://sempersupra.github.io/scrutari/sitemap.xml
