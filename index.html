@@ -1956,7 +1956,7 @@ function captureTimeLeaks() {
 
 // ===== BEHAVIORAL TRACKING ENGINE =====
 var __behavior = { running: false, timer: null, timeout: null, duration: 15000, startTime: null,
-  events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [], input: [], formClicks: [], inputFocus: [] }, count: 0 };
+  events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [], touch: [], input: [], formClicks: [], inputFocus: [] }, count: 0 };
 
 function __trackMouse(e) { if (!__behavior.running) return;
   __behavior.events.mouse.push({ x: e.clientX, y: e.clientY, t: performance.now() }); __behavior.count++; __updateBehaviorUI();
@@ -1994,6 +1994,12 @@ function __trackZoom() { if (!__behavior.running) return;
 function __trackPageNav(e) { if (!__behavior.running) return;
   __behavior.events.pageNav = __behavior.events.pageNav || [];
   __behavior.events.pageNav.push({ from: window.location.hash || '(top)', to: e.target?.hash || '', t: performance.now() }); }
+function __trackTouch(e) { if (!__behavior.running) return;
+  var t = e.touches ? e.touches[0] : e.changedTouches ? e.changedTouches[0] : null;
+  if (!t) return;
+  __behavior.events.touch = __behavior.events.touch || [];
+  __behavior.events.touch.push({ x: t.clientX, y: t.clientY, t: performance.now(), type: e.type,
+    force: t.force || null, radius: t.radiusX || null, id: t.identifier || 0 }); __behavior.count++; __updateBehaviorUI(); }
 function __trackInput(e) { if (!__behavior.running) return;
   var el = e.target;
   if (el.id === 'input-main' || el.id === 'input-email' || el.id === 'input-ext' ||
@@ -2074,7 +2080,7 @@ function navigateTo(sectionId) {
 
 function startBehaviorRecording() {
   __behavior = { running: true, timer: null, timeout: null, duration: 15000, startTime: performance.now(),
-    events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [], input: [], formClicks: [], inputFocus: [] }, count: 0 };
+    events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [], touch: [], input: [], formClicks: [], inputFocus: [] }, count: 0 };
   document.getElementById('behavior-btn').textContent = '⏹ Stop';
   document.getElementById('behavior-progress').style.display = 'block';
   document.getElementById('behavior-status').textContent = '⚡ Active';
@@ -2087,6 +2093,10 @@ function startBehaviorRecording() {
   var testArea = document.getElementById('behavior-test-area');
   if (testArea) testArea.style.opacity = '1';
   document.addEventListener('mousemove', __trackMouse, {passive: true});
+  // Mobile touch tracking
+  document.addEventListener('touchstart', __trackTouch, {passive: true});
+  document.addEventListener('touchmove', __trackTouch, {passive: true});
+  document.addEventListener('touchend', __trackTouch, {passive: true});
   document.addEventListener('scroll', __trackScroll, {passive: true});
   document.addEventListener('click', __trackClick, {passive: true});
   document.addEventListener('keydown', __trackKey, {passive: true});
@@ -2123,6 +2133,9 @@ function stopBehaviorRecording() {
   __behavior.running = false;
   clearInterval(__behavior.timer); clearTimeout(__behavior.timeout);
   document.removeEventListener('mousemove', __trackMouse);
+  document.removeEventListener('touchstart', __trackTouch);
+  document.removeEventListener('touchmove', __trackTouch);
+  document.removeEventListener('touchend', __trackTouch);
   document.removeEventListener('scroll', __trackScroll);
   document.removeEventListener('click', __trackClick);
   document.removeEventListener('keydown', __trackKey);
@@ -2156,7 +2169,7 @@ function analyzeBehavior(events) {
       humanLabel: isBot ? (r ? 'Bot-like' : 'Human-like') : (r ? 'Human-like' : 'Bot-like') });
   } catch(e) {} }
 
-  var m = events.mouse || [], s = events.scroll || [], c = events.click || [], k = events.key || [], f = events.focus || [], rsz = events.resize || [];
+  var m = events.mouse || [], s = events.scroll || [], c = events.click || [], k = events.key || [], f = events.focus || [], rsz = events.resize || [], tch = events.touch || [];
 
   t(1, 'Mouse movement present', false, function() { return m.length >= 30; });
 
@@ -2243,6 +2256,9 @@ function analyzeBehavior(events) {
       return corrRate >= 0.5 && corrRate <= 10;
     });
   }
+
+  // Mobile touch detection — touch events indicate mobile device, not bot by itself
+  t(1, 'Touch interaction detected', false, function() { return tch.length >= 3; });
 
   t(1, 'Scrolling present', false, function() { return s.length >= 5; });
   if (s.length >= 5) {
@@ -2505,7 +2521,7 @@ function analyzeBehavior(events) {
   return {
     botProbability: Math.round(bp * 100), confidence: coverage >= 0.5 ? 'High' : (coverage >= 0.25 ? 'Medium' : 'Low'),
     signals: signals, totalWeight: totalWeight, maxWeight: 95,
-    eventCount: { mouse: m.length, scroll: s.length, clicks: c.length, keys: k.length, focus: f.length, resize: rsz.length,
+    eventCount: { mouse: m.length, scroll: s.length, clicks: c.length, keys: k.length, focus: f.length, resize: rsz.length, touch: tch.length,
       input: inp.length, formClicks: formC.length, visibilityEvents: v.length, paste: pe.length }
   };
 }
@@ -2529,7 +2545,8 @@ function displayBehaviorResults(r) {
   var ev = r.eventCount;
   html += '<div style="font-size:0.7rem;color:#64748b;margin:0.5rem 0;">Events: '+(ev.mouse||0)+' mouse, '+(ev.scroll||0)+' scroll, '+(ev.clicks||0)+' clicks, '+(ev.keys||0)+' keys' +
     ((ev.input||0) > 0 ? ', '+(ev.input||0)+' input' : '') + ((ev.formClicks||0) > 0 ? ', '+(ev.formClicks||0)+' btn clicks' : '') +
-    ((ev.visibilityEvents||0) > 0 ? ', '+(ev.visibilityEvents||0)+' vis events' : '') + ((ev.paste||0) > 0 ? ', '+(ev.paste||0)+' paste' : '')+'</div>';
+    ((ev.visibilityEvents||0) > 0 ? ', '+(ev.visibilityEvents||0)+' vis events' : '') + ((ev.paste||0) > 0 ? ', '+(ev.paste||0)+' paste' : '') +
+    ((ev.touch||0) > 0 ? ', '+(ev.touch||0)+' touch' : '')+'</div>';
   html += '<div style="margin-top:0.5rem;"><span class="toggle-link" onclick="var s=document.getElementById(\'beh-signals\');s.classList.toggle(\'open\')">Show '+r.signals.length+' signal details ▼</span></div>';
   html += '<div id="beh-signals" class="signal-list">';
   for (var i = 0; i < r.signals.length; i++) {
