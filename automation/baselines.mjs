@@ -432,15 +432,72 @@ async function main() {
           await page.type('#input-email', char, { delay: 40 + Math.floor(Math.random() * 140) });
         }
         await page.waitForTimeout(100);
-        // 8. Scroll one more time (human checking their work)
+        // 8. Add typing corrections — backspace a word and retype (humans make errors)
+        await page.waitForTimeout(300 + Math.floor(Math.random() * 400));
+        await page.click('#input-main', { timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        // Type a wrong word, then correct it
+        for (const char of 'worng word') {
+          await page.type('#input-main', char, { delay: 40 + Math.floor(Math.random() * 120) });
+        }
+        await page.waitForTimeout(200);
+        // Backspace the wrong word
+        for (let b = 0; b < 10; b++) {
+          await page.keyboard.press('Backspace');
+          await page.waitForTimeout(30 + Math.floor(Math.random() * 100));
+        }
+        await page.waitForTimeout(200 + Math.floor(Math.random() * 300));
+        // Retype correctly
+        for (const char of 'wrong word, fixed it') {
+          await page.type('#input-main', char, { delay: 30 + Math.floor(Math.random() * 150) });
+        }
+        await page.waitForTimeout(200);
+        // 9. Simulate tab switches (humans switch tabs occasionally)
+        // Dispatch focus/blur events to trigger the behavioral tracker
+        await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+        await page.waitForTimeout(600 + Math.floor(Math.random() * 600));
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+        await page.waitForTimeout(200 + Math.floor(Math.random() * 200));
+        // 10. Resize window + fire resize event (headless needs manual dispatch)
+        await page.setViewportSize({ width: 1800, height: 900 });
+        await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+        await page.waitForTimeout(150 + Math.floor(Math.random() * 200));
+        await page.setViewportSize({ width: 1400, height: 800 });
+        await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+        await page.waitForTimeout(100 + Math.floor(Math.random() * 150));
+        await page.setViewportSize({ width: 1920, height: 1050 });
+        await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+        await page.waitForTimeout(100);
+        // 11. Challenge form with deliberate typos (humans make mistakes)
+        await page.mouse.move(200, 500, { steps: 8 });
+        await page.waitForTimeout(200 + Math.floor(Math.random() * 300));
+        // Email — type wrong email, correct it
+        await page.click('#challenge-email').catch(()=>{}); await page.waitForTimeout(200);
+        for (const ch of 'humen@exmple') { await page.type('#challenge-email', ch, {delay:40+Math.random()*100}); }
+        await page.waitForTimeout(100);
+        for (let b=0; b<4; b++) { await page.keyboard.press('Backspace'); await page.waitForTimeout(30+Math.random()*80); }
+        await page.waitForTimeout(100);
+        for (const ch of 'uman@example.com') { await page.type('#challenge-email', ch, {delay:30+Math.random()*120}); }
+        await page.waitForTimeout(150);
+        // Date — type wrong format, correct it
+        await page.click('#challenge-date').catch(()=>{}); await page.waitForTimeout(150);
+        // Type DD/MM (wrong for US), correct to MM/DD
+        for (const ch of '13/07/2026') { await page.type('#challenge-date', ch, {delay:30+Math.random()*100}); }
+        await page.waitForTimeout(200);
+        // Realize format is wrong, retype
+        for (let b=0; b<10; b++) { await page.keyboard.press('Backspace'); await page.waitForTimeout(20+Math.random()*60); }
+        await page.waitForTimeout(200);
+        for (const ch of '07/13/2026') { await page.type('#challenge-date', ch, {delay:30+Math.random()*100}); }
+        await page.waitForTimeout(100);
+        // 12. Fire zoom/resolution event (tracked by matchMedia listener)
+        await page.evaluate(() => {
+          if (typeof __trackZoom === 'function') __trackZoom();
+        });
+        await page.waitForTimeout(50);
+        // 13. Scroll one more time (human checking their work)
         await page.evaluate(() => window.scrollBy({ top: 100, behavior: 'smooth' }));
         await page.waitForTimeout(300);
-        // 9. Resize window (humans occasionally resize)
-        await page.setViewportSize({ width: 1800, height: 900 });
-        await page.waitForTimeout(200);
-        await page.setViewportSize({ width: 1920, height: 1050 });
-        await page.waitForTimeout(100);
-        // 10. Do NOT touch honeypot field or decoy buttons
+        // 14. Do NOT touch honeypot field or decoy buttons
       }
 
       // Stop recording — click the stop button

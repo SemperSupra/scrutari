@@ -1,0 +1,362 @@
+{
+  "test": "Headless Firefox (default)",
+  "timestamp": "2026-07-13T04-48-49-674Z",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0",
+  "platform": "Win32",
+  "botOrNot": {
+    "botProbability": 49,
+    "confidence": "High",
+    "coverage": 92,
+    "testsRun": 33,
+    "testsTotal": 36,
+    "totalWeight": 87,
+    "maxWeight": 95,
+    "results": [
+      {
+        "name": "WebDriver flag",
+        "bot": true,
+        "weight": 5,
+        "isBotSignal": true,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Automation framework detected",
+        "bot": false,
+        "weight": 5,
+        "isBotSignal": true,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Multiple automation frameworks",
+        "bot": false,
+        "weight": 4,
+        "isBotSignal": true,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Iframe webdriver leak",
+        "bot": true,
+        "weight": 5,
+        "isBotSignal": true,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Fonts detected",
+        "bot": false,
+        "weight": 4,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Real GPU (not software)",
+        "bot": false,
+        "weight": 4,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Browser plugins present",
+        "bot": true,
+        "weight": 4,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Plugins have content",
+        "bot": true,
+        "weight": 4,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Canvas rendering",
+        "bot": true,
+        "weight": 4,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Screen resolution is human-typical",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Timezone is region-specific",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Language matches timezone region",
+        "bot": true,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Browser language list",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Device memory API available",
+        "bot": true,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "PoW timing is human-typical",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Built-in PDF viewer",
+        "bot": true,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Speech voices available",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Non-empty browser storage",
+        "bot": true,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "OS preference signals present",
+        "bot": false,
+        "weight": 3,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "CPU core count is human-typical",
+        "bot": false,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Browsing history present",
+        "bot": true,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "Network RTT measurable",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "WASM feature level expected",
+        "bot": true,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "HTTP Referrer present",
+        "bot": true,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "CSS Houdini Paint API",
+        "bot": true,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "CSS :has() selector",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "CSS Container Queries",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "IPv6 connectivity",
+        "bot": true,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "IP version (v4/v6)",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Adblock detected",
+        "bot": true,
+        "weight": 2,
+        "isBotSignal": false,
+        "detail": "Human-like"
+      },
+      {
+        "name": "localStorage available",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Cookies enabled",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      },
+      {
+        "name": "Service Worker support",
+        "bot": false,
+        "weight": 1,
+        "isBotSignal": false,
+        "detail": "Bot-like"
+      }
+    ]
+  },
+  "fingerprint": {
+    "User Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0",
+    "Platform": "Win32",
+    "Language": "en-US",
+    "Screen": "1366x768",
+    "Color Depth": "24-bit",
+    "CPU Cores": "16",
+    "RAM": "unknown",
+    "Touch": "maxTouchPoints=0",
+    "Do Not Track": "unspecified",
+    "WebDriver": "Yes (automation!)",
+    "Canvas Hash": "2530 bytes",
+    "Audio Hash": "Infinity",
+    "Fonts Detected": "7/27",
+    "Font Sample": "Palatino, Noto Sans, Roboto, Open Sans, Monaco...",
+    "Adblock Detected": "No",
+    "Plugins": "none",
+    "Plugin Count": "0",
+    "PDF Viewer": "No",
+    "JS APIs": "7/7 available",
+    "WASM Test": "error",
+    "ECMAScript Version": "ES15 (ES6-ES15 supported)",
+    "ES Unsupported": "ES16",
+    "WASM MVP": "No",
+    "WASM SIMD": "No",
+    "WASM Bulk Memory": "No",
+    "WASM Reference Types": "No",
+    "WASM Tail Call": "No",
+    "WASM Exceptions": "No",
+    "WASM Features": "0/6",
+    "WASM Version": "WASM 1.0",
+    "JS Engine": "V8/Blink (Chrome/Edge)",
+    "BigInt Perf": "1.00ms",
+    "Math Sin": "0.94381821",
+    "Math Tan": "2.85602984",
+    "Math Log": "4.0915",
+    "Dark Mode": "No",
+    "Reduced Motion": "No",
+    "High Contrast": "No",
+    "HDR Display": "No",
+    "Color Gamut": "sRGB",
+    "Pointer Type": "Fine",
+    "Hover Capable": "Yes",
+    "Storage Used": "0.0 MB",
+    "Storage Quota": "10240.0 MB",
+    "PoW Found": "No (max=50000)",
+    "PoW Time": "1109.0ms",
+    "PoW Speed": "45086 hashes/sec",
+    "PoW Hashing": "SHA-256 via Web Crypto API",
+    "WebGL Vendor": "Google Inc. (NVIDIA)",
+    "WebGL Renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+    "Automation Frameworks": "none detected",
+    "Automation Count": "0",
+    "Iframe WebDriver Leak": "Yes (automation!)",
+    "History Length": "1",
+    "Screen Resolution": "1366x768",
+    "Screen Common": "Yes",
+    "Timezone/Lang Aligned": "Mismatch",
+    "CPU Cores Class": "Normal (16)",
+    "Connection RTT Present": "API unavailable",
+    "Screen Orientation": "landscape-primary",
+    "HTTP Referrer": "(empty - direct visit, bookmark, or automation)",
+    "CSS Grid": "Yes",
+    "CSS Subgrid": "No",
+    "CSS :has()": "Yes",
+    "CSS Container Queries": "Yes",
+    "CSS scroll() timeline": "No",
+    "CSS view transitions": "Yes",
+    "CSS initial-letter": "No",
+    "CSS P3 color": "Yes",
+    "CSS -webkit-scrollbar": "No",
+    "CSS -moz-appearance": "Yes (Gecko)",
+    "CSS Houdini paint": "No",
+    "CSS prefers-reduced-data": "No",
+    "CSS forced-colors": "No",
+    "CSS inverted-colors": "No",
+    "IPv6 Available": "No",
+    "IP Version": "unknown",
+    "DNS Features": "SW DNS cache",
+    "Cookies Enabled": "Yes",
+    "Cookies Accessible": "Yes",
+    "localStorage": "Yes",
+    "sessionStorage": "Yes",
+    "IndexedDB": "Yes",
+    "Cache API": "Yes",
+    "Service Worker": "Yes",
+    "BroadcastChannel": "Yes",
+    "SharedWorker": "Yes",
+    "Web Locks": "Yes",
+    "File System Access": "No",
+    "Navigation API": "Yes",
+    "WebUSB": "No",
+    "Bluetooth": "No",
+    "Web Serial": "Yes",
+    "Ad Tech Detected": "none",
+    "In Iframe": "No",
+    "Parent Domain": "N/A",
+    "Cross-Origin Isolated": "No",
+    "GPC Signal": "No",
+    "Opener Present": "No",
+    "Detected Extensions": "none detected",
+    "Resource Entries": "2",
+    "Extension DOM Traces": "none",
+    "_webdriver": true,
+    "_pluginsLen": 0,
+    "_languages": "en-US,en",
+    "_hardwareConcurrency": 16,
+    "_historyLen": 1,
+    "_pdfViewer": false,
+    "_cookieEnabled": true,
+    "_botGaugeTitle": "Uncertain",
+    "_botGaugeSubtitle": "49% bot-like · 51% human-like High confidence"
+  },
+  "totalEntropyBits": null
+}
