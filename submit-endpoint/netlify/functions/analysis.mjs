@@ -117,6 +117,18 @@ export default async (req, context) => {
     if (!hasHumans) analysis.dataQuality.warnings.push('No human-labeled submissions in dataset');
     if (analysis.summary.uniqueFingerprints === 0) analysis.dataQuality.warnings.push('No fingerprint data collected yet');
 
+    // ─── Published baselines for comparison ───
+    analysis.publishedBaselines = {
+      note: 'Per-attribute entropy from published studies for comparison. Our values will differ due to sample size and population.',
+      eckersley2010: { venue: 'PETS 2010 (Panopticlick)', sampleSize: '470K',
+        plugins: '15.4 bits', fonts: '13.9 bits', userAgent: '10.0 bits',
+        screen: '4.8 bits', timezone: '3.0 bits', total: '18.1 bits' },
+      berke2025: { venue: 'PoPETs 2025 (Google)', sampleSize: '8,400 (US demographically sampled)',
+        note: 'First dataset with demographics. Open access.' },
+      hidingInCrowd2018: { venue: 'WWW 2018', sampleSize: '2M (French general audience)',
+        desktopUniqueness: '33.6%', mobileUniqueness: '18.5%' },
+    };
+
     return new Response(JSON.stringify(analysis, null, 2), { status: 200, headers });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
