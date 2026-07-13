@@ -1,7 +1,7 @@
 {
   "test": "Bot behavioral (headless Chrome)",
-  "timestamp": "2026-07-13T04:49:13.784Z",
-  "behavioralScore": 70,
+  "timestamp": "2026-07-13T13:54:19.229Z",
+  "behavioralScore": 64,
   "behavioralTitle": "Bot-like Behavior",
   "behavioralEvents": "Events: 4 mouse, 1 scroll, 4 clicks, 0 keys, 3 input",
   "signals": [
@@ -102,6 +102,13 @@
       "weight": 2,
       "value": true,
       "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Paste-based input detected",
+      "bot": false,
+      "weight": 3,
+      "value": false,
+      "humanLabel": "Human-like"
     },
     {
       "name": "Page / section navigation",

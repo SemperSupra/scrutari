@@ -1,9 +1,9 @@
 {
   "test": "Human-like behavioral (headless Chrome)",
-  "timestamp": "2026-07-13T04:50:05.243Z",
-  "behavioralScore": 11,
+  "timestamp": "2026-07-13T13:55:18.671Z",
+  "behavioralScore": 6,
   "behavioralTitle": "Human-like Behavior",
-  "behavioralEvents": "Events: 352 mouse, 202 scroll, 3 clicks, 287 keys, 139 input",
+  "behavioralEvents": "Events: 370 mouse, 185 scroll, 3 clicks, 289 keys, 140 input",
   "signals": [
     {
       "name": "Mouse movement present",
@@ -41,6 +41,27 @@
       "humanLabel": "Human-like"
     },
     {
+      "name": "Natural velocity profile",
+      "bot": false,
+      "weight": 4,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Natural trajectory path",
+      "bot": false,
+      "weight": 3,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Mouse overshoot corrections",
+      "bot": false,
+      "weight": 3,
+      "value": true,
+      "humanLabel": "Human-like"
+    },
+    {
       "name": "Scrolling present",
       "bot": false,
       "weight": 1,
@@ -59,6 +80,13 @@
       "bot": false,
       "weight": 2,
       "value": false,
+      "humanLabel": "Human-like"
+    },
+    {
+      "name": "Natural scrolling pattern",
+      "bot": false,
+      "weight": 3,
+      "value": true,
       "humanLabel": "Human-like"
     },
     {
@@ -84,10 +112,10 @@
     },
     {
       "name": "Window resize",
-      "bot": true,
+      "bot": false,
       "weight": 2,
-      "value": true,
-      "humanLabel": "Bot-like"
+      "value": false,
+      "humanLabel": "Human-like"
     },
     {
       "name": "Keyboard input detected",
@@ -158,6 +186,13 @@
       "weight": 2,
       "value": true,
       "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Paste-based input detected",
+      "bot": false,
+      "weight": 3,
+      "value": false,
+      "humanLabel": "Human-like"
     },
     {
       "name": "Page / section navigation",
