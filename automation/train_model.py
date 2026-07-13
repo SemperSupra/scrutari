@@ -264,8 +264,8 @@ def train_model(X, y):
     """Train Random Forest classifier and export to ONNX."""
     import numpy as np
 
-    if len(X) < 10:
-        print('[!] Insufficient training data. Need at least 10 labeled samples.')
+    if len(X) < 5:
+        print('[!] Insufficient training data. Need at least 5 labeled samples.')
         print(f'    Current: {len(X)} samples ({sum(y)} bot, {len(y) - sum(y)} human)')
         return None
 
