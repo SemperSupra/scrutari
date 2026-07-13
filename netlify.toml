@@ -179,6 +179,23 @@
 
 
 [[edge_functions]]
+  function = "honeypot"
+  path = "/api/graphql"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/query"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/xmlrpc.php"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/wp-json/"
+
+[[edge_functions]]
+  function = "model-loader"
+  path = "/api/model/metadata"
+
+[[edge_functions]]
   function = "og-image"
   path = "/api/og"
 

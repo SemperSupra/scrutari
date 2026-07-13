@@ -1077,7 +1077,7 @@ async function captureFingerprint() {
     }
   } catch(e) {}
 
-  // === BOT DETECTION SIGNALS ===
+  // === AUTOMATION DETECTION SIGNALS ===
 
   // Automation framework classification — detect AND name the specific framework
   try {
@@ -1820,11 +1820,11 @@ function renderBotOrNot(bon) {
   html += '</div><div id="self-assessment-result" style="font-size:0.7rem;color:#64748b;margin-top:0.4rem;"></div></div>';
 
   // Visible "I am not a bot" button — bots click it, humans ignore it
-  html += '<button id="not-a-bot-btn" style="position:fixed;bottom:1rem;right:1rem;z-index:9999;background:#1e293b;color:#64748b;border:1px solid #334155;border-radius:8px;padding:0.5rem 1rem;font-size:0.7rem;cursor:pointer;opacity:0.5;" ';
-  html += 'onclick="caughtNotABot()">🤖 Click to verify you\'re not a bot</button>';
-  // Hidden "I am a bot" button — invisible to humans, bots interact with all elements
-  html += '<button id="is-a-bot-btn" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" ';
-  html += 'onclick="caughtIsABot()">I am a bot</button>';
+  html += '<button id="verify-btn" style="position:fixed;bottom:1rem;right:1rem;z-index:9999;background:#1e293b;color:#64748b;border:1px solid #334155;border-radius:8px;padding:0.5rem 1rem;font-size:0.7rem;cursor:pointer;opacity:0.5;" ';
+  html += 'onclick="caughtVisibleTrap()">🤖 Tap to continue</button>';
+  // Hidden access link — invisible to humans, automation may interact
+  html += '<button id="hidden-access-btn" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" ';
+  html += 'onclick="caughtHiddenTrap()">Access</button>';
 
   return html;
 }
@@ -1869,25 +1869,25 @@ function autoCaptureBotSignal(signalName) {
   }
 }
 
-function caughtNotABot() {
-  var btn = document.getElementById('not-a-bot-btn');
+function caughtVisibleTrap() {
+  var btn = document.getElementById('verify-btn');
   if (btn) { btn.style.background = '#7f1d1d'; btn.style.color = '#fca5a5'; btn.style.opacity = '1'; }
   showBotTrapWarning('not-a-bot');
   autoCaptureBotSignal('not-a-bot-button');
 }
 
-function caughtIsABot() {
+function caughtHiddenTrap() {
   showBotTrapWarning('is-a-bot');
   autoCaptureBotSignal('is-a-bot-button');
 }
 
 function showBotTrapWarning(type) {
-  var label = type === 'not-a-bot' ? '"I am not a bot"' : '"I am a bot"';
+  var label = type === 'not-a-bot' ? 'verification' : 'access';
   var div = document.getElementById('botornot-results');
   if (div) {
     var warn = document.createElement('div');
     warn.style.cssText = 'margin-top:0.5rem;padding:0.5rem;background:#7f1d1d;color:#fca5a5;border-radius:0.375rem;font-size:0.75rem;text-align:center;';
-    warn.textContent = '⚠ Hidden ' + label + ' button clicked — bots are the only ones who find and click hidden elements. This has been recorded.';
+    warn.textContent = '⚠ Hidden ' + label + ' element activated.';
     div.appendChild(warn);
   }
 }

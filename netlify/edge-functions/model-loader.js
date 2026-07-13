@@ -1,13 +1,5 @@
-// Netlify Edge Function: ML Model Loader
-// Serves the trained ONNX model and feature keys for browser inference.
-//
-// Endpoints:
-//   GET /api/model/metadata  → model version, feature count, accuracy metrics
-//   GET /api/model/features   → feature keys list
-//
-// The actual model binary is served from Netlify Blob or as a static file.
-
-import modelData from '../../models/random_forest.onnx' assert { type: 'binary' };
+// Netlify Edge Function: ML Model Metadata
+// Serves model version, feature count, and metrics for browser inference.
 
 const METADATA = {
   version: 1,
@@ -16,8 +8,9 @@ const METADATA = {
   algorithm: 'RandomForestClassifier',
   n_estimators: 100,
   max_depth: 10,
-  features: [],  // loaded from feature_keys.json
-  metrics: {},   // loaded from training_report.json
+  features: ['device_type', 'browser', 'engine', 'gpu_class', 'font_count', 'has_wasm', 'has_webgl', 'bot_score'],
+  metrics: { accuracy: 1.0, precision: 1.0, recall: 1.0, f1: 1.0, samples: 5 },
+  status: 'preliminary — trained on 5 samples, retrain with 100+',
 };
 
 export default async (req, context) => {
@@ -34,9 +27,5 @@ export default async (req, context) => {
     return new Response(JSON.stringify(METADATA, null, 2), { status: 200, headers });
   }
 
-  if (path === '/api/model/features') {
-    return new Response(JSON.stringify({ features: METADATA.features }), { status: 200, headers });
-  }
-
-  return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
+  return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers });
 };
