@@ -1184,6 +1184,42 @@ async function captureFingerprint() {
     fp['Screen Orientation'] = orient;
   } catch(e) { fp['Screen Orientation'] = 'error'; }
 
+  // Connected devices — gamepads, sensors, peripherals (no permission needed)
+  try {
+    // Gamepad detection — bots never have gamepads connected; some humans do
+    var gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var connectedGamepads = 0;
+    for (var gi = 0; gi < (gamepads.length || 0); gi++) {
+      if (gamepads[gi] && gamepads[gi].connected) connectedGamepads++;
+    }
+    fp['Gamepads Connected'] = connectedGamepads > 0 ? 'Yes (' + connectedGamepads + ')' : 'No';
+    fp['Gamepad Names'] = connectedGamepads > 0 ? Array.from(gamepads).filter(Boolean).map(function(g){return g.id||'';}).join(', ') : 'none';
+
+    // Media devices — available without prompt in some browsers
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        navigator.mediaDevices.enumerateDevices().then(function(devices) {
+          var audioInput = 0, audioOutput = 0, videoInput = 0;
+          for (var di = 0; di < devices.length; di++) {
+            if (devices[di].kind === 'audioinput') audioInput++;
+            else if (devices[di].kind === 'audiooutput') audioOutput++;
+            else if (devices[di].kind === 'videoinput') videoInput++;
+          }
+          var devSummary = [];
+          if (audioInput > 0) devSummary.push(audioInput + ' mic');
+          if (videoInput > 0) devSummary.push(videoInput + ' camera');
+          if (audioOutput > 0) devSummary.push(audioOutput + ' speaker');
+          // Set on a future tick via a stored var
+          var fpEl = document.querySelector('#fingerprint-grid');
+          if (fpEl && devSummary.length > 0) {
+            // Async — add to grid if already rendered
+          }
+          window.__mediaDevices = devSummary.length > 0 ? devSummary.join(', ') : 'none detected';
+        }).catch(function(){});
+      }
+    } catch(mde) {}
+  } catch(e) { fp['Connected Devices'] = 'error'; }
+
   // Device classification — mobile, tablet, or desktop
   try {
     var ua = navigator.userAgent || '';
