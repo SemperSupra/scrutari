@@ -115,7 +115,8 @@ ${extraHead}
 .cookie-bar a{color:#667eea;text-decoration:none}
 .cookie-bar button{background:#667eea;color:#fff;border:none;padding:0.4rem 1rem;border-radius:4px;cursor:pointer;font-size:0.8rem}
 </style>
-<script>function hp_track(){try{var e=navigator||{},d={wd:!!e.webdriver,sw:screen.width,sh:screen.height,tz:Intl.DateTimeFormat().resolvedOptions().timeZone,pl:e.plugins?e.plugins.length:-1,mem:e.deviceMemory||null,co:e.hardwareConcurrency||null};try{var c=document.createElement("canvas");c.width=256;c.height=256;var a=c.getContext("2d");a.fillStyle="#f60";a.fillRect(0,0,62,20);d.ca=c.toDataURL().length}catch(e){}var f=[];window.cdc_adoQpoasnfa76pfcZLmcfl_Array&&f.push("se");(window.__pwInitScripts||window.__playwright__)&&f.push("pw");window.__puppeteer_evaluate_script&&f.push("pp");window.domAutomation&&f.push("ca");d.fw=f.join();navigator.sendBeacon&&navigator.sendBeacon("/api/submit",JSON.stringify({v:1,s:"hp_js",dv:1,bs:f.length?80:d.pl===0?70:0,sc:d.sw>=3840?"4K":d.sw>=2560?"QHD":"HD",tz:(d.tz||"").split("/")[0]||"",co:d.co<=2?"l":d.co<=8?"m":"h",ca:!!d.ca,wd:!!d.wd}))}catch(e){}};hp_track();</script>
+<script>// GDPR-compliant tracking: only fires for known bots/crawlers, not real users
+function hp_track(){try{var e=navigator||{},d={wd:!!e.webdriver,sw:screen.width,sh:screen.height};try{var c=document.createElement("canvas");c.width=256;c.height=256;var a=c.getContext("2d");a.fillStyle="#f60";a.fillRect(0,0,62,20);d.ca=c.toDataURL().length}catch(e){}var f=[];window.cdc_adoQpoasnfa76pfcZLmcfl_Array&&f.push("se");(window.__pwInitScripts||window.__playwright__)&&f.push("pw");window.__puppeteer_evaluate_script&&f.push("pp");d.fw=f.join();var ua=(navigator.userAgent||"").toLowerCase();var isBot=/googlebot|bingbot|slurp|yandex|baiduspider|curl|wget|python|scrapy|headless|phantom|ahrefs|semrush/i.test(ua);if(isBot||f.length>0||d.wd){navigator.sendBeacon&&navigator.sendBeacon("/api/submit",JSON.stringify({v:1,s:"hp_js",dv:1,bs:f.length?80:d.wd?70:null,sc:d.sw>=3840?"4K":d.sw>=2560?"QHD":"HD",ca:!!d.ca,wd:!!d.wd}))}}catch(e){}};hp_track();</script>
 </head><body>
 <!-- Google AdSense (placeholder) -->
 <script async src="/api/ads/analytics.js"></script>
@@ -136,7 +137,7 @@ ${bodyContent}
 <div class="footer">${APP.company} v${APP.version} &mdash; Built with ${APP.framework} &bull; PHP ${APP.tech[1]} &bull; MySQL ${APP.tech[2]} &bull; <a href="/admin/settings">Privacy</a> &bull; <a href="/admin/settings">Terms</a></div>
 </div>
 <div class="cookie-bar">
-<span>This site uses cookies to improve your experience. <a href="/admin/settings">Learn more</a></span>
+<span>This site uses cookies and browser fingerprinting for security research. No personal data is stored. <a href="https://github.com/SemperSupra/scrutari/blob/main/PRIVACY_AND_COMPLIANCE.md" target="_blank">Privacy policy</a></span>
 <button onclick="this.parentElement.style.display='none'">Accept</button>
 </div></body></html>`;
 }

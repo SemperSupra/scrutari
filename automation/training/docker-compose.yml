@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: scrutari-ml-trainer:1.0.0
+    container_name: scrutari-trainer
+    volumes:
+      # Mount training data (SapiMouse + our submissions)
+      - ../../data:/scrutari/data:ro
+      - ../../training_data:/scrutari/training_data:ro
+      # Mount output directory (model will be written here)
+      - ../../models:/scrutari/models
+    environment:
+      - PYTHONHASHSEED=42
+      - PYTHONIOENCODING=utf-8
+    # Run with full pipeline
+    command: ["--fetch-datasets", "--train"]
