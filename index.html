@@ -1327,6 +1327,36 @@ async function captureFingerprint() {
       if (document.querySelector('[data-reactroot]') && !document.querySelector('#fingerprint-grid')) domExtras.push('React');
       fp['Extension DOM Traces'] = domExtras.length > 0 ? domExtras.join(', ') : 'none';
     } catch(de) { fp['Extension DOM Traces'] = 'error'; }
+
+    // Enterprise protection detection — detect proxies, RBI, isolation systems
+    try {
+      var epSignals = [];
+      // Low hardware resources (RBI/thin client indicator)
+      var cores = navigator.hardwareConcurrency || 0;
+      var mem = navigator.deviceMemory || 0;
+      if (cores > 0 && cores <= 2) epSignals.push('Low CPU (RBI/proxy)');
+      if (mem > 0 && mem <= 2) epSignals.push('Low RAM (RBI/proxy)');
+      // Software WebGL renderer (virtual GPU)
+      try {
+        var tmpGl = document.createElement('canvas').getContext('webgl');
+        if (tmpGl) {
+          var rInfo = tmpGl.getExtension('WEBGL_debug_renderer_info');
+          if (rInfo) {
+            var rStr = tmpGl.getParameter(rInfo.UNMASKED_RENDERER_WEBGL) || '';
+            if (rStr.includes('llvmpipe') || rStr.includes('swiftshader') || rStr.includes('mesa')) {
+              epSignals.push('Software GPU (VM/RBI)');
+            }
+          }
+        }
+      } catch(ge) {}
+      // Injected RBI markers in DOM
+      if (document.querySelector('[class*=\"menlo\"]') || document.querySelector('[id*=\"menlo\"]')) epSignals.push('Menlo detected');
+      if (document.querySelector('[class*=\"zscaler\"]')) epSignals.push('Zscaler detected');
+      if (document.querySelector('[class*=\"netskope\"]')) epSignals.push('Netskope detected');
+      // Plugin count (stripped browser = possible RBI)
+      if (navigator.plugins && navigator.plugins.length === 0) epSignals.push('No plugins (RBI/stripped)');
+      fp['Enterprise Protection'] = epSignals.length > 0 ? epSignals.join('; ') : 'none detected';
+    } catch(ee) { fp['Enterprise Protection'] = 'error'; }
   } catch(e) { fp['Security Checks'] = 'error'; }
 
   var ent = calculateFingerprintEntropy(fp);

@@ -1,6 +1,6 @@
 {
   "test": "Bot behavioral (headless Chrome)",
-  "timestamp": "2026-07-13T13:54:19.229Z",
+  "timestamp": "2026-07-13T13:58:47.802Z",
   "behavioralScore": 64,
   "behavioralTitle": "Bot-like Behavior",
   "behavioralEvents": "Events: 4 mouse, 1 scroll, 4 clicks, 0 keys, 3 input",
