@@ -1981,6 +1981,9 @@ function __trackInputFocus(e) { if (!__behavior.running) return;
 function __trackVisibility() { if (!__behavior.running) return;
   __behavior.events.visibility = __behavior.events.visibility || [];
   __behavior.events.visibility.push({ hidden: document.hidden, t: performance.now() }); }
+function __trackPaste(e) { if (!__behavior.running) return;
+  __behavior.events.paste = __behavior.events.paste || [];
+  __behavior.events.paste.push({ t: performance.now(), target: e.target?.id || '', len: e.target?.value?.length || 0 }); __behavior.count++; __updateBehaviorUI(); }
 
 function __updateBehaviorUI() {
   var elapsed = performance.now() - __behavior.startTime;
@@ -2063,6 +2066,8 @@ function startBehaviorRecording() {
   window.addEventListener('resize', __trackResize, {passive: true});
   // Form input tracking
   document.addEventListener('input', __trackInput, {passive: true});
+  // Paste detection — AI agents use Ctrl+V, humans type
+  document.addEventListener('paste', __trackPaste, {passive: true});
   // Zoom and page navigation tracking
   window.matchMedia('(resolution: 1dppx)').addEventListener('change', __trackZoom);
   window.addEventListener('hashchange', __trackPageNav);
@@ -2096,6 +2101,7 @@ function stopBehaviorRecording() {
   window.removeEventListener('blur', __trackFocus);
   window.removeEventListener('resize', __trackResize);
   document.removeEventListener('input', __trackInput);
+  document.removeEventListener('paste', __trackPaste);
   window.matchMedia('(resolution: 1dppx)').removeEventListener('change', __trackZoom);
   window.removeEventListener('hashchange', __trackPageNav);
   document.getElementById('input-main')?.removeEventListener('focus', __trackInputFocus);
@@ -2272,6 +2278,13 @@ function analyzeBehavior(events) {
     return zn.length === 0;
   });
 
+  // Paste detection — AI agents (ChatGPT Agent, Atlas, Comet) use Ctrl+V
+  // Humans type character-by-character; paste = bot signal
+  var pe = events.paste || [];
+  t(3, 'Paste-based input detected', true, function() {
+    return pe.length > 0;
+  });
+
   // Page navigation — humans navigate between sections
   t(2, 'Page / section navigation', true, function() {
     return pg.length === 0;
@@ -2394,7 +2407,7 @@ function analyzeBehavior(events) {
     botProbability: Math.round(bp * 100), confidence: coverage >= 0.55 ? 'High' : (coverage >= 0.3 ? 'Medium' : 'Low'),
     signals: signals, totalWeight: totalWeight, maxWeight: 63,
     eventCount: { mouse: m.length, scroll: s.length, clicks: c.length, keys: k.length, focus: f.length, resize: rsz.length,
-      input: inp.length, formClicks: formC.length, visibilityEvents: v.length }
+      input: inp.length, formClicks: formC.length, visibilityEvents: v.length, paste: pe.length }
   };
 }
 
@@ -2417,7 +2430,7 @@ function displayBehaviorResults(r) {
   var ev = r.eventCount;
   html += '<div style="font-size:0.7rem;color:#64748b;margin:0.5rem 0;">Events: '+(ev.mouse||0)+' mouse, '+(ev.scroll||0)+' scroll, '+(ev.clicks||0)+' clicks, '+(ev.keys||0)+' keys' +
     ((ev.input||0) > 0 ? ', '+(ev.input||0)+' input' : '') + ((ev.formClicks||0) > 0 ? ', '+(ev.formClicks||0)+' btn clicks' : '') +
-    ((ev.visibilityEvents||0) > 0 ? ', '+(ev.visibilityEvents||0)+' vis events' : '')+'</div>';
+    ((ev.visibilityEvents||0) > 0 ? ', '+(ev.visibilityEvents||0)+' vis events' : '') + ((ev.paste||0) > 0 ? ', '+(ev.paste||0)+' paste' : '')+'</div>';
   html += '<div style="margin-top:0.5rem;"><span class="toggle-link" onclick="var s=document.getElementById(\'beh-signals\');s.classList.toggle(\'open\')">Show '+r.signals.length+' signal details ▼</span></div>';
   html += '<div id="beh-signals" class="signal-list">';
   for (var i = 0; i < r.signals.length; i++) {
