@@ -2347,6 +2347,49 @@ function analyzeBehavior(events) {
   // Mobile touch detection — touch events indicate mobile device, not bot by itself
   t(1, 'Touch interaction detected', false, function() { return tch.length >= 3; });
 
+  // Mobile sensor analysis — detect if sensor data is present and realistic
+  var mot = events.motion || [];
+  var ori = events.orientation || [];
+
+  // Sensor data presence — real mobile devices produce sensor data; emulators often don't
+  t(2, 'Motion sensor data present', false, function() {
+    return mot.length >= 3;
+  });
+  t(2, 'Orientation sensor data present', false, function() {
+    return ori.length >= 3;
+  });
+
+  // Gravity vector stability — real devices have ~9.8 m/s² gravity (g);
+  // Emulated/mocked data often has 0 gravity or unrealistic values
+  if (mot.length >= 5) {
+    t(3, 'Realistic gravity reading', false, function() {
+      var gravCount = 0;
+      for (var mi = 0; mi < mot.length; mi++) {
+        var a = mot[mi].accel;
+        if (a) {
+          var mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+          // Gravity should be near 9.8 m/s² on real devices
+          if (mag > 8 && mag < 12) gravCount++;
+        }
+      }
+      var gravPct = gravCount / mot.length;
+      return gravPct >= 0.3; // At least 30% of readings show realistic gravity
+    });
+
+    // Movement variance — real humans have varied acceleration; stationary bots have none
+    t(2, 'Natural movement variance', false, function() {
+      var accelValues = [];
+      for (var mi2 = 0; mi2 < mot.length; mi2++) {
+        var a2 = mot[mi2].accel;
+        if (a2) accelValues.push(Math.sqrt(a2.x*a2.x + a2.y*a2.y + a2.z*a2.z));
+      }
+      if (accelValues.length < 3) return null;
+      var avg = accelValues.reduce(function(a,b){return a+b;},0)/accelValues.length;
+      var var_ = accelValues.reduce(function(a,b){return a+(b-avg)*(b-avg);},0)/accelValues.length;
+      return Math.sqrt(var_) > 0.1; // Some variance = real movement
+    });
+  }
+
   t(1, 'Scrolling present', false, function() { return s.length >= 5; });
   if (s.length >= 5) {
     t(3, 'Scroll reading pauses', true, function() {
