@@ -2775,12 +2775,21 @@ function buildSubmissionData(fp, bon) {
   if (!fp) return { error: 'no data' };
   // Strip identifying fields — keep only aggregate stats and hashes
   var safe = {};
-  // Bot-or-Not scores (aggregate only)
+  // Bot-or-Not scores (aggregate + per-signal for longitudinal analysis)
   if (bon) {
     safe.botScore = bon.botProbability;
     safe.botConfidence = bon.confidence;
     safe.botTestsRun = bon.testsRun;
+    safe.detectorVersion = 2;
+    safe.maxPossibleScore = bon.maxWeight || 95;
     safe.botSignalNames = (bon.results || []).filter(function(s) { return s.bot; }).map(function(s) { return s.name; }).slice(0, 10);
+    // Per-signal scores — critical for signal half-life analysis
+    safe.signalScores = {};
+    var sigResults = bon.results || [];
+    for (var si = 0; si < sigResults.length; si++) {
+      var sig = sigResults[si];
+      safe.signalScores[sig.name] = { w: sig.weight, bot: sig.bot ? 1 : 0 };
+    }
   }
   // Entropy bits (aggregate, not per-attribute)
   safe.totalEntropyBits = fp.totalEntropyBits || null;

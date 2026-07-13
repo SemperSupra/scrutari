@@ -1,6 +1,6 @@
 {
   "test": "Headless WebKit (default)",
-  "timestamp": "2026-07-13T15-13-39-698Z",
+  "timestamp": "2026-07-13T15-49-01-883Z",
   "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
   "platform": "Win32",
   "botOrNot": {
@@ -295,9 +295,9 @@
     "Color Gamut": "sRGB",
     "Pointer Type": "Fine",
     "Hover Capable": "Yes",
-    "PoW Found": "No (max=50000)",
-    "PoW Time": "5932.0ms",
-    "PoW Speed": "8429 hashes/sec",
+    "PoW Found": "Yes (nonce=31553)",
+    "PoW Time": "3702.0ms",
+    "PoW Speed": "13506 hashes/sec",
     "PoW Hashing": "SHA-256 via Web Crypto API",
     "WebGL Vendor": "Apple Inc.",
     "WebGL Renderer": "Apple GPU",

@@ -1,9 +1,9 @@
 {
   "test": "Human-like behavioral (headless Chrome)",
-  "timestamp": "2026-07-13T15:14:40.973Z",
-  "behavioralScore": 12,
+  "timestamp": "2026-07-13T15:50:04.331Z",
+  "behavioralScore": 15,
   "behavioralTitle": "Human-like Behavior",
-  "behavioralEvents": "Events: 365 mouse, 207 scroll, 4 clicks, 328 keys, 160 input",
+  "behavioralEvents": "Events: 382 mouse, 185 scroll, 4 clicks, 310 keys, 151 input",
   "signals": [
     {
       "name": "Mouse movement present",
@@ -252,10 +252,10 @@
     },
     {
       "name": "Email format corrections",
-      "bot": false,
+      "bot": true,
       "weight": 3,
-      "value": false,
-      "humanLabel": "Human-like"
+      "value": true,
+      "humanLabel": "Bot-like"
     }
   ]
 }
