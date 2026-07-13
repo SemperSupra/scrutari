@@ -1683,7 +1683,48 @@ function renderBotOrNot(bon) {
   html += '<button class="share-btn" style="background:#334155;color:#e2e8f0;" onclick="downloadScoreCard()">⬇ Download card</button>';
   html += '</div>';
 
+  // Self-assessment: let the user rate how bot-like they think they are
+  html += '<div style="margin-top:1rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;">';
+  html += '<div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">📊 How bot-like do YOU think you are?</div>';
+  html += '<div style="display:flex;gap:0.35rem;justify-content:center;flex-wrap:wrap;">';
+  for (var si = 1; si <= 5; si++) {
+    var labels = ['Human','Probably Human','Not Sure','Probably Bot','Definitely Bot'];
+    html += '<button class="btn btn-sm" style="font-size:0.7rem;padding:0.3rem 0.6rem;background:#1e293b;color:#94a3b8;border:1px solid #334155;" ';
+    html += 'onclick="recordSelfAssessment(' + si + ')">' + si + ' — ' + labels[si - 1] + '</button>';
+  }
+  html += '</div><div id="self-assessment-result" style="font-size:0.7rem;color:#64748b;margin-top:0.4rem;"></div></div>';
+
+  // Hidden "I am not a bot" button — bots click it, humans ignore it
+  html += '<button id="not-a-bot-btn" style="position:fixed;bottom:1rem;right:1rem;z-index:9999;background:#1e293b;color:#64748b;border:1px solid #334155;border-radius:8px;padding:0.5rem 1rem;font-size:0.7rem;cursor:pointer;opacity:0.5;" ';
+  html += 'onclick="caughtNotABot()">🤖 Click to verify you\'re not a bot</button>';
+
   return html;
+}
+
+var __selfRating = null;
+
+function recordSelfAssessment(rating) {
+  __selfRating = rating;
+  var labels = ['Human','Probably Human','Not Sure','Probably Bot','Definitely Bot'];
+  var div = document.getElementById('self-assessment-result');
+  if (div) {
+    div.innerHTML = 'You rated yourself: <strong>' + labels[rating - 1] + '</strong> (' + rating + '/5)' +
+      (typeof __lastBotOrNotData !== 'undefined' && __lastBotOrNotData
+        ? ' &middot; Bot-or-Not calculated: <strong>' + __lastBotOrNotData.botProbability + '%</strong>'
+        : '');
+  }
+}
+
+function caughtNotABot() {
+  var btn = document.getElementById('not-a-bot-btn');
+  if (btn) { btn.style.background = '#7f1d1d'; btn.style.color = '#fca5a5'; btn.style.opacity = '1'; }
+  var div = document.getElementById('botornot-results');
+  if (div) {
+    var warn = document.createElement('div');
+    warn.style.cssText = 'margin-top:0.5rem;padding:0.5rem;background:#7f1d1d;color:#fca5a5;border-radius:0.375rem;font-size:0.75rem;text-align:center;';
+    warn.textContent = '⚠ "I am not a bot" button clicked — bots are the only ones who click that. This has been recorded.';
+    div.appendChild(warn);
+  }
 }
 
 function showEntropyExplanation(totalBits, uniqueness) {
@@ -2468,6 +2509,8 @@ function buildSubmissionData(fp, bon) {
   safe.submitted = new Date().toISOString().split('T')[0]; // date only, no time
   // Source — set by automation baselines to distinguish human vs automated submissions
   safe.source = window.__SUBMISSION_SOURCE || 'manual';
+  // Self-assessment — user's own rating of how bot-like they think they are (1-5)
+  safe.selfAssessment = window.__selfRating || null;
 
   // Detector version — tracks methodology changes over time
   // See DETECTOR_CHANGELOG.md when this changes
