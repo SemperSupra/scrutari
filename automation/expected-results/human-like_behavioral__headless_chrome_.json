@@ -1,9 +1,9 @@
 {
   "test": "Human-like behavioral (headless Chrome)",
-  "timestamp": "2026-07-13T13:59:46.090Z",
-  "behavioralScore": 6,
+  "timestamp": "2026-07-13T14:47:06.294Z",
+  "behavioralScore": 12,
   "behavioralTitle": "Human-like Behavior",
-  "behavioralEvents": "Events: 391 mouse, 217 scroll, 3 clicks, 289 keys, 140 input",
+  "behavioralEvents": "Events: 342 mouse, 208 scroll, 3 clicks, 289 keys, 140 input",
   "signals": [
     {
       "name": "Mouse movement present",
@@ -60,6 +60,27 @@
       "weight": 3,
       "value": true,
       "humanLabel": "Human-like"
+    },
+    {
+      "name": "Touch interaction detected",
+      "bot": true,
+      "weight": 1,
+      "value": false,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Motion sensor data present",
+      "bot": true,
+      "weight": 2,
+      "value": false,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Orientation sensor data present",
+      "bot": true,
+      "weight": 2,
+      "value": false,
+      "humanLabel": "Bot-like"
     },
     {
       "name": "Scrolling present",

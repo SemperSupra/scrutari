@@ -1,7 +1,7 @@
 {
   "test": "Bot behavioral (headless Chrome)",
-  "timestamp": "2026-07-13T13:58:47.802Z",
-  "behavioralScore": 64,
+  "timestamp": "2026-07-13T14:46:08.669Z",
+  "behavioralScore": 68,
   "behavioralTitle": "Bot-like Behavior",
   "behavioralEvents": "Events: 4 mouse, 1 scroll, 4 clicks, 0 keys, 3 input",
   "signals": [
@@ -9,6 +9,27 @@
       "name": "Mouse movement present",
       "bot": true,
       "weight": 1,
+      "value": false,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Touch interaction detected",
+      "bot": true,
+      "weight": 1,
+      "value": false,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Motion sensor data present",
+      "bot": true,
+      "weight": 2,
+      "value": false,
+      "humanLabel": "Bot-like"
+    },
+    {
+      "name": "Orientation sensor data present",
+      "bot": true,
+      "weight": 2,
       "value": false,
       "humanLabel": "Bot-like"
     },
