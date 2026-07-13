@@ -1195,6 +1195,27 @@ async function captureFingerprint() {
     fp['Gamepads Connected'] = connectedGamepads > 0 ? 'Yes (' + connectedGamepads + ')' : 'No';
     fp['Gamepad Names'] = connectedGamepads > 0 ? Array.from(gamepads).filter(Boolean).map(function(g){return g.id||'';}).join(', ') : 'none';
 
+    // Performance API precision — headless browsers have reduced precision (100µs vs 5µs)
+    try {
+      var pStart = performance.now();
+      var pEnd = performance.now();
+      var pDiff = pEnd - pStart;
+      fp['Performance Precision'] = pDiff < 0.01 ? 'Low (possible headless)' : (pDiff < 1 ? 'Normal' : 'Low precision');
+      // Cross-check: time resolution for detection
+      var pMin = Infinity;
+      for (var pi = 0; pi < 10; pi++) { var pv = performance.now(); if (pv > 0 && pv < pMin) pMin = pv; }
+      fp['Performance Resolution'] = pMin < 0.1 ? 'High' : 'Reduced';
+    } catch(pe) { fp['Performance Precision'] = 'error'; }
+
+    // Chrome runtime ID — stealth patches remove or modify this
+    try {
+      if (window.chrome && chrome.runtime) {
+        fp['Chrome Runtime'] = typeof chrome.runtime.id !== 'undefined' ? 'Present' : 'Missing (patched)';
+      } else {
+        fp['Chrome Runtime'] = 'N/A (non-Chrome)';
+      }
+    } catch(cre) { fp['Chrome Runtime'] = 'error'; }
+
     // Media devices — available without prompt in some browsers
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
