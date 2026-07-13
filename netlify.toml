@@ -189,6 +189,11 @@
   status = 200
 
 # Security headers
+[[redirects]]
+  from = "/api/analysis"
+  to = "/.netlify/functions/analysis"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
