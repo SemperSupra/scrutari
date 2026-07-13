@@ -1,0 +1,57 @@
+version: '3.9'
+
+services:
+  # Weekly baseline runner — runs Playwright baselines + ML training
+  # Schedule via: docker compose -f docker-compose.scheduler.yml run --rm weekly-baselines
+  # Or schedule with cron:
+  #   0 6 * * 1 cd /path/to/scrutari && docker compose -f automation/training/docker-compose.scheduler.yml up weekly-baselines
+  weekly-baselines:
+    image: node:20-bookworm@sha256:c2e4e78a7a590deb04ca801a5bf75b4c1a1f08cf841b2f156b01661070cc5ebf
+    container_name: scrutari-weekly-baselines
+    working_dir: /scrutari
+    volumes:
+      - ../../:/scrutari
+      - /c/Users/Mark/AppData/Local/ms-playwright:/root/.cache/ms-playwright:ro
+    environment:
+      - NODE_OPTIONS=--max-old-space-size=4096
+    entrypoint: >
+      sh -c "
+        echo '=== Scrutari Weekly Baselines ===' &&
+        echo 'Started: '$(date -u) &&
+        echo '' &&
+        echo '--- Step 1: Run fingerprint + behavioral baselines ---' &&
+        node automation/baselines.mjs --server 2>&1 | tail -20 &&
+        echo '' &&
+        echo '--- Step 2: Run state machine tests ---' &&
+        node automation/state-machine-tests.mjs --server 2>&1 | tail -10 &&
+        echo '' &&
+        echo '--- Step 3: Run honeypot tests ---' &&
+        node automation/honeypot-tests.mjs --server 2>&1 | tail -10 &&
+        echo '' &&
+        echo '=== Complete: '$(date -u)
+      "
+
+  # ML training — reproducible model training via Docker
+  ml-train:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: scrutari-ml-trainer:1.0.0
+    container_name: scrutari-ml-train
+    volumes:
+      - ../../data:/scrutari/data:ro
+      - ../../training_data:/scrutari/training_data:ro
+      - ../../models:/scrutari/models
+    environment:
+      - PYTHONHASHSEED=42
+    command: ["--train"]
+
+  # Status check — lightweight health endpoint
+  status-check:
+    image: curlimages/curl:latest
+    container_name: scrutari-status-check
+    entrypoint: >
+      sh -c "
+        echo 'Checking status...' &&
+        curl -s https://scrutari-submit-1783887159.netlify.app/api/status | head -20
+      "

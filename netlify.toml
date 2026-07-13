@@ -207,6 +207,10 @@
 
 # Security headers
 [[redirects]]
+  from = "/api/status"
+  to = "/.netlify/functions/status"
+  status = 200
+[[redirects]]
   from = "/api/analysis"
   to = "/.netlify/functions/analysis"
   status = 200
