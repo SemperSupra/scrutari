@@ -1220,6 +1220,17 @@ async function captureFingerprint() {
     } catch(mde) {}
   } catch(e) { fp['Connected Devices'] = 'error'; }
 
+  // Sensor availability — mobile sensors are strong fingerprint signals
+  try {
+    fp['Device Orientation API'] = typeof DeviceOrientationEvent !== 'undefined' ? 'Available' : 'No';
+    fp['Device Motion API'] = typeof DeviceMotionEvent !== 'undefined' ? 'Available' : 'No';
+    // Generic Sensor API — newer, Chrome-only for most sensor types
+    fp['Accelerometer API'] = typeof Accelerometer !== 'undefined' ? 'Available' : 'No';
+    fp['Gyroscope API'] = typeof Gyroscope !== 'undefined' ? 'Available' : 'No';
+    fp['Magnetometer API'] = typeof Magnetometer !== 'undefined' ? 'Available' : 'No';
+    fp['Ambient Light API'] = typeof AmbientLightSensor !== 'undefined' ? 'Available' : 'No';
+  } catch(e) { fp['Sensor APIs'] = 'error'; }
+
   // Device classification — mobile, tablet, or desktop
   try {
     var ua = navigator.userAgent || '';
@@ -2059,6 +2070,12 @@ function __trackZoom() { if (!__behavior.running) return;
 function __trackPageNav(e) { if (!__behavior.running) return;
   __behavior.events.pageNav = __behavior.events.pageNav || [];
   __behavior.events.pageNav.push({ from: window.location.hash || '(top)', to: e.target?.hash || '', t: performance.now() }); }
+function __trackMotion(e) { if (!__behavior.running) return;
+  __behavior.events.motion = __behavior.events.motion || [];
+  __behavior.events.motion.push({ accel: e.accelerationIncludingGravity || null, rot: e.rotationRate || null, t: performance.now() }); }
+function __trackOrientation(e) { if (!__behavior.running) return;
+  __behavior.events.orientation = __behavior.events.orientation || [];
+  __behavior.events.orientation.push({ alpha: e.alpha, beta: e.beta, gamma: e.gamma, t: performance.now() }); }
 function __trackTouch(e) { if (!__behavior.running) return;
   var t = e.touches ? e.touches[0] : e.changedTouches ? e.changedTouches[0] : null;
   if (!t) return;
@@ -2175,6 +2192,9 @@ function startBehaviorRecording() {
   document.addEventListener('paste', __trackPaste, {passive: true});
   // Zoom and page navigation tracking
   window.matchMedia('(resolution: 1dppx)').addEventListener('change', __trackZoom);
+  // Sensor tracking — mobile devices expose orientation and motion without permission
+  try { window.addEventListener('deviceorientation', __trackOrientation, {passive:true}); } catch(se) {}
+  try { window.addEventListener('devicemotion', __trackMotion, {passive:true}); } catch(se) {}
   window.addEventListener('hashchange', __trackPageNav);
   document.getElementById('input-main')?.addEventListener('focus', __trackInputFocus);
   document.getElementById('input-main')?.addEventListener('blur', __trackInputFocus);
@@ -2211,6 +2231,8 @@ function stopBehaviorRecording() {
   document.removeEventListener('input', __trackInput);
   document.removeEventListener('paste', __trackPaste);
   window.matchMedia('(resolution: 1dppx)').removeEventListener('change', __trackZoom);
+  try { window.removeEventListener('deviceorientation', __trackOrientation); } catch(se) {}
+  try { window.removeEventListener('devicemotion', __trackMotion); } catch(se) {}
   window.removeEventListener('hashchange', __trackPageNav);
   document.getElementById('input-main')?.removeEventListener('focus', __trackInputFocus);
   document.getElementById('input-main')?.removeEventListener('blur', __trackInputFocus);
