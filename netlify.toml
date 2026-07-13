@@ -75,6 +75,109 @@
 [[edge_functions]]
   function = "honeypot"
   path = "/version"
+
+[[edge_functions]]
+  function = "honeypot"
+  path = "/dashboard"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/dashboard/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/settings"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/settings/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/profile"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/profile/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/billing"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/billing/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/team"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/team/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/register"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/register/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/admin/users"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/admin/reports"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/admin/settings"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/admin/logs"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/v1/docs"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/v1/health"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/v1/users"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/v1/analytics"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/v1/admin"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/password/reset"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/password/confirm"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/verify-email"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/ads/analytics.js"
+
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/v1"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/v1/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/team"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/team/"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/password/reset"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/password/confirm"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/verify-email"
+[[edge_functions]]
+  function = "honeypot"
+  path = "/api/ads/analytics.js"
+
+
 [[edge_functions]]
   function = "og-image"
   path = "/api/og"
