@@ -2162,6 +2162,56 @@ function analyzeBehavior(events) {
       if (spd.length < 5) return null;
       return spd.reduce(function(a,b){return a+b;},0)/spd.length > 1.5;
     });
+
+    // 5. Velocity profile — humans accelerate then decelerate; bots instant on/off
+    // BeCAPTCHA-Mouse (Acien 2022) found this is the MOST discriminative feature
+    t(4, 'Natural velocity profile', false, function() {
+      if (spd.length < 10) return null;
+      // Compute acceleration (change in speed) for each segment
+      var acc = [];
+      for (var ai = 1; ai < spd.length; ai++) acc.push(spd[ai] - spd[ai-1]);
+      if (acc.length < 5) return null;
+      // Human velocity: gradual acceleration + gradual deceleration (wide acc distribution)
+      // Bot velocity: instant acceleration, plateau, instant stop (narrow acc distribution)
+      var accAvg = acc.reduce(function(a,b){return a+b;},0)/acc.length;
+      var accVar = acc.reduce(function(a,b){return a+(b-accAvg)*(b-accAvg);},0)/acc.length;
+      var accCV = Math.sqrt(accVar)/(Math.abs(accAvg)||0.001);
+      // High CV of acceleration = varied acceleration/deceleration = human-like
+      return accCV > 0.8;
+    });
+
+    // 6. Trajectory optimality — humans take winding paths; bots go near-straight
+    t(3, 'Natural trajectory path', false, function() {
+      if (m.length < 5) return null;
+      // Compute actual path length
+      var actualDist = 0;
+      for (var di = 1; di < m.length; di++) {
+        actualDist += Math.sqrt(Math.pow(m[di].x-m[di-1].x,2) + Math.pow(m[di].y-m[di-1].y,2));
+      }
+      // Compute straight-line distance from first to last point
+      var straightDist = Math.sqrt(Math.pow(m[m.length-1].x-m[0].x,2) + Math.pow(m[m.length-1].y-m[0].y,2));
+      if (straightDist < 5) return null; // No meaningful movement
+      var optimality = actualDist / straightDist;
+      // Human path is 2-8x longer than straight line (winding, exploring)
+      // Bot path is 1-1.5x (near-optimal, direct)
+      return optimality >= 1.5 && optimality <= 20;
+    });
+
+    // 7. Overshoot frequency — humans overshoot targets and correct; bots don't
+    t(3, 'Mouse overshoot corrections', false, function() {
+      if (m.length < 10) return null;
+      // Count direction changes (micro-corrections) in the movement
+      var corrections = 0;
+      for (var oi = 3; oi < m.length; oi++) {
+        var d1 = Math.atan2(m[oi-1].y-m[oi-2].y, m[oi-1].x-m[oi-2].x);
+        var d2 = Math.atan2(m[oi].y-m[oi-1].y, m[oi].x-m[oi-1].x);
+        if (Math.abs(d1-d2) > 0.5) corrections++;
+      }
+      var corrRate = corrections / (m.length / 10);
+      // Humans have 2-5 corrections per 10 data points
+      // Bots have 0-1 (near-straight)
+      return corrRate >= 0.5 && corrRate <= 10;
+    });
   }
 
   t(1, 'Scrolling present', false, function() { return s.length >= 5; });
@@ -2174,6 +2224,25 @@ function analyzeBehavior(events) {
       var ch = 0;
       for (var i = 2; i < s.length; i++) if ((s[i-1].y-s[i-2].y)*(s[i].y-s[i-1].y) < 0) ch++;
       return ch === 0 && s.length > 10;
+    });
+    // Scroll pattern classification — continuous vs discrete scrolling
+    // FP-Agent: AI agents scroll in discrete jumps (instant to known coords)
+    // Humans scroll continuously with variable speed
+    t(3, 'Natural scrolling pattern', false, function() {
+      if (s.length < 5) return null;
+      // Compute scroll speeds
+      var scrollSpeeds = [];
+      for (var si = 1; si < s.length; si++) {
+        var dt = s[si].t - s[si-1].t;
+        var dy = Math.abs(s[si].y - s[si-1].y);
+        if (dt > 0) scrollSpeeds.push(dy / dt);
+      }
+      if (scrollSpeeds.length < 3) return null;
+      // Check for zero-duration scrolls (instant jumps = bot)
+      var instantJumps = scrollSpeeds.filter(function(sp) { return sp > 50; });
+      // Human scroll: varied speeds, no instant jumps
+      // AI scroll: instant jumps to exact positions
+      return instantJumps.length === 0;
     });
   }
 
@@ -2402,10 +2471,10 @@ function analyzeBehavior(events) {
   }
 
   var bp = totalWeight > 0 ? (botWeight / totalWeight) : 0.5;
-  var coverage = totalWeight / 82;
+  var coverage = totalWeight / 95;
   return {
-    botProbability: Math.round(bp * 100), confidence: coverage >= 0.55 ? 'High' : (coverage >= 0.3 ? 'Medium' : 'Low'),
-    signals: signals, totalWeight: totalWeight, maxWeight: 63,
+    botProbability: Math.round(bp * 100), confidence: coverage >= 0.5 ? 'High' : (coverage >= 0.25 ? 'Medium' : 'Low'),
+    signals: signals, totalWeight: totalWeight, maxWeight: 95,
     eventCount: { mouse: m.length, scroll: s.length, clicks: c.length, keys: k.length, focus: f.length, resize: rsz.length,
       input: inp.length, formClicks: formC.length, visibilityEvents: v.length, paste: pe.length }
   };
