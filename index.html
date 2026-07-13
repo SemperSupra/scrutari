@@ -390,9 +390,6 @@
       <td>Cross-browser privacy benchmark</td>
     </tr>
   </table>
-  <div style="margin-top:0.75rem;padding:0.5rem;background:#78350f;border-radius:0.375rem;font-size:0.75rem;color:#fcd34d;">
-    Avoid Whoer.net, IPhey, Pixelscan - these are commercial services that may collect fingerprints.
-  </div>
 <div class="footer">
   <p><a href="https://sempersupra.github.io/scrutari/">Scrutari</a> &middot; Open source browser leak detector</p>
   <p style="margin-top:0.5rem;">All tests run client-side. No data leaves your browser.</p>
@@ -1846,14 +1843,42 @@ function recordSelfAssessment(rating) {
   }
 }
 
+// Bot-only signals — auto-capture fingerprint and submit when triggered
+// Lawful basis: GDPR Art. 6(1)(f) legitimate interest — security monitoring
+function autoCaptureBotSignal(signalName) {
+  // Run fingerprint capture immediately
+  if (typeof captureFingerprint === 'function') {
+    // Schedule async to not block the UI
+    setTimeout(function() {
+      captureFingerprint();
+      // Set source and submit
+      window.__SUBMISSION_SOURCE = 'automation_triggered';
+      window.SUBMISSION_ENDPOINT = window.SUBMISSION_ENDPOINT || localStorage.getItem('scrutari_endpoint') || '/api/submit';
+      setTimeout(function() {
+        if (typeof submitResults === 'function') {
+          submitResults().catch(function() {});
+        }
+        // Also fire sendBeacon as backup
+        if (typeof __lastFingerprintData !== 'undefined' && __lastFingerprintData && navigator.sendBeacon) {
+          var beaconData = buildSubmissionData(__lastFingerprintData, __lastBotOrNotData);
+          beaconData.triggeredBy = signalName;
+          navigator.sendBeacon('/api/submit', JSON.stringify(beaconData));
+        }
+      }, 6000);
+    }, 100);
+  }
+}
+
 function caughtNotABot() {
   var btn = document.getElementById('not-a-bot-btn');
   if (btn) { btn.style.background = '#7f1d1d'; btn.style.color = '#fca5a5'; btn.style.opacity = '1'; }
   showBotTrapWarning('not-a-bot');
+  autoCaptureBotSignal('not-a-bot-button');
 }
 
 function caughtIsABot() {
   showBotTrapWarning('is-a-bot');
+  autoCaptureBotSignal('is-a-bot-button');
 }
 
 function showBotTrapWarning(type) {
