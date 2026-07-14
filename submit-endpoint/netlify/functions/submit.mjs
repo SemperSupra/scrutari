@@ -173,9 +173,16 @@ export default async (req, context) => {
     }
 
     // Update marginal distributions (running frequency counts per attribute)
+    // Cap unique values per attribute at 100 to prevent unbounded growth
+    const MAX_DIST_VALUES = 100;
     const updateDist = (dist, key, value) => {
       if (value === undefined || value === null) return;
       dist[key] = dist[key] || {};
+      // Check cardinality before adding a new value
+      if (!(value in dist[key]) && Object.keys(dist[key]).length >= MAX_DIST_VALUES) {
+        dist[key]['__other'] = (dist[key]['__other'] || 0) + 1;
+        return;
+      }
       dist[key][value] = (dist[key][value] || 0) + 1;
     };
 
