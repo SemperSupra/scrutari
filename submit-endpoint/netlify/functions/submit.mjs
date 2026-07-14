@@ -40,6 +40,51 @@ const ALLOWED_SOURCES = [
   'automation_selenium_stealth', 'automation_http', 'automation_curl',
 ];
 const MAX_BLOB_SIZE_BYTES = 800 * 1024 * 1024; // 800MB safety limit (1GB free)
+const MAX_BODY_BYTES = 102400; // 100KB
+
+// Sliding window rate limiter (in-memory, per warm container)
+const _rateWindows = new Map();
+
+function checkRateLimit(ip, windowMs = 5000, maxPerWindow = 1) {
+  const now = Date.now();
+  const cutoff = now - windowMs;
+  let timestamps = _rateWindows.get(ip);
+  if (timestamps) {
+    let lo = 0, hi = timestamps.length;
+    while (lo < hi) { const mid = (lo + hi) >>> 1; if (timestamps[mid] < cutoff) lo = mid + 1; else hi = mid; }
+    timestamps = timestamps.slice(lo);
+  } else {
+    timestamps = [];
+  }
+  if (timestamps.length >= maxPerWindow) return false;
+  timestamps.push(now);
+  _rateWindows.set(ip, timestamps);
+  return true;
+}
+
+// Periodic cleanup of stale rate limit entries
+if (typeof globalThis.__ratePrune === 'undefined') {
+  globalThis.__ratePrune = setInterval(() => {
+    const cutoff = Date.now() - 5000;
+    for (const [ip, ts] of _rateWindows) {
+      const valid = ts.filter(t => t >= cutoff);
+      if (valid.length === 0) _rateWindows.delete(ip);
+      else _rateWindows.set(ip, valid);
+    }
+  }, 60000);
+}
+
+// Schema validation
+function schemaValidate(data) {
+  const errors = [];
+  if (data === null || typeof data !== 'object') return ['Request body must be a JSON object'];
+  if (typeof data.version !== 'number') errors.push('version must be a number');
+  if (data.version < 1) errors.push('version must be >= 1');
+  if (data.source && !ALLOWED_SOURCES.includes(data.source)) {
+    errors.push('Invalid source: ' + data.source);
+  }
+  return errors.length > 0 ? errors : null;
+}
 
 export default async (req, context) => {
   const headers = {
@@ -52,10 +97,26 @@ export default async (req, context) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
   if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'POST only' }), { status: 405, headers });
 
+  // Body size check
+  const contentLength = parseInt(req.headers.get('content-length') || '0');
+  if (contentLength > MAX_BODY_BYTES) {
+    return new Response(JSON.stringify({ error: 'Request body too large' }), { status: 413, headers });
+  }
+
+  // Rate limiting
+  const rawClientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+                   || req.headers.get('x-nf-client-connection-ip') || 'unknown';
+  const clientIP = normalizeIP(rawClientIP);
+  if (!checkRateLimit(clientIP)) {
+    return new Response(JSON.stringify({ error: 'Rate limited' }), { status: 429, headers });
+  }
+
   try {
     const data = await req.json();
-    if (!data || typeof data.version !== 'number') throw new Error('Missing version');
-    if (data.source && !ALLOWED_SOURCES.includes(data.source)) throw new Error('Invalid source');
+    const schemaErrors = schemaValidate(data);
+    if (schemaErrors) {
+      return new Response(JSON.stringify({ error: schemaErrors.join('; ') }), { status: 400, headers });
+    }
 
     // Build deduplication key: SHA-256 of normalized fingerprint attributes
     const fp = {
