@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const PORT = process.env.PORT || 3456;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const RATE_LIMIT_MS = process.env.RATE_LIMIT_MS ? parseInt(process.env.RATE_LIMIT_MS) : 5000;
+const MAX_BODY_BYTES = parseInt(process.env.MAX_BODY_BYTES) || 102400; // 100KB default
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -18,25 +19,64 @@ function normalizeIP(ip) {
   return ip;
 }
 
-// Labeled sources for ground truth validation
-const ALLOWED_SOURCES = [
-  'manual', 'automation_baseline', 'automation_playwright', 'automation_playwright_stealth',
-  'automation_puppeteer', 'automation_puppeteer_stealth', 'automation_selenium',
-  'automation_selenium_stealth', 'automation_http', 'automation_curl',
-];
-const MAX_DB_SIZE = 800 * 1024 * 1024; // 800MB
+// Sliding window rate limiter — per-IP sorted timestamp array
+// O(log n) cleanup on each check using binary search
+class SlidingWindowRateLimiter {
+  constructor(windowMs = 5000, maxPerWindow = 1) {
+    this.windowMs = windowMs;
+    this.maxPerWindow = maxPerWindow;
+    this._windows = new Map();
+  }
 
-// Rate limiter
-const recent = new Map();
-setInterval(() => recent.clear(), 60000);
+  allow(ip) {
+    const now = Date.now();
+    let timestamps = this._windows.get(ip);
+    const cutoff = now - this.windowMs;
 
-function rateLimit(rawIp) {
-  const ip = normalizeIP(rawIp);
-  const now = Date.now();
-  const last = recent.get(ip);
-  if (last && now - last < RATE_LIMIT_MS) return false;
-  recent.set(ip, now);
-  return true;
+    if (timestamps) {
+      // Binary search for first timestamp >= cutoff
+      let lo = 0, hi = timestamps.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (timestamps[mid] < cutoff) lo = mid + 1;
+        else hi = mid;
+      }
+      timestamps = timestamps.slice(lo);
+    } else {
+      timestamps = [];
+    }
+
+    if (timestamps.length >= this.maxPerWindow) return false;
+    timestamps.push(now);
+    this._windows.set(ip, timestamps);
+    return true;
+  }
+
+  prune() {
+    const cutoff = Date.now() - this.windowMs;
+    for (const [ip, timestamps] of this._windows) {
+      const valid = timestamps.filter(t => t >= cutoff);
+      if (valid.length === 0) this._windows.delete(ip);
+      else this._windows.set(ip, valid);
+    }
+  }
+
+  get size() { return this._windows.size; }
+}
+
+const rateLimiter = new SlidingWindowRateLimiter(RATE_LIMIT_MS, 1);
+setInterval(() => rateLimiter.prune(), 60000); // Prune stale entries every 60s
+
+function schemaValidate(data) {
+  const errors = [];
+  if (data === null || typeof data !== 'object') return ['Request body must be a JSON object'];
+  if (typeof data.version !== 'number') errors.push('version must be a number');
+  if (data.version < 1) errors.push('version must be >= 1');
+  // Source validation
+  if (data.source && !ALLOWED_SOURCES.includes(data.source)) {
+    errors.push('Invalid source: ' + data.source);
+  }
+  return errors.length > 0 ? errors : null;
 }
 
 // Load or initialize store
@@ -115,19 +155,33 @@ const server = http.createServer((req, res) => {
 
   const rawIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
   const ip = normalizeIP(rawIp);
-  if (!rateLimit(ip)) {
+  if (!rateLimiter.allow(ip)) {
     res.writeHead(429, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Rate limited' }));
     return;
   }
 
   let body = '';
-  req.on('data', chunk => body += chunk);
+  let bodyBytes = 0;
+  req.on('data', chunk => {
+    bodyBytes += chunk.length;
+    if (bodyBytes > MAX_BODY_BYTES) {
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Request body too large' }));
+      req.destroy();
+      return;
+    }
+    body += chunk;
+  });
   req.on('end', () => {
     try {
       const data = JSON.parse(body);
-      if (!data || typeof data.version !== 'number') throw new Error('Missing version');
-      if (data.source && !ALLOWED_SOURCES.includes(data.source)) throw new Error('Invalid source');
+      const schemaErrors = schemaValidate(data);
+      if (schemaErrors) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: schemaErrors.join('; ') }));
+        return;
+      }
 
       const db = loadStore();
       const fpHash = computeHash(data);
