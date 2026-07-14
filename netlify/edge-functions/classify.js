@@ -29,9 +29,10 @@ const TOR_CACHE_TTL = 3600000; // 1 hour
 
 // Normalize IP address for consistent Tor exit checking
 function normalizeIP(ip) {
-  if (!ip || ip === 'unknown' || ip === '::1') return '127.0.0.1';
+  if (!ip || ip === 'unknown') return 'unknown';
   if (ip.startsWith('[') && ip.endsWith(']')) ip = ip.slice(1, -1);
   if (ip.startsWith('::ffff:')) return ip.substring(7);
+  if (ip === '::1') return '127.0.0.1';
   return ip;
 }
 

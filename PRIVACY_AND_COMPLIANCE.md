@@ -6,7 +6,7 @@
 |------|:----------:|:--------------:|:------------:|-------|
 | **SPA submission** (click Submit) | ✅ Checkbox consent | ❌ Anonymized | Consent (Art. 7) | ✅ OK |
 | **Auto-submit from baselines** | ❌ N/A (bots) | ❌ Anonymized | Legitimate interest (Art. 6(1)(f)) | ⚠️ Document |
-| **Honeypot JS tracking** (`hp_track`) | ❌ NO CONSENT | ❌ Anonymized | None documented | 🔴 CRITICAL |
+| **Honeypot JS tracking** (`hp_track`) | ✅ Only for known bots | ❌ Anonymized | Legitimate interest (Art. 6(1)(f)) | ✅ Fixed — stripped for non-bot UAs |
 | **Honeypot HTTP logging** (crawlers) | ❌ N/A (crawlers) | IP logged temporarily | Legitimate interest | ⚠️ Add retention |
 | **Behavioral recording** (SPA) | ✅ User initiated | ❌ Never sent | Implicit consent | ✅ OK |
 
@@ -14,12 +14,20 @@
 
 ### 1. 🔴 Honeypot JS Tracking — No Consent
 
-The `hp_track()` function in honeypot pages sends fingerprint data via `navigator.sendBeacon('/api/submit', ...)` without user knowledge or consent. This is the most serious issue.
+**STATUS: FIXED** (Phase 2, PR 2.1-2.2)
 
-**Fix needed:**
-- Honeypot pages must display a privacy notice on first visit
-- Tracking must be opt-in, not opt-out
-- OR: tracking must be limited to known bots/crawlers (by User-Agent), not real users
+The `hp_track()` function in honeypot pages is now server-side gated: only
+served to visitors classified as known bots/crawlers (User-Agent match).
+Real users who accidentally hit a honeypot path receive the fake page
+without any tracking JS.
+
+Additionally, LLM prompt injection comments (`<!-- SYSTEM: ... -->`) are
+stripped for non-bot visitors, preventing adversarial analysis of
+detection logic.
+
+**Implementation:** `netlify/edge-functions/honeypot.js` export default
+handler — post-processes HTML responses to strip tracking and injection
+for `classification.score === null` (unknown/non-bot) visitors.
 
 ### 2. 🟡 Data Retention — No Deletion Policy
 
@@ -57,8 +65,8 @@ Netlify is a US company. Data stored in US may require Standard Contractual Clau
 
 | Priority | Action | Timeline |
 |:--------:|--------|:--------:|
-| 🔴 | **Stop honeypot JS tracking immediately** or add privacy notice + consent | Today |
-| 🔴 | Add privacy policy to SPA and honeypot pages | Today |
+| 🔴 | **Stop honeypot JS tracking immediately** or add privacy notice + consent | ✅ Done |
+| 🔴 | Add privacy policy to SPA and honeypot pages | ⏳ Done (PRIVACY_AND_COMPLIANCE.md exists, needs link in footer) |
 | 🟡 | Add data retention policy (365 days auto-delete) | This week |
 | 🟡 | Add deletion request endpoint | This week |
 | 🟢 | Document DPIA | This month |

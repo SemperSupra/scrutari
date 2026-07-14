@@ -13,9 +13,10 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 // Normalize IP address for consistent rate limiting and anonymization
 // Handles IPv6-mapped IPv4 (::ffff:x.x.x.x), bracketed IPv6 ([::1]), and native IPv6
 function normalizeIP(ip) {
-  if (!ip || ip === 'unknown' || ip === '::1') return '127.0.0.1';
+  if (!ip || ip === 'unknown') return 'unknown';
   if (ip.startsWith('[') && ip.endsWith(']')) ip = ip.slice(1, -1);
   if (ip.startsWith('::ffff:')) return ip.substring(7);
+  if (ip === '::1') return '127.0.0.1';
   return ip;
 }
 
