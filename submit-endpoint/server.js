@@ -1,3 +1,4 @@
+﻿'use strict';
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -20,7 +21,16 @@ function normalizeIP(ip) {
   return ip;
 }
 
-// Sliding window rate limiter — per-IP sorted timestamp array
+// Labeled sources for ground truth validation
+const ALLOWED_SOURCES = [
+  'manual', 'automation_baseline', 'automation_playwright', 'automation_playwright_stealth',
+  'automation_puppeteer', 'automation_puppeteer_stealth', 'automation_selenium',
+  'automation_selenium_stealth', 'automation_http', 'automation_curl',
+];
+const MAX_DB_SIZE = 800 * 1024 * 1024; // 800MB
+const MAX_ARCHIVES = 3; // Keep only this many archive files
+
+// Sliding window rate limiter â€” per-IP sorted timestamp array
 // O(log n) cleanup on each check using binary search
 class SlidingWindowRateLimiter {
   constructor(windowMs = 5000, maxPerWindow = 1) {
@@ -111,10 +121,25 @@ function saveStore(db) {
     db.archivedAt = new Date().toISOString();
     saveStore(db);
     console.log(`Archived store to ${archiveFile}, reset for continuing collection`);
+
+    // Prune old archives: keep only the MAX_ARCHIVES most recent
+    try {
+      const archives = fs.readdirSync(DATA_DIR)
+        .filter(f => f.startsWith('store-archive-'))
+        .sort()
+        .reverse();
+      for (let i = MAX_ARCHIVES; i < archives.length; i++) {
+        fs.unlinkSync(path.join(DATA_DIR, archives[i]));
+        console.log(`Removed old archive: ${archives[i]}`);
+      }
+    } catch (e) {
+      console.error('Error pruning archives:', e.message);
+    }
   }
   return size;
 }
 
+// eslint-disable-next-line no-unused-vars
 function anonymizeIP(rawIp) {
   return crypto.createHash('sha256').update(normalizeIP(rawIp) + 'scrutari-salt').digest('hex').substring(0, 16);
 }
@@ -134,6 +159,11 @@ function computeHash(data) {
 function updateDistribution(dist, key, value) {
   if (value === undefined || value === null) return;
   dist[key] = dist[key] || {};
+  // Cap unique values per attribute at 100 to prevent unbounded growth
+  if (!(value in dist[key]) && Object.keys(dist[key]).length >= 100) {
+    dist[key]['__other'] = (dist[key]['__other'] || 0) + 1;
+    return;
+  }
   dist[key][value] = (dist[key][value] || 0) + 1;
 }
 
@@ -256,3 +286,4 @@ server.listen(PORT, () => {
   console.log(`Data: ${DATA_DIR}/store.json`);
   console.log(`Auto-archive at ${MAX_DB_SIZE / 1024 / 1024}MB`);
 });
+

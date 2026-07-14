@@ -17,7 +17,13 @@
     "docker:build": "cd automation/training && docker compose build",
     "lint": "npx eslint index.html test/**/*.mjs"
   },
-  "keywords": ["privacy", "bot-detection", "fingerprint", "k-anonymity", "security"],
+  "keywords": [
+    "privacy",
+    "bot-detection",
+    "fingerprint",
+    "k-anonymity",
+    "security"
+  ],
   "author": "SemperSupra",
   "license": "Apache-2.0",
   "engines": {
@@ -26,5 +32,8 @@
   "dependencies": {
     "@netlify/blobs": "^10.7.9",
     "playwright": "^1.61.1"
+  },
+  "devDependencies": {
+    "globals": "^17.7.0"
   }
 }

@@ -24,8 +24,9 @@ const DATACENTER_PROVIDERS = [
 
 // Tor exit list URL — fetched and cached
 const TOR_EXIT_URL = 'https://check.torproject.org/exit-addresses';
-let torCache = { ips: new Set(), updated: 0 };
+let torCache = { ips: new Set(), updated: 0, fetching: false, lastError: null };
 const TOR_CACHE_TTL = 3600000; // 1 hour
+const TOR_CACHE_MAX_AGE = 7200000; // 2 hours — force reset if fetch keeps failing
 
 // Normalize IP address for consistent Tor exit checking
 function normalizeIP(ip) {
@@ -38,7 +39,14 @@ function normalizeIP(ip) {
 
 async function fetchTorExits() {
   const now = Date.now();
+  // Force reset if fetch keeps failing beyond max age
+  if (now - torCache.updated > TOR_CACHE_MAX_AGE) {
+    torCache = { ips: new Set(), updated: 0, fetching: false, lastError: null };
+  }
   if (now - torCache.updated < TOR_CACHE_TTL) return torCache.ips;
+  // In-flight lock: prevent redundant concurrent fetches
+  if (torCache.fetching) return torCache.ips;
+  torCache.fetching = true;
   try {
     const resp = await fetch(TOR_EXIT_URL);
     const text = await resp.text();
@@ -49,11 +57,13 @@ async function fetchTorExits() {
         if (ip) ips.add(ip);
       }
     }
-    torCache = { ips, updated: now };
+    torCache = { ips, updated: now, fetching: false, lastError: null };
     console.log(`Tor exit list updated: ${ips.size} nodes`);
     return ips;
   } catch (e) {
     console.error('Tor list fetch failed:', e.message);
+    torCache.fetching = false;
+    torCache.lastError = e.message;
     return torCache.ips;
   }
 }
