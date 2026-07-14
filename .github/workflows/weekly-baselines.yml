@@ -1,0 +1,58 @@
+name: Weekly Baselines
+
+on:
+  schedule:
+    # Monday 6 AM UTC — weekly research data collection
+    - cron: '57 5 * * 1'
+  workflow_dispatch:  # allow manual trigger
+
+jobs:
+  baselines:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium firefox webkit
+
+      - name: Start test server
+        run: |
+          python3 automation/server.py &
+          sleep 2
+
+      - name: Run fingerprint baselines
+        run: node automation/baselines.mjs --server
+
+      - name: Run state machine tests
+        run: node automation/state-machine-tests.mjs --server
+
+      - name: Run honeypot tests
+        run: node automation/honeypot-tests.mjs --server
+
+      - name: Run IPv6 test suite
+        run: node automation/ipv6-test.mjs --server || echo "IPv6 tests skipped on this runner"
+
+      - name: Run all unit tests
+        run: node --test test/**/*.test.mjs
+
+      - name: Ping status endpoint
+        run: |
+          curl -s -o /dev/null -w "Status: %{http_code}\n" \
+            https://scrutari-submit-1783887159.netlify.app/api/status || \
+            echo "Status ping failed (expected if not deployed)"
+
+      - name: Archive expected results
+        uses: actions/upload-artifact@v4
+        with:
+          name: expected-results-${{ github.run_id }}
+          path: automation/expected-results/
+          retention-days: 90
