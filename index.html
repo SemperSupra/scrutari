@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -244,7 +244,7 @@
       <div class="gauge-subtitle" id="behavior-substatus">Click start and interact with the page normally</div>
       <div id="behavior-progress" style="display:none;">
         <div class="rec-progress"><div class="rec-fill" id="behavior-bar" style="width:0%;"></div></div>
-        <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events recorded</div>
+        <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events · <span id="behavior-breakdown" style="font-size:0.7rem;color:#94a3b8;"></span> recorded</div>
       </div>
       <button class="btn" id="behavior-btn" onclick="toggleBehaviorRecording()">Ã¢â€“Â¶ Start analysis</button>
       <!-- form section for interaction analysis -->
@@ -2390,7 +2390,7 @@ function __trackTouch(e) { if (!__behavior.running) return;
       <div class="gauge-subtitle" id="behavior-substatus">Click start and interact with the page normally</div>
       <div id="behavior-progress" style="display:none;">
         <div class="rec-progress"><div class="rec-fill" id="behavior-bar" style="width:0%;"></div></div>
-        <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events recorded</div>
+        <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events · <span id="behavior-breakdown" style="font-size:0.7rem;color:#94a3b8;"></span> recorded</div>
       </div>
       <button class="btn" id="behavior-btn" onclick="toggleBehaviorRecording()">Ã¢â€“Â¶ Start analysis</button>
       <!-- form section for interaction analysis -->
@@ -4315,6 +4315,14 @@ function __updateBehaviorUI() {
   document.getElementById('behavior-bar').style.width = pct + '%';
   document.getElementById('behavior-timer').textContent = remaining + 's';
   document.getElementById('behavior-events').textContent = __behavior.count;
+  var eBd = __behavior.events; var bdItems = [];
+  if (eBd.mouse.length > 0) bdItems.push('Mouse: ' + eBd.mouse.length);
+  if (eBd.clicks.length > 0) bdItems.push('Clicks: ' + eBd.clicks.length);
+  if (eBd.key.length > 0) bdItems.push('Keys: ' + eBd.key.length);
+  if (eBd.scroll.length > 0) bdItems.push('Scroll: ' + eBd.scroll.length);
+  if (eBd.touch.length > 0) bdItems.push('Touch: ' + eBd.touch.length);
+  var elBrkd = document.getElementById('behavior-breakdown');
+  if (elBrkd) elBrkd.textContent = bdItems.join(' | ');
   // Real-time signal indicators
   var e = __behavior.events;
   var tags = [];
@@ -4999,6 +5007,8 @@ function buildSubmissionData(fp, bon) {
   safe.submitted = new Date().toISOString().split('T')[0]; // date only, no time
   // Source Ã¢â‚¬â€ set by automation baselines to distinguish human vs automated submissions
   safe.source = window.__SUBMISSION_SOURCE || 'manual';
+  // Interaction metrics for HCI experiment
+  try { var _beh = window.__behavior; if (_beh && _beh.events) { safe._interactionMetrics = { mouseEvents: (_beh.events.mouse||[]).length, scrollEvents: (_beh.events.scroll||[]).length, clickEvents: (_beh.events.clicks||[]).length, keyEvents: (_beh.events.key||[]).length, totalEvents: _beh.count||0, duration: _beh.duration||0, submitted: true }; } } catch(_ie){}
   // Self-assessment Ã¢â‚¬â€ user's own rating of how bot-like they think they are (1-5)
   safe.selfAssessment = window.__selfRating || null;
 
@@ -5457,7 +5467,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="gauge-subtitle" id="behavior-substatus">Click start and interact with the page normally</div>
       <div id="behavior-progress" style="display:none;">
         <div class="rec-progress"><div class="rec-fill" id="behavior-bar" style="width:0%;"></div></div>
-        <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events recorded</div>
+        <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events · <span id="behavior-breakdown" style="font-size:0.7rem;color:#94a3b8;"></span> recorded</div>
       </div>
       <button class="btn" id="behavior-btn" onclick="toggleBehaviorRecording()">Ã¢â€“Â¶ Start analysis</button>
       <!-- form section for interaction analysis -->
@@ -7382,6 +7392,14 @@ function __updateBehaviorUI() {
   document.getElementById('behavior-bar').style.width = pct + '%';
   document.getElementById('behavior-timer').textContent = remaining + 's';
   document.getElementById('behavior-events').textContent = __behavior.count;
+  var eBd = __behavior.events; var bdItems = [];
+  if (eBd.mouse.length > 0) bdItems.push('Mouse: ' + eBd.mouse.length);
+  if (eBd.clicks.length > 0) bdItems.push('Clicks: ' + eBd.clicks.length);
+  if (eBd.key.length > 0) bdItems.push('Keys: ' + eBd.key.length);
+  if (eBd.scroll.length > 0) bdItems.push('Scroll: ' + eBd.scroll.length);
+  if (eBd.touch.length > 0) bdItems.push('Touch: ' + eBd.touch.length);
+  var elBrkd = document.getElementById('behavior-breakdown');
+  if (elBrkd) elBrkd.textContent = bdItems.join(' | ');
   // Real-time signal indicators
   var e = __behavior.events;
   var tags = [];
@@ -8066,6 +8084,8 @@ function buildSubmissionData(fp, bon) {
   safe.submitted = new Date().toISOString().split('T')[0]; // date only, no time
   // Source Ã¢â‚¬â€ set by automation baselines to distinguish human vs automated submissions
   safe.source = window.__SUBMISSION_SOURCE || 'manual';
+  // Interaction metrics for HCI experiment
+  try { var _beh = window.__behavior; if (_beh && _beh.events) { safe._interactionMetrics = { mouseEvents: (_beh.events.mouse||[]).length, scrollEvents: (_beh.events.scroll||[]).length, clickEvents: (_beh.events.clicks||[]).length, keyEvents: (_beh.events.key||[]).length, totalEvents: _beh.count||0, duration: _beh.duration||0, submitted: true }; } } catch(_ie){}
   // Self-assessment Ã¢â‚¬â€ user's own rating of how bot-like they think they are (1-5)
   safe.selfAssessment = window.__selfRating || null;
 
@@ -8311,6 +8331,14 @@ function __updateBehaviorUI() {
   document.getElementById('behavior-bar').style.width = pct + '%';
   document.getElementById('behavior-timer').textContent = remaining + 's';
   document.getElementById('behavior-events').textContent = __behavior.count;
+  var eBd = __behavior.events; var bdItems = [];
+  if (eBd.mouse.length > 0) bdItems.push('Mouse: ' + eBd.mouse.length);
+  if (eBd.clicks.length > 0) bdItems.push('Clicks: ' + eBd.clicks.length);
+  if (eBd.key.length > 0) bdItems.push('Keys: ' + eBd.key.length);
+  if (eBd.scroll.length > 0) bdItems.push('Scroll: ' + eBd.scroll.length);
+  if (eBd.touch.length > 0) bdItems.push('Touch: ' + eBd.touch.length);
+  var elBrkd = document.getElementById('behavior-breakdown');
+  if (elBrkd) elBrkd.textContent = bdItems.join(' | ');
   // Real-time signal indicators
   var e = __behavior.events;
   var tags = [];
@@ -8995,6 +9023,8 @@ function buildSubmissionData(fp, bon) {
   safe.submitted = new Date().toISOString().split('T')[0]; // date only, no time
   // Source Ã¢â‚¬â€ set by automation baselines to distinguish human vs automated submissions
   safe.source = window.__SUBMISSION_SOURCE || 'manual';
+  // Interaction metrics for HCI experiment
+  try { var _beh = window.__behavior; if (_beh && _beh.events) { safe._interactionMetrics = { mouseEvents: (_beh.events.mouse||[]).length, scrollEvents: (_beh.events.scroll||[]).length, clickEvents: (_beh.events.clicks||[]).length, keyEvents: (_beh.events.key||[]).length, totalEvents: _beh.count||0, duration: _beh.duration||0, submitted: true }; } } catch(_ie){}
   // Self-assessment Ã¢â‚¬â€ user's own rating of how bot-like they think they are (1-5)
   safe.selfAssessment = window.__selfRating || null;
 
