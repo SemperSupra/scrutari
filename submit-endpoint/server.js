@@ -6,8 +6,8 @@ const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3456;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
-const RATE_LIMIT_MS = process.env.RATE_LIMIT_MS ? parseInt(process.env.RATE_LIMIT_MS) : 5000;
-const MAX_BODY_BYTES = parseInt(process.env.MAX_BODY_BYTES) || 102400; // 100KB default
+const RATE_LIMIT_MS = process.env.RATE_LIMIT_MS ? parseInt(process.env.RATE_LIMIT_MS, 10) : 5000;
+const MAX_BODY_BYTES = parseInt(process.env.MAX_BODY_BYTES, 10) || 102400; // 100KB default
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -286,4 +286,5 @@ server.listen(PORT, () => {
   console.log(`Data: ${DATA_DIR}/store.json`);
   console.log(`Auto-archive at ${MAX_DB_SIZE / 1024 / 1024}MB`);
 });
+
 

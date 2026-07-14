@@ -1,4 +1,4 @@
-// Netlify Edge Function: Dynamic OG Image
+﻿// Netlify Edge Function: Dynamic OG Image
 // Generates a score card SVG for social sharing previews.
 // When a user shares their Bot-or-Not score, this renders a gauge image.
 //
@@ -19,11 +19,11 @@ const COLORS = {
 };
 
 function getCategory(score) {
-  if (score <= 15) return { label: 'Likely Human', color: COLORS.green, emoji: '🧑' };
-  if (score <= 35) return { label: 'Mostly Human', color: '#84cc16', emoji: '🙂' };
-  if (score <= 55) return { label: 'Uncertain', color: COLORS.yellow, emoji: '🤷' };
-  if (score <= 80) return { label: 'Bot-like', color: '#f97316', emoji: '🤖' };
-  return { label: 'Likely Bot', color: COLORS.red, emoji: '⚙️' };
+  if (score <= 15) return { label: 'Likely Human', color: COLORS.green, emoji: 'ðŸ§‘' };
+  if (score <= 35) return { label: 'Mostly Human', color: '#84cc16', emoji: 'ðŸ™‚' };
+  if (score <= 55) return { label: 'Uncertain', color: COLORS.yellow, emoji: 'ðŸ¤·' };
+  if (score <= 80) return { label: 'Bot-like', color: '#f97316', emoji: 'ðŸ¤–' };
+  return { label: 'Likely Bot', color: COLORS.red, emoji: 'âš™ï¸' };
 }
 
 function generateSVG(score, human, engine) {
@@ -55,14 +55,14 @@ function generateSVG(score, human, engine) {
   <rect width="520" height="320" rx="16" fill="none" stroke="${COLORS.border}" stroke-width="1"/>
 
   <!-- Title -->
-  <text x="260" y="44" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="${COLORS.text}">🔍 Scrutari Bot-or-Not™</text>
+  <text x="260" y="44" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="${COLORS.text}">ðŸ” Scrutari Bot-or-Notâ„¢</text>
 
   <!-- Emoji + Category -->
   <text x="260" y="90" text-anchor="middle" font-size="${emojiSize}">${cat.emoji}</text>
   <text x="260" y="130" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="600" fill="${cat.color}">${cat.label}</text>
 
   <!-- Score text -->
-  <text x="260" y="160" text-anchor="middle" font-family="sans-serif" font-size="13" fill="${COLORS.muted}">${human}% human-like · ${score}% bot-like</text>
+  <text x="260" y="160" text-anchor="middle" font-family="sans-serif" font-size="13" fill="${COLORS.muted}">${human}% human-like Â· ${score}% bot-like</text>
 
   <!-- Gauge background -->
   <rect x="${gaugeX}" y="${gaugeY}" width="${gaugeWidth}" height="18" rx="9" fill="#1e293b" stroke="${COLORS.border}" stroke-width="1"/>
@@ -81,13 +81,13 @@ function generateSVG(score, human, engine) {
 
   <!-- Footer -->
   <text x="260" y="280" text-anchor="middle" font-family="sans-serif" font-size="11" fill="${COLORS.muted}">Check your browser at scrutari.netlify.app</text>
-  <text x="260" y="300" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#475569">Free &amp; open source · All tests run client-side</text>
+  <text x="260" y="300" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#475569">Free &amp; open source Â· All tests run client-side</text>
 </svg>`;
 }
 
 export default async (req, context) => {
   const url = new URL(req.url);
-  const score = Math.min(100, Math.max(0, parseInt(url.searchParams.get('score') || '50')));
+  const score = Math.min(100, Math.max(0, parseInt(url.searchParams.get('score') || '50', 10)));
   const human = 100 - score;
   const engine = url.searchParams.get('engine') || 'unknown';
 
@@ -102,3 +102,5 @@ export default async (req, context) => {
     }
   });
 };
+
+

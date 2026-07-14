@@ -1,4 +1,4 @@
-// Netlify Edge Function: IP Classification
+﻿// Netlify Edge Function: IP Classification
 // Replaces the ipinfo.io third-party call in the SPA.
 // Uses Netlify's built-in geolocation (free, no additional API calls).
 // Classifies IP as residential, datacenter, VPN, or Tor exit.
@@ -22,15 +22,16 @@ const DATACENTER_PROVIDERS = [
   'cloudflare', 'akamai', 'fastly', 'verizon digital media',
 ];
 
-// Tor exit list URL — fetched and cached
+// Tor exit list URL â€” fetched and cached
 const TOR_EXIT_URL = 'https://check.torproject.org/exit-addresses';
 let torCache = { ips: new Set(), updated: 0, fetching: false, lastError: null };
 const TOR_CACHE_TTL = 3600000; // 1 hour
-const TOR_CACHE_MAX_AGE = 7200000; // 2 hours — force reset if fetch keeps failing
+const TOR_CACHE_MAX_AGE = 7200000; // 2 hours â€” force reset if fetch keeps failing
 
 // Normalize IP address for consistent Tor exit checking
 function normalizeIP(ip) {
   if (!ip || ip === 'unknown') return 'unknown';
+    // eslint-disable-next-line no-param-reassign
   if (ip.startsWith('[') && ip.endsWith(']')) ip = ip.slice(1, -1);
   if (ip.startsWith('::ffff:')) return ip.substring(7);
   if (ip === '::1') return '127.0.0.1';
@@ -93,7 +94,7 @@ export default async (req, context) => {
                      || 'unknown';
     const clientIP = normalizeIP(rawClientIP);
 
-    // Get org/hostname from reverse DNS (optional — may not always have data)
+    // Get org/hostname from reverse DNS (optional â€” may not always have data)
     // Netlify doesn't provide org directly, so we derive it from IP reputation
     // For now, we use the client IP and geolocation
     const response = {
@@ -135,3 +136,5 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   }
 };
+
+
