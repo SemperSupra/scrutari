@@ -13,6 +13,16 @@ export default async (req, context) => {
   const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
 
+  // Require authentication via ANALYSIS_API_KEY env var
+  const apiKey = process.env.ANALYSIS_API_KEY;
+  if (apiKey) {
+    const authHeader = req.headers.get('authorization') || '';
+    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (provided !== apiKey) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers });
+    }
+  }
+
   try {
     // Load stored data
     const store = getStore({ name: 'scrutari-data', siteID: process.env.SITE_ID });

@@ -22,6 +22,16 @@ export default async (req, context) => {
 
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
 
+  // Require authentication via ANALYSIS_API_KEY env var (GET only; POST from cron bypasses auth)
+  const apiKey = process.env.ANALYSIS_API_KEY;
+  if (apiKey && req.method === 'GET') {
+    const authHeader = req.headers.get('authorization') || '';
+    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (provided !== apiKey) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers });
+    }
+  }
+
   try {
     const store = getStore({ name: 'scrutari-data', siteID: process.env.SITE_ID });
     let tracking = { lastRun: null, lastResult: null, runs: [] };
