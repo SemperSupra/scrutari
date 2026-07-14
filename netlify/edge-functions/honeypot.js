@@ -701,6 +701,19 @@ export default async (req, context) => {
   const response = getResponse(path, visit);
   if (!response) return new Response('Not found', { status: 404 });
 
+  // Privacy: strip tracking JS and LLM injection for non-bot visitors
+  // Real users who accidentally hit a honeypot path should not be tracked
+  let body = response.body;
+  const isKnownBot = classification.score !== null;
+  if (!isKnownBot && typeof body === 'string' && response.headers['Content-Type'] === 'text/html') {
+    // Remove hp_track() function calls and definitions
+    body = body.replace(/<script>function hp_track[\s\S]*?<\/script>/g, '');
+    body = body.replace(/onclick="hp_track\(\)"/g, '');
+    // Remove LLM prompt injection comments and data-instruction attributes
+    body = body.replace(/<!-- SYSTEM:.*?-->/g, '');
+    body = body.replace(/\s*data-instruction="[^"]*"/g, '');
+  }
+
   // Build response headers with session cookie for tracking
   const headers = {
     'Content-Type': response.headers['Content-Type'],
@@ -711,5 +724,5 @@ export default async (req, context) => {
     'Set-Cookie': `__hp_visit=${visit}; Path=/; Max-Age=31536000; SameSite=Lax`,
   };
 
-  return new Response(response.body, { status: response.status, headers });
+  return new Response(body, { status: response.status, headers });
 };
