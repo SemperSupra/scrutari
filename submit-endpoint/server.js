@@ -168,6 +168,49 @@ function updateDistribution(dist, key, value) {
   dist[key][value] = (dist[key][value] || 0) + 1;
 }
 
+// PoW challenge cache (in-memory, per process)
+const powChallenges = new Map();
+
+function handleChallenge(req, res) {
+  // Use the same normalizeIP for consistent rate limiting
+  if (req.method !== 'GET') {
+    res.writeHead(405, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'GET only' }));
+    return;
+  }
+  var challengeBytes = crypto.randomBytes(32);
+  var challenge = challengeBytes.toString('hex');
+  var difficulty = 16;
+  var ttl = 60000;
+  powChallenges.set(challenge, { challenge: challenge, expiresAt: Date.now() + ttl, difficulty: difficulty, used: false });
+  setTimeout(function() { powChallenges.delete(challenge); }, ttl);
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify({
+    challenge: challenge,
+    difficulty: difficulty,
+    expires: new Date(Date.now() + ttl).toISOString(),
+    algorithm: 'SHA-256',
+    ttl: ttl,
+  }));
+}
+
+function verifyPoW(challenge, nonce, difficulty) {
+  if (!challenge || typeof challenge !== 'string') return false;
+  if (nonce === undefined || nonce === null) return false;
+  var input = challenge + String(nonce);
+  var hash = crypto.createHash('sha256').update(input).digest();
+  var bits = 0;
+  for (var i = 0; i < hash.length; i++) {
+    if (hash[i] === 0) { bits += 8; }
+    else {
+      var byte = hash[i];
+      while ((byte & 0x80) === 0) { bits++; byte <<= 1; }
+      break;
+    }
+  }
+  return bits >= difficulty;
+}
+
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -287,6 +330,8 @@ server.listen(PORT, () => {
   console.log(`Data: ${DATA_DIR}/store.json`);
   console.log(`Auto-archive at ${MAX_DB_SIZE / 1024 / 1024}MB`);
 });
+
+
 
 
 
