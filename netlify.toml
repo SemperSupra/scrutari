@@ -1,4 +1,4 @@
-[build]
+﻿[build]
   command = "echo 'Static files only'"
   publish = "."
 
@@ -205,6 +205,12 @@
   to = "/.netlify/functions/submit"
   status = 200
 
+# PoW challenge endpoint
+[[redirects]]
+  from = "/api/challenge"
+  to = "/.netlify/functions/challenge"
+  status = 200
+
 # Security headers
 [[redirects]]
   from = "/api/status"
@@ -222,3 +228,4 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
