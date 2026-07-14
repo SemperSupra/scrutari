@@ -1,11 +1,11 @@
-// Netlify Function: Research Analysis Dashboard API
+﻿// Netlify Function: Research Analysis Dashboard API
 // Reads blob storage and computes statistical measures:
 //   - Per-signal effectiveness (bot vs human score separation)
 //   - Ground truth confusion matrix (if labeled data exists)
 //   - Signal detection rate over time
 //   - Precision, recall, F1 per signal
 //
-// GET /api/analysis  →  full analysis JSON
+// GET /api/analysis  â†’  full analysis JSON
 
 import { getStore } from '@netlify/blobs';
 
@@ -32,7 +32,7 @@ export default async (req, context) => {
       if (raw && raw.version) db = raw;
     } catch {}
 
-    // ─── Compute analysis ───
+    // â”€â”€â”€ Compute analysis â”€â”€â”€
 
     const analysis = {
       generated: new Date().toISOString(),
@@ -58,7 +58,7 @@ export default async (req, context) => {
       analysis.summary.timeRange = { first: times[0], last: times[times.length - 1], spanDays: Math.round((new Date(times[times.length - 1]) - new Date(times[0])) / 86400000) };
     }
 
-    // ─── Per-signal analysis from distributions ───
+    // â”€â”€â”€ Per-signal analysis from distributions â”€â”€â”€
     const dists = db.distributions || {};
     for (const [attr, values] of Object.entries(dists)) {
       const total = Object.values(values).reduce((s, v) => s + v, 0);
@@ -71,7 +71,7 @@ export default async (req, context) => {
       analysis.signals.push({ attribute: attr, total, uniqueValues: Object.keys(values).length, entropy: Math.round(entropy * 10) / 10, topValues: entries.slice(0, 5) });
     }
 
-    // ─── Ground truth confusion matrix ───
+    // â”€â”€â”€ Ground truth confusion matrix â”€â”€â”€
     const botSources = ['automation_playwright', 'automation_puppeteer', 'automation_selenium', 'automation_curl', 'automation_baseline', 'honeypot', 'honeypot_js'];
     const humanSources = ['manual'];
 
@@ -89,7 +89,7 @@ export default async (req, context) => {
     // Compute confusion matrix if we have both bot and human labeled data
     let hasBots = false, hasHumans = false;
     let tp = 0, fp = 0, tn = 0, fn = 0;
-    const threshold = 50; // Scores above 50 = predicted bot
+    const BOT_THRESHOLD = 50; // Scores above 50 = predicted bot (Youden's J default)
 
     for (const [source, data] of Object.entries(gtBySource)) {
       const actualBot = botSources.includes(source);
@@ -121,13 +121,13 @@ export default async (req, context) => {
       analysis.groundTruth.note = 'Need both bot and human labeled submissions to compute confusion matrix';
     }
 
-    // ─── Data quality warnings ───
-    if (analysis.summary.totalSubmissions < 100) analysis.dataQuality.warnings.push('Sample size below 100 — results are preliminary');
+    // â”€â”€â”€ Data quality warnings â”€â”€â”€
+    if (analysis.summary.totalSubmissions < 100) analysis.dataQuality.warnings.push('Sample size below 100 â€” results are preliminary');
     if (!hasBots) analysis.dataQuality.warnings.push('No bot-labeled submissions in dataset');
     if (!hasHumans) analysis.dataQuality.warnings.push('No human-labeled submissions in dataset');
     if (analysis.summary.uniqueFingerprints === 0) analysis.dataQuality.warnings.push('No fingerprint data collected yet');
 
-    // ─── Published baselines for comparison ───
+    // â”€â”€â”€ Published baselines for comparison â”€â”€â”€
     analysis.publishedBaselines = {
       note: 'Per-attribute entropy from published studies for comparison. Our values will differ due to sample size and population.',
       eckersley2010: { venue: 'PETS 2010 (Panopticlick)', sampleSize: '470K',
@@ -144,3 +144,4 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
   }
 };
+
