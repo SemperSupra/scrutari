@@ -1,0 +1,30 @@
+{
+  "name": "scrutari",
+  "version": "1.0.0",
+  "description": "**Scrutari** (Latin: *to search, examine, explore*) is a free, open-source browser privacy leak detector. It runs entirely in your browser — no data leaves your machine.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/**/*.test.mjs",
+    "test:server": "node automation/server.py",
+    "test:baselines": "node automation/baselines.mjs",
+    "test:state-machine": "node automation/state-machine-tests.mjs",
+    "test:honeypot": "node automation/honeypot-tests.mjs",
+    "test:cross-ref": "node automation/cross-reference.mjs",
+    "dev:server": "node submit-endpoint/server.js",
+    "dev:spa": "python3 automation/server.py",
+    "docker:train": "cd automation/training && docker compose run --rm trainer",
+    "docker:build": "cd automation/training && docker compose build",
+    "lint": "npx eslint index.html test/**/*.mjs"
+  },
+  "keywords": ["privacy", "bot-detection", "fingerprint", "k-anonymity", "security"],
+  "author": "SemperSupra",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^10.7.9",
+    "playwright": "^1.61.1"
+  }
+}

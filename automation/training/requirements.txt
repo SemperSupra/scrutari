@@ -1,0 +1,8 @@
+# Scrutari ML Training Pipeline — Pinned Dependencies
+# Reproducible training: run `pip install -r requirements.txt`
+numpy==2.2.5
+scipy==1.15.3
+scikit-learn==1.9.0
+onnx==1.22.0
+skl2onnx==1.20.0
+joblib==1.4.2

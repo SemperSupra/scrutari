@@ -4,8 +4,6 @@ Thumbs.db
 *.swp
 *.swo
 _deploy-tmp/
-package.json
-package-lock.json
 submit-endpoint/data/
 
 # Local Netlify folder
