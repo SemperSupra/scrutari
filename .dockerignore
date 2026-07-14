@@ -1,0 +1,27 @@
+# Scrutari Docker build context ignore
+# Only include what's needed for each build target
+
+# Git and CI
+.git/
+.github/
+.gitignore
+
+# Development
+node_modules/
+test/
+automation/
+training_data/
+models/
+data/
+docs/
+memory/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Local config
+.netlify/
+*.swp
+*.swo
+.submit-endpoint/
