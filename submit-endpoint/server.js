@@ -85,7 +85,7 @@ function computeHash(data) {
     gpuClass: data.gpuClass, tzRegion: data.tzRegion, cpuCores: data.cpuCores,
     deviceMemory: data.deviceMemory, darkMode: data.darkMode, engine: data.engine,
     adblockDetected: data.adblockDetected, totalEntropyBits: data.totalEntropyBits,
-    botScore: data.botScore,
+    botScore: data.botScore, ipVersion: data.ipVersion,
   };
   return crypto.createHash('sha256').update(JSON.stringify(fp)).digest('hex').substring(0, 16);
 }
