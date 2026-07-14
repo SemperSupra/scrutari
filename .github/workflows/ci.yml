@@ -80,8 +80,9 @@ jobs:
 
       - name: Check IPv4 hardcoding
         run: |
-          if grep -q "127\.0\.0\.1" automation/ipv6-test.mjs; then
-            echo "ERROR: IPv6 test file has IPv4 hardcoding"
+          # Check for IPv4-as-default (BASE = 127.0.0.1), not control endpoints
+          if grep -q "^const BASE = .*127\.0\.0\.1" automation/ipv6-test.mjs; then
+            echo "ERROR: IPv6 test file has IPv4 hardcoded as base URL"
             exit 1
           fi
           echo "No IPv4 hardcoding in test files"
@@ -101,10 +102,4 @@ jobs:
           pip install -r automation/training/requirements.txt
 
       - name: Verify imports
-        run: |
-          python3 -c "
-import numpy; print(f'numpy {numpy.__version__}')
-import sklearn; print(f'scikit-learn {sklearn.__version__}')
-import onnx; print(f'onnx {onnx.__version__}')
-print('All ML dependencies import successfully')
-"
+        run: python3 -c "import numpy; print('numpy', numpy.__version__); import sklearn; print('sklearn', sklearn.__version__); import onnx; print('onnx', onnx.__version__)"
