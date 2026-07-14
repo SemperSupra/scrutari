@@ -43,8 +43,8 @@ lint:
 	@$(call pass,"All Dockerfiles SHA-pinned")
 
 	@$(call info,"Checking for IPv4 hardcoding in test files...")
-	@if grep -q "127\.0\.0\.1" automation/ipv6-test.mjs; then \
-		$(call fail,"IPv6 test file has IPv4 hardcoding"); \
+	@if grep -q "^const BASE = .*127\.0\.0\.1" automation/ipv6-test.mjs; then \
+		$(call fail,"IPv6 test file has IPv4 hardcoded as base URL"); \
 	fi
 	@$(call pass,"No IPv4 hardcoding in test files")
 

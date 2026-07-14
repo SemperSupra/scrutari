@@ -18,6 +18,40 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 JOB="${1:-ci}"
 
+# Detect if running inside WSL2 (Docker socket is natively accessible)
+IS_WSL=false
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  IS_WSL=true
+fi
+
+# Detect if running in Git Bash on Windows (Docker socket not directly accessible)
+IS_GIT_BASH=false
+if ! $IS_WSL && [ -n "${COMSPEC:-}" ]; then
+  IS_GIT_BASH=true
+fi
+
+# Auto-route to act when in WSL2 with Docker access
+if $IS_WSL && [ "$JOB" = "ci" ] || [ "$JOB" = "--act" ]; then
+  echo ""
+  echo "  Detected WSL2 environment — using nektos/act with native Docker socket"
+  echo ""
+
+  ARGS=""
+  if [ "$JOB" != "--act" ] && [ "$JOB" != "ci" ]; then
+    ARGS="--job $JOB"
+  fi
+
+  exec act --action-offline-mode --pull=false $ARGS
+fi
+
+# In Git Bash on Windows, warn and suggest WSL2
+if $IS_GIT_BASH; then
+  echo "  Git Bash detected — Docker socket not directly accessible."
+  echo "  Run CI via WSL2: wsl -d ubuntu bash ci-local.sh $JOB"
+  echo "  Or run directly (no Docker): bash ci-local.sh $JOB"
+  echo ""
+fi
+
 echo "═══════════════════════════════════════════════"
 echo "  Scrutari Local CI Runner"
 echo "  Date: $(date -u '+%Y-%m-%d %H:%M UTC')"
