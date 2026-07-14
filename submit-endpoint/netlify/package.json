@@ -1,0 +1,7 @@
+{
+  "name": "scrutari-submit",
+  "version": "1.0.0",
+  "description": "Scrutari submission endpoint (Netlify function)",
+  "type": "module",
+  "dependencies": {}
+}

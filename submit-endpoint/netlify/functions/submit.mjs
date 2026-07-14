@@ -20,6 +20,14 @@
 import { createHash } from 'crypto';
 import { getStore } from '@netlify/blobs';
 
+// Normalize IP address for consistent hashing and logging
+function normalizeIP(ip) {
+  if (!ip || ip === 'unknown' || ip === '::1') return '127.0.0.1';
+  if (ip.startsWith('[') && ip.endsWith(']')) ip = ip.slice(1, -1);
+  if (ip.startsWith('::ffff:')) return ip.substring(7);
+  return ip;
+}
+
 // Blob store configuration
 const BLOB_NAME = 'scrutari-data';
 const SITE_ID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
