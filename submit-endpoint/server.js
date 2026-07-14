@@ -9,6 +9,15 @@ const RATE_LIMIT_MS = process.env.RATE_LIMIT_MS ? parseInt(process.env.RATE_LIMI
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
+// Normalize IP address for consistent rate limiting and anonymization
+// Handles IPv6-mapped IPv4 (::ffff:x.x.x.x), bracketed IPv6 ([::1]), and native IPv6
+function normalizeIP(ip) {
+  if (!ip || ip === 'unknown' || ip === '::1') return '127.0.0.1';
+  if (ip.startsWith('[') && ip.endsWith(']')) ip = ip.slice(1, -1);
+  if (ip.startsWith('::ffff:')) return ip.substring(7);
+  return ip;
+}
+
 // Labeled sources for ground truth validation
 const ALLOWED_SOURCES = [
   'manual', 'automation_baseline', 'automation_playwright', 'automation_playwright_stealth',
@@ -21,7 +30,8 @@ const MAX_DB_SIZE = 800 * 1024 * 1024; // 800MB
 const recent = new Map();
 setInterval(() => recent.clear(), 60000);
 
-function rateLimit(ip) {
+function rateLimit(rawIp) {
+  const ip = normalizeIP(rawIp);
   const now = Date.now();
   const last = recent.get(ip);
   if (last && now - last < RATE_LIMIT_MS) return false;
@@ -64,8 +74,8 @@ function saveStore(db) {
   return size;
 }
 
-function anonymizeIP(ip) {
-  return crypto.createHash('sha256').update(ip + 'scrutari-salt').digest('hex').substring(0, 16);
+function anonymizeIP(rawIp) {
+  return crypto.createHash('sha256').update(normalizeIP(rawIp) + 'scrutari-salt').digest('hex').substring(0, 16);
 }
 
 function computeHash(data) {
@@ -103,7 +113,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  const rawIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  const ip = normalizeIP(rawIp);
   if (!rateLimit(ip)) {
     res.writeHead(429, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Rate limited' }));

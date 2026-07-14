@@ -27,6 +27,14 @@ const TOR_EXIT_URL = 'https://check.torproject.org/exit-addresses';
 let torCache = { ips: new Set(), updated: 0 };
 const TOR_CACHE_TTL = 3600000; // 1 hour
 
+// Normalize IP address for consistent Tor exit checking
+function normalizeIP(ip) {
+  if (!ip || ip === 'unknown' || ip === '::1') return '127.0.0.1';
+  if (ip.startsWith('[') && ip.endsWith(']')) ip = ip.slice(1, -1);
+  if (ip.startsWith('::ffff:')) return ip.substring(7);
+  return ip;
+}
+
 async function fetchTorExits() {
   const now = Date.now();
   if (now - torCache.updated < TOR_CACHE_TTL) return torCache.ips;
@@ -69,9 +77,10 @@ export default async (req, context) => {
   try {
     // Get geolocation from Netlify Edge (free tier)
     const geo = context.geo || {};
-    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-                  || req.headers.get('x-nf-client-connection-ip')
-                  || 'unknown';
+    const rawClientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+                     || req.headers.get('x-nf-client-connection-ip')
+                     || 'unknown';
+    const clientIP = normalizeIP(rawClientIP);
 
     // Get org/hostname from reverse DNS (optional — may not always have data)
     // Netlify doesn't provide org directly, so we derive it from IP reputation

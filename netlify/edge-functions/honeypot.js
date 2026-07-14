@@ -42,6 +42,14 @@ const PATHS = [
   '/api/graphql', '/api/query', '/xmlrpc.php', '/wp-json/',
 ];
 
+// Normalize IP address for consistent logging
+function normalizeIP(ip) {
+  if (!ip || ip === 'unknown' || ip === '::1') return '127.0.0.1';
+  if (ip.startsWith('[') && ip.endsWith(']')) ip = ip.slice(1, -1);
+  if (ip.startsWith('::ffff:')) return ip.substring(7);
+  return ip;
+}
+
 // Known crawlers and their types
 function classifyBot(ua) {
   if (!ua) return { type: 'unknown', score: 100 };
@@ -682,8 +690,9 @@ export default async (req, context) => {
 
   const ua = req.headers.get('user-agent') || 'unknown';
   const classification = classifyBot(ua);
-  const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-                || req.headers.get('x-nf-client-connection-ip') || 'unknown';
+  const rawClientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+                   || req.headers.get('x-nf-client-connection-ip') || 'unknown';
+  const clientIP = normalizeIP(rawClientIP);
 
   // Tarpit: track visit count via cookie
   const visit = getSessionVisit(req.headers.get('cookie'));
