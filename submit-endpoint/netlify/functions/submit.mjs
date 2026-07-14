@@ -1,4 +1,4 @@
-// Netlify Function v2: Scrutari Submission Endpoint
+﻿// Netlify Function v2: Scrutari Submission Endpoint
 // Optimized for research: deduplication + frequency distributions
 //
 // Storage strategy:
@@ -99,7 +99,7 @@ export default async (req, context) => {
   if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'POST only' }), { status: 405, headers });
 
   // Body size check
-  const contentLength = parseInt(req.headers.get('content-length') || '0');
+  const contentLength = parseInt(req.headers.get('content-length') || '0', 10);
   if (contentLength > MAX_BODY_BYTES) {
     return new Response(JSON.stringify({ error: 'Request body too large' }), { status: 413, headers });
   }
@@ -157,11 +157,11 @@ export default async (req, context) => {
     const now = new Date().toISOString();
 
     if (db.fingerprints[fpHash]) {
-      // Existing fingerprint — increment counter
+      // Existing fingerprint â€” increment counter
       db.fingerprints[fpHash].count = (db.fingerprints[fpHash].count || 1) + 1;
       db.fingerprints[fpHash].lastSeen = now;
     } else {
-      // New fingerprint — store once
+      // New fingerprint â€” store once
       db.fingerprints[fpHash] = {
         count: 1,
         firstSeen: now,
@@ -205,7 +205,7 @@ export default async (req, context) => {
     const blobSize = new TextEncoder().encode(JSON.stringify(db)).length;
     const remainingGB = ((MAX_BLOB_SIZE_BYTES - blobSize) / (1024 * 1024 * 1024)).toFixed(3);
 
-    // Write back to blob (must JSON.stringify — SDK requires string values)
+    // Write back to blob (must JSON.stringify â€” SDK requires string values)
     try {
       await store.set(BLOB_NAME, JSON.stringify(db));
     } catch (e) {
@@ -219,7 +219,7 @@ export default async (req, context) => {
     const maxCount = Math.max(...Object.values(db.fingerprints).map(f => f.count || 1), 1);
 
     // Entropy estimation (Shannon entropy from marginal distributions)
-    // This is a lower bound — real joint entropy requires pairwise correlations
+    // This is a lower bound â€” real joint entropy requires pairwise correlations
     let marginalEntropy = 0;
     for (const attr in db.distributions) {
       const values = db.distributions[attr];
@@ -251,3 +251,5 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 400, headers });
   }
 };
+
+

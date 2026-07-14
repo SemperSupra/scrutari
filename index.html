@@ -1,20 +1,20 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Scrutari — Browser Leak Detector &amp; Bot-or-Not™</title>
+<title>Scrutari â€” Browser Leak Detector &amp; Bot-or-Notâ„¢</title>
 <meta name="description" content="Free, open-source browser privacy leak detector. Test DNS leaks, WebRTC leaks, HTTP headers, browser fingerprint, Bot-or-Not rating.">
 <meta name="keywords" content="bot detection, browser leak test, privacy, fingerprint, k-anonymity">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#0f172a">
-<meta property="og:title" content="Scrutari — Bot-or-Not™">
+<meta property="og:title" content="Scrutari â€” Bot-or-Notâ„¢">
 <meta property="og:description" content="Test how human-like your browser appears. Free, open-source privacy tool.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://sempersupra.github.io/scrutari/og-default.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Scrutari — Bot-or-Not™">
+<meta name="twitter:title" content="Scrutari â€” Bot-or-Notâ„¢">
 <meta name="twitter:description" content="Free browser leak detector with Bot-or-Not human-vs-bot rating. All tests run client-side.">
 <script type="application/ld+json">
 [{
@@ -163,9 +163,9 @@
 <body>
 <div class="container">
 <div class="hero">
-  <h1>🔍 Scrutari</h1>
-  <p class="tagline">Browser Leak Detector &middot; <span>Bot-or-Not™</span></p>
-  <p style="color:#94a3b8;font-size:0.85rem;margin-top:0.75rem;">Free &amp; open source. All tests run in your browser — nothing is sent to any server.</p>
+  <h1>ðŸ” Scrutari</h1>
+  <p class="tagline">Browser Leak Detector &middot; <span>Bot-or-Notâ„¢</span></p>
+  <p style="color:#94a3b8;font-size:0.85rem;margin-top:0.75rem;">Free &amp; open source. All tests run in your browser â€” nothing is sent to any server.</p>
 </div>
 
 <div class="card">
@@ -177,7 +177,7 @@
 </div>
 
 <div id="section-exit-node" class="card">
-  <h2>🌍 Exit Node Analysis</h2>
+  <h2>ðŸŒ Exit Node Analysis</h2>
   <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Classifies your public IP as residential, datacenter, VPN, or Tor exit. Requires ipinfo.io lookup (opt-in).</p>
   <button class="btn" onclick="analyzeExitNode()">Analyze My Exit Node</button>
   <div id="exit-node-results">
@@ -211,11 +211,11 @@
 </div>
 
 <div id="section-botornot" class="card gauge-card">
-  <h2>Bot-or-Not™ <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; rating how human-like your connection appears</span></h2>
+  <h2>Bot-or-Notâ„¢ <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; rating how human-like your connection appears</span></h2>
   <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 36+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
   <div id="botornot-results">
     <div class="gauge-container" style="opacity:0.5;">
-      <div class="gauge-emoji">🤖</div>
+      <div class="gauge-emoji">ðŸ¤–</div>
       <div class="gauge-title">Run fingerprint capture first</div>
       <div class="gauge-subtitle">Click "Capture Fingerprint" above to generate your Bot-or-Not rating</div>
     </div>
@@ -223,7 +223,7 @@
 </div>
 
 <div id="section-benchmarks" class="card">
-  <h2>📊 Benchmarks <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; how different browsers score on Bot-or-Not</span></h2>
+  <h2>ðŸ“Š Benchmarks <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; how different browsers score on Bot-or-Not</span></h2>
   <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Pre-computed scores from real Playwright browser tests (headless/headed) and HTTP clients. Helps you calibrate what your own score means.</p>
   <button class="btn" onclick="loadBenchmarks()">Load Benchmarks</button>
   <div id="benchmarks-results">
@@ -232,21 +232,21 @@
 </div>
 
 <div id="section-behavior" class="card">
-  <h2>🕹️ Behavioral Analysis <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; how human-like your interactions look</span></h2>
+  <h2>ðŸ•¹ï¸ Behavioral Analysis <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; how human-like your interactions look</span></h2>
   <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
     Records mouse movements, scrolling, clicks, and typing to detect automation.
     <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();document.getElementById('entropy-explanation').innerHTML?0:showEntropyExplanation(0,'0')">How does this work?</span>
   </p>
   <div id="behavior-results">
     <div class="gauge-container" style="text-align:center;">
-      <div class="gauge-emoji">🎯</div>
+      <div class="gauge-emoji">ðŸŽ¯</div>
       <div class="gauge-title" id="behavior-status">Interaction analysis</div>
       <div class="gauge-subtitle" id="behavior-substatus">Click start and interact with the page normally</div>
       <div id="behavior-progress" style="display:none;">
         <div class="rec-progress"><div class="rec-fill" id="behavior-bar" style="width:0%;"></div></div>
         <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events recorded</div>
       </div>
-      <button class="btn" id="behavior-btn" onclick="toggleBehaviorRecording()">▶ Start analysis</button>
+      <button class="btn" id="behavior-btn" onclick="toggleBehaviorRecording()">â–¶ Start analysis</button>
       <!-- form section for interaction analysis -->
       <div id="behavior-test-area" style="margin-top:1rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;text-align:left;opacity:0.6;transition:opacity 0.3s;">
         <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">Try interacting with these during the recording:</div>
@@ -254,7 +254,7 @@
           <input type="text" id="input-main" placeholder="Type something here (typing analysis)" autocomplete="off" style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
           <input type="text" id="input-email" placeholder="Fake email address (not sent anywhere)" autocomplete="off" style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
           <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;" id="btn-primary">✅ Normal Button</button>
+            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;" id="btn-primary">âœ… Normal Button</button>
             <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#7f1d1d;color:#fca5a5;" id="btn-opt-1">Reset settings</button>
             <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#78350f;color:#fcd34d;" id="btn-opt-2">Clear data</button>
             <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#1e293b;color:#64748b;border:1px dashed #334155;" id="btn-opt-3">Export report</button>
@@ -301,7 +301,7 @@
               style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;">
             <small style="color:#64748b;font-size:0.6rem;">Type: CONFIRM (all caps, no typos)</small>
           </div>
-          <textarea id="challenge-spellcheck" spellcheck="true" placeholder="Type a paragraph here (spellcheck is ON — see the red underlines)"
+          <textarea id="challenge-spellcheck" spellcheck="true" placeholder="Type a paragraph here (spellcheck is ON â€” see the red underlines)"
             style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;min-height:60px;resize:vertical;"></textarea>
         </div>
       </div>
@@ -311,14 +311,14 @@
 </div>
 
 <div id="section-submit" class="card">
-  <h2>📤 Contribute to Research <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; help us improve Bot-or-Not</span></h2>
+  <h2>ðŸ“¤ Contribute to Research <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; help us improve Bot-or-Not</span></h2>
   <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
     Submit your anonymized fingerprint to build a public k-anonymity dataset.
-    No IP addresses, no cookies — just browser attributes.
+    No IP addresses, no cookies â€” just browser attributes.
   </p>
   <div id="submit-results">
     <div class="gauge-container" style="text-align:center;">
-      <div class="gauge-emoji">🔬</div>
+      <div class="gauge-emoji">ðŸ”¬</div>
       <div class="gauge-title">Run fingerprint + Bot-or-Not first</div>
       <div class="gauge-subtitle">After capturing your fingerprint, you'll be able to contribute anonymized data to improve detection accuracy.</div>
       <div id="submit-preview-section" style="display:none;text-align:left;margin-top:0.75rem;"></div>
@@ -328,7 +328,7 @@
 </div>
 
 <div id="section-entropy" class="card">
-  <h2>📊 Entropy &amp; Uniqueness <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; what your fingerprint reveals</span></h2>
+  <h2>ðŸ“Š Entropy &amp; Uniqueness <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; what your fingerprint reveals</span></h2>
   <div id="entropy-results">
     <div id="fingerprint-entropy" style="margin-bottom:0.5rem;">
       <div class="result-box info">Run fingerprint capture to see your browser's entropy score.</div>
@@ -395,12 +395,12 @@
   <p style="margin-top:0.5rem;">All tests run client-side. No data leaves your browser.</p>
   <p style="margin-top:0.25rem;font-size:0.7rem;color:#475569;">Research submissions are anonymized. <a href="https://github.com/SemperSupra/scrutari/blob/main/PRIVACY_AND_COMPLIANCE.md" style="color:#60a5fa;">Privacy policy</a></p>
   <div class="share-bar" style="margin-top:1rem;">
-    <a class="share-btn share-twitter" href="https://twitter.com/intent/tweet?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20%E2%80%94%20free%2C%20open%20source%20privacy%20tool%20at%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">𝕏 Share</a>
+    <a class="share-btn share-twitter" href="https://twitter.com/intent/tweet?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20%E2%80%94%20free%2C%20open%20source%20privacy%20tool%20at%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">ð• Share</a>
     <a class="share-btn share-linkedin" href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">in Share</a>
-    <a class="share-btn share-bluesky" href="https://bsky.app/intent/compose?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20%E2%80%94%20free%20privacy%20tool%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">🦋 Share</a>
+    <a class="share-btn share-bluesky" href="https://bsky.app/intent/compose?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20%E2%80%94%20free%20privacy%20tool%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">ðŸ¦‹ Share</a>
     <a class="share-btn share-mastodon" href="https://mastodon.social/share?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20free%20privacy%20tool%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">M Share</a>
   </div>
-  <!-- Honeypot links — hidden from humans, visible to crawlers -->
+  <!-- Honeypot links â€” hidden from humans, visible to crawlers -->
   <a href="/admin/" style="display:none" aria-hidden="true">Admin</a>
   <a href="/backup/" style="display:none" aria-hidden="true">Backup</a>
   <a href="/.env" style="display:none" aria-hidden="true">Config</a>
@@ -544,7 +544,7 @@ function classifyIP(org) {
     'protonvpn', 'surfshark', 'windscribe', 'vyprvpn', 'torguard', 'ivpn',
     'airvpn', 'perfect privacy', 'zerotier', 'tailscale', 'headscale',
     'openvpn', 'wireguard'];
-  // Known Tor exits (partial — a complete list requires Tor DNSEL)
+  // Known Tor exits (partial â€” a complete list requires Tor DNSEL)
   var tor = ['tor', 'tor exit', 'torproject', 'the tor project'];
 
   for (var i = 0; i < tor.length; i++) {
@@ -632,19 +632,19 @@ async function analyzeExitNode() {
     var browserTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
     var tzMatch = browserTZ === d.timezone;
     html += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:0.375rem;font-size:0.75rem;background:#0f172a;">';
-    html += '⏰ Browser timezone <strong>' + (tzMatch ? 'matches' : 'differs from') + '</strong> IP location timezone: ';
+    html += 'â° Browser timezone <strong>' + (tzMatch ? 'matches' : 'differs from') + '</strong> IP location timezone: ';
     html += browserTZ + ' vs ' + d.timezone;
     if (!tzMatch) html += ' <span style="color:#fcd34d;">(possible VPN/proxy indicator)</span>';
     html += '</div>';
   }
 
-  // ─── What leaks through VPN checklist ───
+  // â”€â”€â”€ What leaks through VPN checklist â”€â”€â”€
   html += '<div style="margin-top:0.75rem;padding:0.75rem;border-radius:0.375rem;background:#0f172a;">';
-  html += '<h4 style="font-size:0.8rem;margin-bottom:0.5rem;color:#fcd34d;">🔍 What leaks through your VPN</h4>';
+  html += '<h4 style="font-size:0.8rem;margin-bottom:0.5rem;color:#fcd34d;">ðŸ” What leaks through your VPN</h4>';
   html += '<p style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">A VPN only changes your IP. These signals remain visible:</p>';
   html += '<table style="width:100%;font-size:0.7rem;">';
 
-  // WebRTC leak check — do we have detected IPs?
+  // WebRTC leak check â€” do we have detected IPs?
   var leakedIPs = [];
   if (typeof webrtcIPs !== 'undefined' && webrtcIPs.size > 0) {
     leakedIPs = Array.from(webrtcIPs).filter(function(ip) {
@@ -654,38 +654,38 @@ async function analyzeExitNode() {
   var webrtcLeak = leakedIPs.length > 0;
   html += '<tr><td style="color:#64748b;width:140px;">Local IP via WebRTC</td>' +
     '<td>' + (webrtcLeak
-      ? '<span style="color:#fca5a5;">⚠ Leaked: ' + leakedIPs.join(', ') + '</span>'
+      ? '<span style="color:#fca5a5;">âš  Leaked: ' + leakedIPs.join(', ') + '</span>'
       : '<span style="color:#6ee7b7;">Not detected (run WebRTC test)</span>') +
     '</td></tr>';
 
-  html += '<tr><td style="color:#64748b;">Screen resolution</td><td><span style="color:#fca5a5;">⚠ Always leaks</span> <span style="color:#64748b;">(' + screen.width + '×' + screen.height + ')</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Screen resolution</td><td><span style="color:#fca5a5;">âš  Always leaks</span> <span style="color:#64748b;">(' + screen.width + 'Ã—' + screen.height + ')</span></td></tr>';
   html += '<tr><td style="color:#64748b;">Timezone</td><td>' +
     (Intl.DateTimeFormat().resolvedOptions().timeZone || '').includes('UTC')
       ? '<span style="color:#6ee7b7;">Using UTC (Tor-like)</span>'
-      : '<span style="color:#fca5a5;">⚠ Leaks: ' + Intl.DateTimeFormat().resolvedOptions().timeZone + '</span>' +
+      : '<span style="color:#fca5a5;">âš  Leaks: ' + Intl.DateTimeFormat().resolvedOptions().timeZone + '</span>' +
     '</td></tr>';
   var lang = navigator.language;
-  html += '<tr><td style="color:#64748b;">Language / locale</td><td><span style="color:#fca5a5;">⚠ Leaks: ' + lang + '</span></td></tr>';
-  html += '<tr><td style="color:#64748b;">Installed fonts</td><td><span style="color:#fca5a5;">⚠ Always leaks</span> <span style="color:#64748b;">(OS fingerprint)</span></td></tr>';
-  html += '<tr><td style="color:#64748b;">Canvas/WebGL</td><td><span style="color:#fca5a5;">⚠ Always leaks</span> <span style="color:#64748b;">(hardware fingerprint)</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Language / locale</td><td><span style="color:#fca5a5;">âš  Leaks: ' + lang + '</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Installed fonts</td><td><span style="color:#fca5a5;">âš  Always leaks</span> <span style="color:#64748b;">(OS fingerprint)</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Canvas/WebGL</td><td><span style="color:#fca5a5;">âš  Always leaks</span> <span style="color:#64748b;">(hardware fingerprint)</span></td></tr>';
 
   if (classification.type === 'Tor Exit') {
-    html += '<tr><td style="color:#64748b;">Tor Browser protections</td><td><span style="color:#6ee7b7;">✅ WebRTC blocked, resolution rounded, UTC time</span></td></tr>';
+    html += '<tr><td style="color:#64748b;">Tor Browser protections</td><td><span style="color:#6ee7b7;">âœ… WebRTC blocked, resolution rounded, UTC time</span></td></tr>';
   } else if (classification.type === 'VPN') {
-    html += '<tr><td style="color:#64748b;">VPN protections</td><td><span style="color:#fcd34d;">⚠ IP hidden but browser identity fully exposed. Use Tor Browser for maximum anonymity.</span></td></tr>';
+    html += '<tr><td style="color:#64748b;">VPN protections</td><td><span style="color:#fcd34d;">âš  IP hidden but browser identity fully exposed. Use Tor Browser for maximum anonymity.</span></td></tr>';
   } else if (classification.type === 'Datacenter' || classification.type === 'Datacenter (possible)') {
-    html += '<tr><td style="color:#64748b;">Datacenter risk</td><td><span style="color:#fcd34d;">⚠ Datacenter IPs are easily classified as non-residential. Some sites may block.</span></td></tr>';
+    html += '<tr><td style="color:#64748b;">Datacenter risk</td><td><span style="color:#fcd34d;">âš  Datacenter IPs are easily classified as non-residential. Some sites may block.</span></td></tr>';
   }
 
   html += '</table>';
 
   html += '<div style="margin-top:0.5rem;font-size:0.65rem;color:#64748b;">';
-  html += '💡 Run the <a href="#section-webrtc" style="color:#60a5fa;">WebRTC test</a> to check if your real IP leaks through the VPN. ';
+  html += 'ðŸ’¡ Run the <a href="#section-webrtc" style="color:#60a5fa;">WebRTC test</a> to check if your real IP leaks through the VPN. ';
   html += 'VPN + fingerprint randomization (like Tor Browser) is the only way to hide browser identity.';
   html += '</div></div>';
 
   html += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:0.375rem;font-size:0.7rem;color:#64748b;background:#0f172a;">';
-  html += '⚠ Your IP was sent to ipinfo.io for this analysis. Data is subject to their privacy policy.';
+  html += 'âš  Your IP was sent to ipinfo.io for this analysis. Data is subject to their privacy policy.';
   html += '</div>';
 
   html += '</div>';
@@ -830,7 +830,7 @@ async function captureFingerprint() {
     fp['Connection Downlink'] = navigator.connection.downlink ? navigator.connection.downlink + ' Mbps' : 'unknown';
   }
 
-  // Adblock detection — create bait element and check visibility
+  // Adblock detection â€” create bait element and check visibility
   try {
     var bait = document.createElement('div');
     bait.className = 'adsbox pub_300x250 ad-banner adsbygoogle';
@@ -841,7 +841,7 @@ async function captureFingerprint() {
     fp['Adblock Detected'] = baithidden ? 'Yes' : 'No';
   } catch(e) { fp['Adblock Test'] = 'error'; }
 
-  // Plugin detection — enumerate installed browser plugins
+  // Plugin detection â€” enumerate installed browser plugins
   try {
     var plugins = [];
     if (navigator.plugins && navigator.plugins.length > 0) {
@@ -983,7 +983,7 @@ async function captureFingerprint() {
     fp['Math Log'] = Math.log10(12345).toFixed(4);
   } catch(e) { fp['Math'] = 'error'; }
 
-  // OS-level preferences — dark mode, reduced motion, contrast, color gamut
+  // OS-level preferences â€” dark mode, reduced motion, contrast, color gamut
   try {
     fp['Dark Mode'] = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Yes' : 'No';
     fp['Reduced Motion'] = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'Yes' : 'No';
@@ -994,7 +994,7 @@ async function captureFingerprint() {
     fp['Hover Capable'] = window.matchMedia('(hover: hover)').matches ? 'Yes' : 'No';
   } catch(e) { fp['OS Prefs'] = 'error'; }
 
-  // Battery API — reveals charging status and level (mobile fingerprint)
+  // Battery API â€” reveals charging status and level (mobile fingerprint)
   try {
     if (navigator.getBattery) {
       navigator.getBattery().then(function(b) {
@@ -1004,7 +1004,7 @@ async function captureFingerprint() {
     }
   } catch(e) { fp['Battery'] = 'blocked'; }
 
-  // Storage estimation — reveals disk usage patterns
+  // Storage estimation â€” reveals disk usage patterns
   try {
     if (navigator.storage && navigator.storage.estimate) {
       navigator.storage.estimate().then(function(s) {
@@ -1014,7 +1014,7 @@ async function captureFingerprint() {
     }
   } catch(e) { fp['Storage'] = 'blocked'; }
 
-  // Speech synthesis — reveals installed voice packs (OS/language signal)
+  // Speech synthesis â€” reveals installed voice packs (OS/language signal)
   try {
     if (window.speechSynthesis) {
       var voices = window.speechSynthesis.getVoices();
@@ -1079,7 +1079,7 @@ async function captureFingerprint() {
 
   // === AUTOMATION DETECTION SIGNALS ===
 
-  // Automation framework classification — detect AND name the specific framework
+  // Automation framework classification â€” detect AND name the specific framework
   try {
     var autoFrameworks = [];
     var cd = window.cdc_adoQpoasnfa76pfcZLmcfl_Array ? 'cdc_' : null;
@@ -1099,14 +1099,14 @@ async function captureFingerprint() {
     if (window.domAutomation || window.domAutomationController || window.chrome && chrome.automation) {
       autoFrameworks.push('Chrome Automation');
     }
-    // Nodriver / undetected-chromedriver — zero CDP footprint, harder to detect
-    // Camoufox / rebrowser — patch known globals but leave unique traces
+    // Nodriver / undetected-chromedriver â€” zero CDP footprint, harder to detect
+    // Camoufox / rebrowser â€” patch known globals but leave unique traces
     if (window.__nightmare) autoFrameworks.push('NightmareJS');
     if (window.__selenium) autoFrameworks.push('Selenium (legacy)');
     // Headless Chrome detection via chrome.runtime discrepancies
     try {
       if (window.chrome && chrome.runtime && chrome.runtime.id === undefined) {
-        // Stealth plugins patch this — if missing entirely it's headless
+        // Stealth plugins patch this â€” if missing entirely it's headless
       }
     } catch(ch) {}
     // PhantomJS-specific checks (legacy)
@@ -1116,7 +1116,7 @@ async function captureFingerprint() {
     fp['Automation Count'] = autoFrameworks.length;
   } catch(e) { fp['Automation Frameworks'] = 'error'; }
 
-  // Iframe webdriver leak — stealth plugins patch main frame but miss iframes
+  // Iframe webdriver leak â€” stealth plugins patch main frame but miss iframes
   try {
     var iframe = document.createElement('iframe');
     iframe.style.display = 'none';
@@ -1126,7 +1126,7 @@ async function captureFingerprint() {
     fp['Iframe WebDriver Leak'] = iframeWD ? 'Yes (automation!)' : 'No';
   } catch(e) { fp['Iframe WebDriver Leak'] = 'error'; }
 
-  // History length — bots often have session-only history
+  // History length â€” bots often have session-only history
   try {
     fp['History Length'] = window.history.length;
   } catch(e) { fp['History Length'] = 'error'; }
@@ -1164,10 +1164,10 @@ async function captureFingerprint() {
   // CPU core count anomaly
   try {
     var cores = navigator.hardwareConcurrency || 0;
-    fp['CPU Cores Class'] = cores <= 2 ? 'Low (' + cores + ' — possible VM/headless)' : (cores >= 32 ? 'Very High (' + cores + ' — possible server)' : 'Normal (' + cores + ')');
+    fp['CPU Cores Class'] = cores <= 2 ? 'Low (' + cores + ' â€” possible VM/headless)' : (cores >= 32 ? 'Very High (' + cores + ' â€” possible server)' : 'Normal (' + cores + ')');
   } catch(e) { fp['CPU Cores Class'] = 'error'; }
 
-  // Connection RTT presence — bots often lack Network Information API
+  // Connection RTT presence â€” bots often lack Network Information API
   try {
     if (navigator.connection) {
       fp['Connection RTT Present'] = navigator.connection.rtt !== undefined && navigator.connection.rtt !== null ? 'Yes (' + navigator.connection.rtt + 'ms)' : 'No';
@@ -1176,15 +1176,15 @@ async function captureFingerprint() {
     }
   } catch(e) { fp['Connection RTT Present'] = 'error'; }
 
-  // Screen orientation lock — headless often lacks orientation
+  // Screen orientation lock â€” headless often lacks orientation
   try {
     var orient = screen.orientation ? screen.orientation.type : 'API unavailable';
     fp['Screen Orientation'] = orient;
   } catch(e) { fp['Screen Orientation'] = 'error'; }
 
-  // Connected devices — gamepads, sensors, peripherals (no permission needed)
+  // Connected devices â€” gamepads, sensors, peripherals (no permission needed)
   try {
-    // Gamepad detection — bots never have gamepads connected; some humans do
+    // Gamepad detection â€” bots never have gamepads connected; some humans do
     var gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     var connectedGamepads = 0;
     for (var gi = 0; gi < (gamepads.length || 0); gi++) {
@@ -1193,7 +1193,7 @@ async function captureFingerprint() {
     fp['Gamepads Connected'] = connectedGamepads > 0 ? 'Yes (' + connectedGamepads + ')' : 'No';
     fp['Gamepad Names'] = connectedGamepads > 0 ? Array.from(gamepads).filter(Boolean).map(function(g){return g.id||'';}).join(', ') : 'none';
 
-    // Performance API precision — headless browsers have reduced precision (100µs vs 5µs)
+    // Performance API precision â€” headless browsers have reduced precision (100Âµs vs 5Âµs)
     try {
       var pStart = performance.now();
       var pEnd = performance.now();
@@ -1205,7 +1205,7 @@ async function captureFingerprint() {
       fp['Performance Resolution'] = pMin < 0.1 ? 'High' : 'Reduced';
     } catch(pe) { fp['Performance Precision'] = 'error'; }
 
-    // Chrome runtime ID — stealth patches remove or modify this
+    // Chrome runtime ID â€” stealth patches remove or modify this
     try {
       if (window.chrome && chrome.runtime) {
         fp['Chrome Runtime'] = typeof chrome.runtime.id !== 'undefined' ? 'Present' : 'Missing (patched)';
@@ -1214,7 +1214,7 @@ async function captureFingerprint() {
       }
     } catch(cre) { fp['Chrome Runtime'] = 'error'; }
 
-    // Media devices — available without prompt in some browsers
+    // Media devices â€” available without prompt in some browsers
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
         navigator.mediaDevices.enumerateDevices().then(function(devices) {
@@ -1231,7 +1231,7 @@ async function captureFingerprint() {
           // Set on a future tick via a stored var
           var fpEl = document.querySelector('#fingerprint-grid');
           if (fpEl && devSummary.length > 0) {
-            // Async — add to grid if already rendered
+            // Async â€” add to grid if already rendered
           }
           window.__mediaDevices = devSummary.length > 0 ? devSummary.join(', ') : 'none detected';
         }).catch(function(){});
@@ -1239,18 +1239,18 @@ async function captureFingerprint() {
     } catch(mde) {}
   } catch(e) { fp['Connected Devices'] = 'error'; }
 
-  // Sensor availability — mobile sensors are strong fingerprint signals
+  // Sensor availability â€” mobile sensors are strong fingerprint signals
   try {
     fp['Device Orientation API'] = typeof DeviceOrientationEvent !== 'undefined' ? 'Available' : 'No';
     fp['Device Motion API'] = typeof DeviceMotionEvent !== 'undefined' ? 'Available' : 'No';
-    // Generic Sensor API — newer, Chrome-only for most sensor types
+    // Generic Sensor API â€” newer, Chrome-only for most sensor types
     fp['Accelerometer API'] = typeof Accelerometer !== 'undefined' ? 'Available' : 'No';
     fp['Gyroscope API'] = typeof Gyroscope !== 'undefined' ? 'Available' : 'No';
     fp['Magnetometer API'] = typeof Magnetometer !== 'undefined' ? 'Available' : 'No';
     fp['Ambient Light API'] = typeof AmbientLightSensor !== 'undefined' ? 'Available' : 'No';
   } catch(e) { fp['Sensor APIs'] = 'error'; }
 
-  // Device classification — mobile, tablet, or desktop
+  // Device classification â€” mobile, tablet, or desktop
   try {
     var ua = navigator.userAgent || '';
     var isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
@@ -1279,13 +1279,13 @@ async function captureFingerprint() {
     fp['Browser Version'] = version;
   } catch(e) { fp['Browser'] = 'error'; }
 
-  // HTTP Referrer — reveals where the user came from (or empty for direct/bookmark/automation)
+  // HTTP Referrer â€” reveals where the user came from (or empty for direct/bookmark/automation)
   try {
     var ref = document.referrer || '(empty - direct visit, bookmark, or automation)';
     fp['HTTP Referrer'] = ref.length > 80 ? ref.substring(0, 80) + '...' : ref;
   } catch(e) { fp['HTTP Referrer'] = 'error'; }
 
-  // CSS Engine Fingerprinting — detect browser CSS engine and version via @supports
+  // CSS Engine Fingerprinting â€” detect browser CSS engine and version via @supports
   // Different CSS engines (Blink, Gecko, WebKit) support different features at different times
   try {
     if (typeof CSS !== 'undefined' && CSS.supports) {
@@ -1315,7 +1315,7 @@ async function captureFingerprint() {
     fp['IP Version'] = ipv6Res.ipVersion;
   } catch(e) { fp['IPv6 Available'] = 'error'; }
 
-  // DNS check — browser's available DNS resolution methods
+  // DNS check â€” browser's available DNS resolution methods
   try {
     var dnsFeatures = [];
     // DNS-over-HTTPS check via Chrome's experimental API
@@ -1328,10 +1328,10 @@ async function captureFingerprint() {
     fp['DNS Features'] = dnsFeatures.length > 0 ? dnsFeatures.join(', ') : 'standard (no advanced DNS APIs)';
   } catch(e) { fp['DNS Features'] = 'error'; }
 
-  // Advanced browser API detection — reveals browser, version, and privacy settings
+  // Advanced browser API detection â€” reveals browser, version, and privacy settings
   try {
     fp['Cookies Enabled'] = navigator.cookieEnabled ? 'Yes' : 'No';
-    // Check if cookies are partitioned (CHIPS — Chrome-only)
+    // Check if cookies are partitioned (CHIPS â€” Chrome-only)
     try { var cp = document.cookie; fp['Cookies Accessible'] = cp !== undefined ? 'Yes' : 'No'; } catch(ce) { fp['Cookies Accessible'] = 'Blocked'; }
     // localStorage
     try { localStorage.setItem('_scr_test', '1'); localStorage.removeItem('_scr_test'); fp['localStorage'] = 'Yes'; } catch(e) { fp['localStorage'] = 'Blocked'; }
@@ -1353,13 +1353,13 @@ async function captureFingerprint() {
     try { fp['File System Access'] = typeof showOpenFilePicker !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['File System Access'] = 'error'; }
     // Navigation API (new)
     try { fp['Navigation API'] = typeof Navigation !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['Navigation API'] = 'error'; }
-    // USB — only available in secure contexts, reveals Chrome
+    // USB â€” only available in secure contexts, reveals Chrome
     try { fp['WebUSB'] = navigator.usb !== undefined ? 'Yes' : 'No'; } catch(e) { fp['WebUSB'] = 'error'; }
-    // Bluetooth — mobile/Chrome
+    // Bluetooth â€” mobile/Chrome
     try { fp['Bluetooth'] = navigator.bluetooth !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Bluetooth'] = 'error'; }
     // Serial API
     try { fp['Web Serial'] = navigator.serial !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Web Serial'] = 'error'; }
-    // Installed Related Apps (Chrome) — reveals installed PWAs/native apps (privacy signal)
+    // Installed Related Apps (Chrome) â€” reveals installed PWAs/native apps (privacy signal)
     try { if (navigator.getInstalledRelatedApps) {
       navigator.getInstalledRelatedApps().then(function(apps) {
         fp['Installed Apps'] = apps.length > 0 ? apps.map(function(a){return a.id||a.platform||'?'}).join(', ') : 'none';
@@ -1377,23 +1377,23 @@ async function captureFingerprint() {
     } catch(e) { fp['Ad Tech Detected'] = 'error'; }
   } catch(e) { fp['Advanced APIs'] = 'error'; }
 
-  // Security & integrity checks — detect if page is compromised or framed
+  // Security & integrity checks â€” detect if page is compromised or framed
   try {
-    // Frame check — are we in an iframe? (clickjacking detection)
+    // Frame check â€” are we in an iframe? (clickjacking detection)
     fp['In Iframe'] = window !== window.top ? 'Yes (framed!)' : 'No';
     fp['Parent Domain'] = window !== window.top ? (document.referrer || 'unknown') : 'N/A';
     // Cross-origin isolation status
     fp['Cross-Origin Isolated'] = window.crossOriginIsolated ? 'Yes' : 'No';
-    // Global Privacy Control (GPC) — privacy signal
+    // Global Privacy Control (GPC) â€” privacy signal
     try { fp['GPC Signal'] = navigator.globalPrivacyControl ? 'Yes' : 'No'; } catch(gpc) { fp['GPC Signal'] = 'unsupported'; }
     // Do Not Track
     fp['Do Not Track'] = navigator.doNotTrack || 'unspecified';
-    // Opener check — was window opened by another site?
+    // Opener check â€” was window opened by another site?
     try {
       fp['Opener Present'] = window.opener !== null ? 'Yes' : 'No';
       if (window.opener) fp['Opener Origin'] = 'cross-origin (potential CSRF)';
     } catch(oe) { fp['Opener Present'] = 'Blocked (cross-origin)'; }
-    // Performance entry analysis — check for injected scripts/extensions
+    // Performance entry analysis â€” check for injected scripts/extensions
     var injected = [];
     try {
       var entries = performance.getEntriesByType('resource') || [];
@@ -1423,7 +1423,7 @@ async function captureFingerprint() {
       fp['Extension DOM Traces'] = domExtras.length > 0 ? domExtras.join(', ') : 'none';
     } catch(de) { fp['Extension DOM Traces'] = 'error'; }
 
-    // Enterprise protection detection — detect proxies, RBI, isolation systems
+    // Enterprise protection detection â€” detect proxies, RBI, isolation systems
     try {
       var epSignals = [];
       // Low hardware resources (RBI/thin client indicator)
@@ -1494,7 +1494,7 @@ function computeBotOrNot(fp) {
         detail: r === indicatesBot ? (indicatesBot ? 'Bot-like' : 'Human-like') : (indicatesBot ? 'Human-like' : 'Bot-like')
       });
     } catch(e) {
-      // test failed — skip
+      // test failed â€” skip
     }
   }
 
@@ -1503,7 +1503,7 @@ function computeBotOrNot(fp) {
   // 1. navigator.webdriver
   test(5, 'WebDriver flag', true, function() { return navigator.webdriver === true; });
 
-  // 2. Automation framework globals — weighted by number of frameworks found
+  // 2. Automation framework globals â€” weighted by number of frameworks found
   test(5, 'Automation framework detected', true, function() {
     var count = 0;
     if (window.cdc_adoQpoasnfa76pfcZLmcfl_Array || window.__webdriver_evaluate) count++;
@@ -1667,54 +1667,54 @@ function computeBotOrNot(fp) {
     return null; // can't determine
   });
 
-  // 26. HTTP Referrer — humans often arrive from other pages, bots usually don't
+  // 26. HTTP Referrer â€” humans often arrive from other pages, bots usually don't
   test(1, 'HTTP Referrer present', false, function() {
     var ref = fp['HTTP Referrer'] || '';
     return ref.length > 0 && !ref.includes('(empty');
   });
 
-  // 27. CSS Houdini Paint Worklet — Chrome-only API, suspicious if missing from Chrome
+  // 27. CSS Houdini Paint Worklet â€” Chrome-only API, suspicious if missing from Chrome
   test(1, 'CSS Houdini Paint API', false, function() {
     return fp['CSS Houdini paint'] && fp['CSS Houdini paint'] === 'Yes (Chrome)';
   });
 
-  // 28. CSS :has() selector — widely supported in modern browsers, missing = old/unusual
+  // 28. CSS :has() selector â€” widely supported in modern browsers, missing = old/unusual
   test(1, 'CSS :has() selector', false, function() {
     return fp['CSS :has()'] === 'Yes';
   });
 
-  // 29. CSS Container Queries — modern responsive feature, missing = old browser
+  // 29. CSS Container Queries â€” modern responsive feature, missing = old browser
   test(1, 'CSS Container Queries', false, function() {
     return fp['CSS Container Queries'] === 'Yes';
   });
 
-  // 30. IPv6 connectivity — modern networks have IPv6; missing = restrictive/old/Tor
+  // 30. IPv6 connectivity â€” modern networks have IPv6; missing = restrictive/old/Tor
   test(2, 'IPv6 connectivity', false, function() {
     return fp['IPv6 Available'] === 'Yes';
   });
 
-  // 31. IP version — IPv4 vs IPv6 (IPv6 can be a fingerprint signal)
+  // 31. IP version â€” IPv4 vs IPv6 (IPv6 can be a fingerprint signal)
   test(1, 'IP version (v4/v6)', false, function() {
     // Both v4 and v6 can be normal, this is informational
-    return true; // neutral — doesn't affect score
+    return true; // neutral â€” doesn't affect score
   });
 
-  // 32. Adblock detected — real users often have adblock, bots usually don't
+  // 32. Adblock detected â€” real users often have adblock, bots usually don't
   test(2, 'Adblock detected', false, function() {
     return fp['Adblock Detected'] === 'Yes';
   });
 
-  // 33. localStorage available — privacy-conscious users block it, bots usually don't
+  // 33. localStorage available â€” privacy-conscious users block it, bots usually don't
   test(1, 'localStorage available', false, function() {
     return fp['localStorage'] === 'Yes';
   });
 
-  // 34. Cookies enabled — almost all real users have cookies, bots might not
+  // 34. Cookies enabled â€” almost all real users have cookies, bots might not
   test(1, 'Cookies enabled', false, function() {
     return fp['Cookies Enabled'] === 'Yes';
   });
 
-  // 35. Service Worker support — modern browsers only
+  // 35. Service Worker support â€” modern browsers only
   test(1, 'Service Worker support', false, function() {
     return fp['Service Worker'] === 'Yes';
   });
@@ -1745,7 +1745,7 @@ function renderBotOrNot(bon) {
   var category, emoji, color;
   if (pct <= 15) {
     category = 'Likely Human';
-    emoji = '\u{1F9D1}‍\u{1F4BB}';
+    emoji = '\u{1F9D1}â€\u{1F4BB}';
     color = '#22c55e';
   } else if (pct <= 30) {
     category = 'Probably Human';
@@ -1779,7 +1779,7 @@ function renderBotOrNot(bon) {
 
   // Signal breakdown (collapsible)
   html += '<div style="margin-top:0.75rem;">';
-  html += '<span class="toggle-link" onclick="var s=document.getElementById(\'bot-signals\');s.classList.toggle(\'open\')">Show ' + bon.testsRun + '/' + bon.testsTotal + ' signal details ▼</span>';
+  html += '<span class="toggle-link" onclick="var s=document.getElementById(\'bot-signals\');s.classList.toggle(\'open\')">Show ' + bon.testsRun + '/' + bon.testsTotal + ' signal details â–¼</span>';
   html += '</div>';
   html += '<div id="bot-signals" class="signal-list">';
 
@@ -1790,7 +1790,7 @@ function renderBotOrNot(bon) {
   });
   for (var i = 0; i < sorted.length; i++) {
     var s = sorted[i];
-    var icon = s.bot ? '⚠' : '✓';
+    var icon = s.bot ? 'âš ' : 'âœ“';
     var cls = s.bot ? 'signal-fail' : 'signal-pass';
     html += '<div class="signal-item"><span class="signal-icon ' + cls + '">' + icon + '</span>';
     html += '<span class="' + cls + '">' + s.name + '</span>';
@@ -1801,28 +1801,28 @@ function renderBotOrNot(bon) {
 
   // Share buttons
   html += '<div class="share-bar" style="margin-top:0.75rem;">';
-  html += '<button class="share-btn share-twitter" onclick="shareScore(\'twitter\')">𝕏 Post score</button>';
+  html += '<button class="share-btn share-twitter" onclick="shareScore(\'twitter\')">ð• Post score</button>';
   html += '<button class="share-btn share-linkedin" onclick="shareScore(\'linkedin\')">in Post score</button>';
-  html += '<button class="share-btn share-bluesky" onclick="shareScore(\'bluesky\')">🦋 Post score</button>';
+  html += '<button class="share-btn share-bluesky" onclick="shareScore(\'bluesky\')">ðŸ¦‹ Post score</button>';
   html += '<button class="share-btn share-mastodon" onclick="shareScore(\'mastodon\')">M Post score</button>';
-  html += '<button class="share-btn" style="background:#334155;color:#e2e8f0;" onclick="downloadScoreCard()">⬇ Download card</button>';
+  html += '<button class="share-btn" style="background:#334155;color:#e2e8f0;" onclick="downloadScoreCard()">â¬‡ Download card</button>';
   html += '</div>';
 
   // Self-assessment: let the user rate how bot-like they think they are
   html += '<div style="margin-top:1rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;">';
-  html += '<div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">📊 How bot-like do YOU think you are?</div>';
+  html += '<div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">ðŸ“Š How bot-like do YOU think you are?</div>';
   html += '<div style="display:flex;gap:0.35rem;justify-content:center;flex-wrap:wrap;">';
   for (var si = 1; si <= 5; si++) {
     var labels = ['Human','Probably Human','Not Sure','Probably Bot','Definitely Bot'];
     html += '<button class="btn btn-sm" style="font-size:0.7rem;padding:0.3rem 0.6rem;background:#1e293b;color:#94a3b8;border:1px solid #334155;" ';
-    html += 'onclick="recordSelfAssessment(' + si + ')">' + si + ' — ' + labels[si - 1] + '</button>';
+    html += 'onclick="recordSelfAssessment(' + si + ')">' + si + ' â€” ' + labels[si - 1] + '</button>';
   }
   html += '</div><div id="self-assessment-result" style="font-size:0.7rem;color:#64748b;margin-top:0.4rem;"></div></div>';
 
-  // Visible "I am not a bot" button — bots click it, humans ignore it
+  // Visible "I am not a bot" button â€” bots click it, humans ignore it
   html += '<button id="verify-btn" style="position:fixed;bottom:1rem;right:1rem;z-index:9999;background:#1e293b;color:#64748b;border:1px solid #334155;border-radius:8px;padding:0.5rem 1rem;font-size:0.7rem;cursor:pointer;opacity:0.5;" ';
-  html += 'onclick="caughtVisibleTrap()">🤖 Tap to continue</button>';
-  // Hidden access link — invisible to humans, automation may interact
+  html += 'onclick="caughtVisibleTrap()">ðŸ¤– Tap to continue</button>';
+  // Hidden access link â€” invisible to humans, automation may interact
   html += '<button id="hidden-access-btn" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" ';
   html += 'onclick="caughtHiddenTrap()">Access</button>';
 
@@ -1843,8 +1843,8 @@ function recordSelfAssessment(rating) {
   }
 }
 
-// Bot-only signals — auto-capture fingerprint and submit when triggered
-// Lawful basis: GDPR Art. 6(1)(f) legitimate interest — security monitoring
+// Bot-only signals â€” auto-capture fingerprint and submit when triggered
+// Lawful basis: GDPR Art. 6(1)(f) legitimate interest â€” security monitoring
 function autoCaptureBotSignal(signalName) {
   // Run fingerprint capture immediately
   if (typeof captureFingerprint === 'function') {
@@ -1887,7 +1887,7 @@ function showBotTrapWarning(type) {
   if (div) {
     var warn = document.createElement('div');
     warn.style.cssText = 'margin-top:0.5rem;padding:0.5rem;background:#7f1d1d;color:#fca5a5;border-radius:0.375rem;font-size:0.75rem;text-align:center;';
-    warn.textContent = '⚠ Hidden ' + label + ' element activated.';
+    warn.textContent = 'âš  Hidden ' + label + ' element activated.';
     div.appendChild(warn);
   }
 }
@@ -1907,15 +1907,15 @@ function showEntropyExplanation(totalBits, uniqueness) {
     '<p>Your score: <strong>' + totalBits + ' bits</strong> &mdash; roughly <strong>1 in ' + uniqueness + '</strong> browsers.</p>' +
 
     '<h4>Context from research</h4>' +
-    '<p>• <strong>18 bits</strong> (1 in ~262K browsers) &mdash; Eckersley (2010) Panopticlick study found the average 2010 browser had 18.1 bits. ' +
+    '<p>â€¢ <strong>18 bits</strong> (1 in ~262K browsers) &mdash; Eckersley (2010) Panopticlick study found the average 2010 browser had 18.1 bits. ' +
     '<a href="https://coveryourtracks.eff.org" target="_blank" style="color:#60a5fa;">Source</a></p>' +
-    '<p>• <strong>22-33 bits</strong> (1 in 4M to 1 in 8B) &mdash; modern browsers are far more unique. ' +
+    '<p>â€¢ <strong>22-33 bits</strong> (1 in 4M to 1 in 8B) &mdash; modern browsers are far more unique. ' +
     'The Google study (WWW 2024) analyzed 5,383 Web API surfaces across millions of Chrome browsers. ' +
     '<a href="https://arxiv.org/abs/2403.15607" target="_blank" style="color:#60a5fa;">Source</a></p>' +
-    '<p>• <strong>81% of fingerprints</strong> were unique in the FP-STALKER study (2021) across 216 attributes and 2M visitors.</p>' +
+    '<p>â€¢ <strong>81% of fingerprints</strong> were unique in the FP-STALKER study (2021) across 216 attributes and 2M visitors.</p>' +
 
     '<h4>Important limitation</h4>' +
-    '<p>Our calculation adds each attribute\'s entropy <strong>individually</strong>, which <strong>overestimates</strong> — ' +
+    '<p>Our calculation adds each attribute\'s entropy <strong>individually</strong>, which <strong>overestimates</strong> â€” ' +
     'real entropy is lower because attributes correlate (screen size ties to GPU, language ties to timezone). ' +
     'The 2024 Google study found accounting for correlation reduces effective entropy by ~30%.</p>' +
 
@@ -1948,7 +1948,7 @@ function extractCandidateIPs(candidateStr) {
   var parts = candidateStr.split(' ');
   if (parts.length >= 5) {
     var ip = parts[4];
-    // Validate — IPv4 or IPv6
+    // Validate â€” IPv4 or IPv6
     if (ip.includes(':')) {
       // IPv6: validate it's not a port number, has at least one colon
       if (ip.split(':').length >= 3) ips.push(ip);
@@ -2020,19 +2020,19 @@ async function runWebRTCTests() {
   }
   html += '</table>';
   if (webrtcIPs.size) html += '<div style="margin-top:0.5rem;font-size:0.8rem;">All IPs: ' + [...webrtcIPs].join(', ') + '</div>';
-  if (webrtcIPv6.size) html += '<div style="margin-top:0.25rem;font-size:0.75rem;color:#60a5fa;">IPv6 detected: ' + [...webrtcIPv6].join(', ') + ' — IPv6 leak possible</div>';
+  if (webrtcIPv6.size) html += '<div style="margin-top:0.25rem;font-size:0.75rem;color:#60a5fa;">IPv6 detected: ' + [...webrtcIPv6].join(', ') + ' â€” IPv6 leak possible</div>';
   var leakFound = [...webrtcIPs].some(function(ip) { return ip !== expected && !isPrivateIP(ip); });
   html += '<div class="result-box ' + (leakFound ? 'fail' : 'pass') + '" style="margin-top:0.5rem;">' +
-    (leakFound ? '⚠ WebRTC LEAK DETECTED' : '✓ No WebRTC leak detected') + '</div>';
+    (leakFound ? 'âš  WebRTC LEAK DETECTED' : 'âœ“ No WebRTC leak detected') + '</div>';
 
   // Add IPv6/DNS probe results if available
   var ipv6test = await probeIPv6Connectivity();
   if (ipv6test.available) {
     html += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:0.375rem;background:#0f172a;font-size:0.75rem;">';
-    html += '🌐 <strong>IPv6 connectivity</strong>: ' + (ipv6test.available ? '<span style="color:#6ee7b7;">Yes</span>' : '<span style="color:#94a3b8;">No</span>');
+    html += 'ðŸŒ <strong>IPv6 connectivity</strong>: ' + (ipv6test.available ? '<span style="color:#6ee7b7;">Yes</span>' : '<span style="color:#94a3b8;">No</span>');
     html += ' &middot; Your IP appears to be <strong>' + ipv6test.ipVersion + '</strong>';
     if (ipv6test.available && webrtcIPv6.size === 0) {
-      html += ' <span style="color:#fcd34d;">(WebRTC IPv6 candidates not found — browser may block IPv6 in WebRTC)</span>';
+      html += ' <span style="color:#fcd34d;">(WebRTC IPv6 candidates not found â€” browser may block IPv6 in WebRTC)</span>';
     }
     html += '</div>';
   }
@@ -2043,7 +2043,7 @@ async function runWebRTCTests() {
 // Probe for IPv6 connectivity by trying to reach IPv6-only endpoints
 async function probeIPv6Connectivity() {
   var result = { available: false, ipVersion: 'unknown' };
-  // Check ipinfo data if available — it tells us our IP
+  // Check ipinfo data if available â€” it tells us our IP
   if (__ipinfoData && __ipinfoData.ip) {
     result.ipVersion = __ipinfoData.ip.includes(':') ? 'IPv6' : 'IPv4';
   } else if (document.getElementById('expected-ip').value.trim().includes(':')) {
@@ -2182,7 +2182,7 @@ function __updateBehaviorUI() {
 
 function toggleBehaviorRecording() { __behavior.running ? stopBehaviorRecording() : startBehaviorRecording(); }
 
-// Wizard page navigation — tracks navigation path for behavioral analysis
+// Wizard page navigation â€” tracks navigation path for behavioral analysis
 function navigateTo(sectionId) {
   var el = document.getElementById(sectionId);
   if (el) {
@@ -2208,11 +2208,12 @@ function navigateTo(sectionId) {
 }
 
 function startBehaviorRecording() {
+  if (__behavior.running) return;
   __behavior = { running: true, timer: null, timeout: null, duration: 15000, startTime: performance.now(),
     events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [], touch: [], input: [], formClicks: [], inputFocus: [] }, count: 0 };
-  document.getElementById('behavior-btn').textContent = '⏹ Stop';
+  document.getElementById('behavior-btn').textContent = 'â¹ Stop';
   document.getElementById('behavior-progress').style.display = 'block';
-  document.getElementById('behavior-status').textContent = '⚡ Active';
+  document.getElementById('behavior-status').textContent = 'âš¡ Active';
   document.getElementById('behavior-substatus').textContent = 'Interact with the page naturally';
   document.getElementById('behavior-bar').style.width = '0%';
   document.getElementById('behavior-dot').className = 'rec-dot';
@@ -2235,11 +2236,11 @@ function startBehaviorRecording() {
   window.addEventListener('resize', __trackResize, {passive: true});
   // Form input tracking
   document.addEventListener('input', __trackInput, {passive: true});
-  // Paste detection — AI agents use Ctrl+V, humans type
+  // Paste detection â€” AI agents use Ctrl+V, humans type
   document.addEventListener('paste', __trackPaste, {passive: true});
   // Zoom and page navigation tracking
   window.matchMedia('(resolution: 1dppx)').addEventListener('change', __trackZoom);
-  // Sensor tracking — mobile devices expose orientation and motion without permission
+  // Sensor tracking â€” mobile devices expose orientation and motion without permission
   try { window.addEventListener('deviceorientation', __trackOrientation, {passive:true}); } catch(se) {}
   try { window.addEventListener('devicemotion', __trackMotion, {passive:true}); } catch(se) {}
   window.addEventListener('hashchange', __trackPageNav);
@@ -2286,8 +2287,8 @@ function stopBehaviorRecording() {
   document.getElementById('input-email')?.removeEventListener('focus', __trackInputFocus);
   document.getElementById('input-email')?.removeEventListener('blur', __trackInputFocus);
   document.removeEventListener('visibilitychange', __trackVisibility);
-  document.getElementById('behavior-btn').textContent = '▶ Start analysis';
-  document.getElementById('behavior-status').textContent = '✅ Recording complete';
+  document.getElementById('behavior-btn').textContent = 'â–¶ Start analysis';
+  document.getElementById('behavior-status').textContent = 'âœ… Recording complete';
   document.getElementById('behavior-dot').className = 'rec-dot done';
   document.getElementById('behavior-bar').className = 'rec-fill rec-complete';
   __lastBehaviorResult = analyzeBehavior(__behavior.events);
@@ -2340,7 +2341,7 @@ function analyzeBehavior(events) {
       return spd.reduce(function(a,b){return a+b;},0)/spd.length > 1.5;
     });
 
-    // 5. Velocity profile — humans accelerate then decelerate; bots instant on/off
+    // 5. Velocity profile â€” humans accelerate then decelerate; bots instant on/off
     // BeCAPTCHA-Mouse (Acien 2022) found this is the MOST discriminative feature
     t(4, 'Natural velocity profile', false, function() {
       if (spd.length < 10) return null;
@@ -2357,7 +2358,7 @@ function analyzeBehavior(events) {
       return accCV > 0.8;
     });
 
-    // 6. Trajectory optimality — humans take winding paths; bots go near-straight
+    // 6. Trajectory optimality â€” humans take winding paths; bots go near-straight
     t(3, 'Natural trajectory path', false, function() {
       if (m.length < 5) return null;
       // Compute actual path length
@@ -2374,7 +2375,7 @@ function analyzeBehavior(events) {
       return optimality >= 1.5 && optimality <= 20;
     });
 
-    // 7. Overshoot frequency — humans overshoot targets and correct; bots don't
+    // 7. Overshoot frequency â€” humans overshoot targets and correct; bots don't
     t(3, 'Mouse overshoot corrections', false, function() {
       if (m.length < 10) return null;
       // Count direction changes (micro-corrections) in the movement
@@ -2391,14 +2392,14 @@ function analyzeBehavior(events) {
     });
   }
 
-  // Mobile touch detection — touch events indicate mobile device, not bot by itself
+  // Mobile touch detection â€” touch events indicate mobile device, not bot by itself
   t(1, 'Touch interaction detected', false, function() { return tch.length >= 3; });
 
-  // Mobile sensor analysis — detect if sensor data is present and realistic
+  // Mobile sensor analysis â€” detect if sensor data is present and realistic
   var mot = events.motion || [];
   var ori = events.orientation || [];
 
-  // Sensor data presence — real mobile devices produce sensor data; emulators often don't
+  // Sensor data presence â€” real mobile devices produce sensor data; emulators often don't
   t(2, 'Motion sensor data present', false, function() {
     return mot.length >= 3;
   });
@@ -2406,7 +2407,7 @@ function analyzeBehavior(events) {
     return ori.length >= 3;
   });
 
-  // Gravity vector stability — real devices have ~9.8 m/s² gravity (g);
+  // Gravity vector stability â€” real devices have ~9.8 m/sÂ² gravity (g);
   // Emulated/mocked data often has 0 gravity or unrealistic values
   if (mot.length >= 5) {
     t(3, 'Realistic gravity reading', false, function() {
@@ -2415,7 +2416,7 @@ function analyzeBehavior(events) {
         var a = mot[mi].accel;
         if (a) {
           var mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
-          // Gravity should be near 9.8 m/s² on real devices
+          // Gravity should be near 9.8 m/sÂ² on real devices
           if (mag > 8 && mag < 12) gravCount++;
         }
       }
@@ -2423,7 +2424,7 @@ function analyzeBehavior(events) {
       return gravPct >= 0.3; // At least 30% of readings show realistic gravity
     });
 
-    // Movement variance — real humans have varied acceleration; stationary bots have none
+    // Movement variance â€” real humans have varied acceleration; stationary bots have none
     t(2, 'Natural movement variance', false, function() {
       var accelValues = [];
       for (var mi2 = 0; mi2 < mot.length; mi2++) {
@@ -2448,7 +2449,7 @@ function analyzeBehavior(events) {
       for (var i = 2; i < s.length; i++) if ((s[i-1].y-s[i-2].y)*(s[i].y-s[i-1].y) < 0) ch++;
       return ch === 0 && s.length > 10;
     });
-    // Scroll pattern classification — continuous vs discrete scrolling
+    // Scroll pattern classification â€” continuous vs discrete scrolling
     // FP-Agent: AI agents scroll in discrete jumps (instant to known coords)
     // Humans scroll continuously with variable speed
     t(3, 'Natural scrolling pattern', false, function() {
@@ -2524,7 +2525,7 @@ function analyzeBehavior(events) {
     }
     return null;
   });
-  // Typing corrections — humans backspace/delete (~5-15% of keystrokes)
+  // Typing corrections â€” humans backspace/delete (~5-15% of keystrokes)
   t(2, 'Typing corrections (backspace)', false, function() {
     var corrections = 0;
     for (var i = 0; i < inp.length; i++) {
@@ -2565,24 +2566,24 @@ function analyzeBehavior(events) {
   var pg = events.pageNav || [];
   var inputF = events.inputFocus || [];
 
-  // Zoom change — humans zoom in/out, bots never do
+  // Zoom change â€” humans zoom in/out, bots never do
   t(2, 'Zoom level changes', true, function() {
     return zn.length === 0;
   });
 
-  // Paste detection — AI agents (ChatGPT Agent, Atlas, Comet) use Ctrl+V
+  // Paste detection â€” AI agents (ChatGPT Agent, Atlas, Comet) use Ctrl+V
   // Humans type character-by-character; paste = bot signal
   var pe = events.paste || [];
   t(3, 'Paste-based input detected', true, function() {
     return pe.length > 0;
   });
 
-  // Page navigation — humans navigate between sections
+  // Page navigation â€” humans navigate between sections
   t(2, 'Page / section navigation', true, function() {
     return pg.length === 0;
   });
 
-  // Multi-field navigation — humans tab between fields in natural order
+  // Multi-field navigation â€” humans tab between fields in natural order
   if (inputF.length >= 2) {
     t(2, 'Multi-field navigation', false, function() {
       // Check if user visited multiple different form fields
@@ -2595,7 +2596,7 @@ function analyzeBehavior(events) {
     });
   }
 
-  // Field re-visit — humans go back to fix things
+  // Field re-visit â€” humans go back to fix things
   if (inputF.length >= 4) {
     t(2, 'Field re-visit (correction)', false, function() {
       var seq = [];
@@ -2612,7 +2613,7 @@ function analyzeBehavior(events) {
     });
   }
 
-  // Common typos — humans make predictable errors (teh, recieve, etc.)
+  // Common typos â€” humans make predictable errors (teh, recieve, etc.)
   // Check for known keyboard-proximity typos and edit distance
   if (inp.length >= 5) {
     t(2, 'Common typos detected', false, function() {
@@ -2706,11 +2707,11 @@ function analyzeBehavior(events) {
 function displayBehaviorResults(r) {
   var pct = r.botProbability, inv = 100-pct;
   var cat, emoji, color;
-  if (pct<=15) { cat='Human-like Behavior'; emoji='🧑'; color='#22c55e'; }
-  else if (pct<=35) { cat='Mostly Human'; emoji='🙂'; color='#84cc16'; }
-  else if (pct<=55) { cat='Uncertain'; emoji='🤷'; color='#eab308'; }
-  else if (pct<=80) { cat='Bot-like Behavior'; emoji='🤖'; color='#f97316'; }
-  else { cat='Automated Behavior'; emoji='⚙️'; color='#ef4444'; }
+  if (pct<=15) { cat='Human-like Behavior'; emoji='ðŸ§‘'; color='#22c55e'; }
+  else if (pct<=35) { cat='Mostly Human'; emoji='ðŸ™‚'; color='#84cc16'; }
+  else if (pct<=55) { cat='Uncertain'; emoji='ðŸ¤·'; color='#eab308'; }
+  else if (pct<=80) { cat='Bot-like Behavior'; emoji='ðŸ¤–'; color='#f97316'; }
+  else { cat='Automated Behavior'; emoji='âš™ï¸'; color='#ef4444'; }
   var cc = r.confidence==='High'?'conf-high':(r.confidence==='Medium'?'conf-med':'conf-low');
   var html = '<div style="margin-top:0.75rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;">';
   html += '<div style="font-size:1.5rem;margin-bottom:0.25rem;">'+emoji+'</div>';
@@ -2724,10 +2725,10 @@ function displayBehaviorResults(r) {
     ((ev.input||0) > 0 ? ', '+(ev.input||0)+' input' : '') + ((ev.formClicks||0) > 0 ? ', '+(ev.formClicks||0)+' btn clicks' : '') +
     ((ev.visibilityEvents||0) > 0 ? ', '+(ev.visibilityEvents||0)+' vis events' : '') + ((ev.paste||0) > 0 ? ', '+(ev.paste||0)+' paste' : '') +
     ((ev.touch||0) > 0 ? ', '+(ev.touch||0)+' touch' : '')+'</div>';
-  html += '<div style="margin-top:0.5rem;"><span class="toggle-link" onclick="var s=document.getElementById(\'beh-signals\');s.classList.toggle(\'open\')">Show '+r.signals.length+' signal details ▼</span></div>';
+  html += '<div style="margin-top:0.5rem;"><span class="toggle-link" onclick="var s=document.getElementById(\'beh-signals\');s.classList.toggle(\'open\')">Show '+r.signals.length+' signal details â–¼</span></div>';
   html += '<div id="beh-signals" class="signal-list">';
   for (var i = 0; i < r.signals.length; i++) {
-    var s = r.signals[i], icon = s.bot ? '⚠' : '✓', cls = s.bot ? 'signal-fail' : 'signal-pass';
+    var s = r.signals[i], icon = s.bot ? 'âš ' : 'âœ“', cls = s.bot ? 'signal-fail' : 'signal-pass';
     html += '<div class="beh-signal-item"><span class="beh-signal-icon '+cls+'">'+icon+'</span>';
     html += '<span class="'+cls+'">'+s.name+'</span><span class="signal-detail">'+s.humanLabel+'</span><span class="signal-weight">w'+s.weight+'</span></div>';
   }
@@ -2756,7 +2757,7 @@ function enableSubmission(fp, bon) {
 
   sec.innerHTML =
     '<div style="background:#0f172a;border-radius:0.375rem;padding:0.75rem;">' +
-    '<h4 style="font-size:0.85rem;margin-bottom:0.5rem;">🔍 Data Preview — what will be sent</h4>' +
+    '<h4 style="font-size:0.85rem;margin-bottom:0.5rem;">ðŸ” Data Preview â€” what will be sent</h4>' +
     '<p style="font-size:0.7rem;color:#94a3b8;margin-bottom:0.5rem;">' +
     'No IP addresses, cookies, or personal identifiers are included. ' +
     'Only browser attribute hashes and aggregate stats are collected. ' +
@@ -2766,14 +2767,14 @@ function enableSubmission(fp, bon) {
     '<label class="field-check"><input type="checkbox" id="submit-consent" onchange="document.getElementById(\'submit-btn\').disabled=!this.checked"> ' +
     'I consent to submitting these anonymized browser attributes for research purposes. ' +
     'I understand this data will be publicly available.</label></div>' +
-    '<button class="btn" id="submit-btn" disabled onclick="submitResults()" style="margin-top:0.5rem;">📤 Submit Anonymous Results</button>' +
+    '<button class="btn" id="submit-btn" disabled onclick="submitResults()" style="margin-top:0.5rem;">ðŸ“¤ Submit Anonymous Results</button>' +
     '<div id="submit-result-msg" style="margin-top:0.5rem;font-size:0.75rem;"></div>' +
     '</div>';
 }
 
 function buildSubmissionData(fp, bon) {
   if (!fp) return { error: 'no data' };
-  // Strip identifying fields — keep only aggregate stats and hashes
+  // Strip identifying fields â€” keep only aggregate stats and hashes
   var safe = {};
   // Bot-or-Not scores (aggregate + per-signal for longitudinal analysis)
   if (bon) {
@@ -2783,7 +2784,7 @@ function buildSubmissionData(fp, bon) {
     safe.detectorVersion = 2;
     safe.maxPossibleScore = bon.maxWeight || 95;
     safe.botSignalNames = (bon.results || []).filter(function(s) { return s.bot; }).map(function(s) { return s.name; }).slice(0, 10);
-    // Per-signal scores — critical for signal half-life analysis
+    // Per-signal scores â€” critical for signal half-life analysis
     safe.signalScores = {};
     var sigResults = bon.results || [];
     for (var si = 0; si < sigResults.length; si++) {
@@ -2793,7 +2794,7 @@ function buildSubmissionData(fp, bon) {
   }
   // Entropy bits (aggregate, not per-attribute)
   safe.totalEntropyBits = fp.totalEntropyBits || null;
-  // Screen resolution class (not exact — bucket for k-anonymity)
+  // Screen resolution class (not exact â€” bucket for k-anonymity)
   var w = screen.width, h = screen.height;
   if (w >= 3840) safe.screenClass = '4K+';
   else if (w >= 2560) safe.screenClass = 'QHD+';
@@ -2837,19 +2838,19 @@ function buildSubmissionData(fp, bon) {
   else safe.gpuClass = 'other';
   // Timestamp (anonymized to day)
   safe.submitted = new Date().toISOString().split('T')[0]; // date only, no time
-  // Source — set by automation baselines to distinguish human vs automated submissions
+  // Source â€” set by automation baselines to distinguish human vs automated submissions
   safe.source = window.__SUBMISSION_SOURCE || 'manual';
-  // Self-assessment — user's own rating of how bot-like they think they are (1-5)
+  // Self-assessment â€” user's own rating of how bot-like they think they are (1-5)
   safe.selfAssessment = window.__selfRating || null;
 
-  // IP version — IPv4 vs IPv6 (from the connectivity probe)
+  // IP version â€” IPv4 vs IPv6 (from the connectivity probe)
   safe.ipVersion = (fp && fp['IP Version']) || 'unknown';
 
-  // Detector version — tracks methodology changes over time
+  // Detector version â€” tracks methodology changes over time
   safe.detectorVersion = 1;
   safe.version = 1;
 
-  // Environment snapshot — browser, OS, viewport for longitudinal subgroup analysis
+  // Environment snapshot â€” browser, OS, viewport for longitudinal subgroup analysis
   try {
     var ua = navigator.userAgent || '';
     var ver = 'unknown';
@@ -2863,7 +2864,7 @@ function buildSubmissionData(fp, bon) {
     safe.lang = navigator.language || '';
   } catch(e) {}
 
-  // Session context — links related submissions for longitudinal tracking (no PII)
+  // Session context â€” links related submissions for longitudinal tracking (no PII)
   try {
     if (!window.__sessionID) {
       window.__sessionID = 'anon-' + Math.random().toString(36).substring(2, 10) +
@@ -2893,7 +2894,7 @@ function shareScore(platform) {
   if (pct === undefined) { alert('Run Bot-or-Not first!'); return; }
   var inv = 100 - pct;
   var engine = __lastFingerprintData?.['JS Engine'] || 'unknown';
-  var text = 'I just ran Scrutari Bot-or-Not™ and my browser scored ' + pct + '% bot-like, ' + inv + '% human-like. Engine: ' + engine;
+  var text = 'I just ran Scrutari Bot-or-Notâ„¢ and my browser scored ' + pct + '% bot-like, ' + inv + '% human-like. Engine: ' + engine;
   var url = window.location.origin + '/?score=' + pct;
   var encoded = encodeURIComponent(text);
   var encodedUrl = encodeURIComponent(url);
@@ -2934,13 +2935,13 @@ function downloadScoreCard() {
 
   // Title
   ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('🔍 Scrutari Bot-or-Not™', w/2, 44);
+  ctx.fillText('ðŸ” Scrutari Bot-or-Notâ„¢', w/2, 44);
 
   // Category
   var catColor = pct <= 15 ? '#22c55e' : pct <= 35 ? '#84cc16' : pct <= 55 ? '#eab308' : pct <= 80 ? '#f97316' : '#ef4444';
-  ctx.font = '40px sans-serif'; ctx.fillText(pct <= 15 ? '🧑' : pct <= 35 ? '🙂' : pct <= 55 ? '🤷' : pct <= 80 ? '🤖' : '⚙️', w/2, 90);
+  ctx.font = '40px sans-serif'; ctx.fillText(pct <= 15 ? 'ðŸ§‘' : pct <= 35 ? 'ðŸ™‚' : pct <= 55 ? 'ðŸ¤·' : pct <= 80 ? 'ðŸ¤–' : 'âš™ï¸', w/2, 90);
   ctx.font = 'bold 18px sans-serif'; ctx.fillStyle = catColor; ctx.fillText(cat, w/2, 130);
-  ctx.font = '13px sans-serif'; ctx.fillStyle = '#94a3b8'; ctx.fillText(inv + '% human · ' + pct + '% bot', w/2, 160);
+  ctx.font = '13px sans-serif'; ctx.fillStyle = '#94a3b8'; ctx.fillText(inv + '% human Â· ' + pct + '% bot', w/2, 160);
 
   // Gauge
   var gx = 60, gy = 180, gw = 400, gh = 18;
@@ -2974,7 +2975,7 @@ function downloadScoreCard() {
 async function submitResults() {
   var btn = document.getElementById('submit-btn');
   var msg = document.getElementById('submit-result-msg');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'â³ Submitting...'; }
   if (msg) msg.innerHTML = '';
 
   var data = buildSubmissionData(__lastFingerprintData, __lastBotOrNotData);
@@ -2991,15 +2992,15 @@ async function submitResults() {
       body: JSON.stringify(data),
     });
     if (resp.ok) {
-      if (msg) msg.innerHTML = '<span style="color:#6ee7b7;">✅ Thank you! Your data helps improve k-anonymity research.</span>';
-      btn.textContent = '✅ Submitted';
+      if (msg) msg.innerHTML = '<span style="color:#6ee7b7;">âœ… Thank you! Your data helps improve k-anonymity research.</span>';
+      btn.textContent = 'âœ… Submitted';
     } else {
       var errText = await resp.text().catch(function() { return 'unknown error'; });
       throw new Error('HTTP ' + resp.status + ': ' + errText);
     }
   } catch(e) {
-    if (msg) msg.innerHTML = '<span style="color:#fca5a5;">⚠ Submission failed: ' + escapeHtml(e.message) + '.</span>';
-    if (btn) { btn.disabled = false; btn.textContent = '📤 Retry Submission'; }
+    if (msg) msg.innerHTML = '<span style="color:#fca5a5;">âš  Submission failed: ' + escapeHtml(e.message) + '.</span>';
+    if (btn) { btn.disabled = false; btn.textContent = 'ðŸ“¤ Retry Submission'; }
   }
 }
 
@@ -3038,7 +3039,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (sec) {
     sec.innerHTML =
       '<div class="gauge-container" style="text-align:center;">' +
-      '<div class="gauge-emoji">🔬</div>' +
+      '<div class="gauge-emoji">ðŸ”¬</div>' +
       '<div class="gauge-title">Run fingerprint + Bot-or-Not first</div>' +
       '<div class="gauge-subtitle">After capturing your fingerprint, you\'ll be able to contribute anonymized data.</div>' +
       '<div id="submit-preview-section" style="display:none;text-align:left;margin-top:0.75rem;"></div>' +
@@ -3050,3 +3051,4 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 </body>
 </html>
+
