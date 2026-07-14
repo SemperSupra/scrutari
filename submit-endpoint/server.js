@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -27,7 +27,8 @@ const ALLOWED_SOURCES = [
   'automation_puppeteer', 'automation_puppeteer_stealth', 'automation_selenium',
   'automation_selenium_stealth', 'automation_http', 'automation_curl',
 ];
-const MAX_DB_SIZE = 800 * 1024 * 1024; // 800MB
+const MAX_DB_SIZE_MB = parseInt(process.env.MAX_DB_SIZE_MB, 10) || 800; // Configurable via env
+const MAX_DB_SIZE = MAX_DB_SIZE_MB * 1024 * 1024;
 const MAX_ARCHIVES = 3; // Keep only this many archive files
 
 // Sliding window rate limiter â€” per-IP sorted timestamp array
