@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -29,9 +29,9 @@ const ALLOWED_SOURCES = [
 ];
 const MAX_DB_SIZE_MB = parseInt(process.env.MAX_DB_SIZE_MB, 10) || 800; // Configurable via env
 const MAX_DB_SIZE = MAX_DB_SIZE_MB * 1024 * 1024;
-const MAX_ARCHIVES = 3; // Keep only this many archive files
+const MAX_ARCHIVES = parseInt(process.env.MAX_ARCHIVES, 10) || 3;
 
-// Sliding window rate limiter â€” per-IP sorted timestamp array
+// Sliding window rate limiter Ã¢â‚¬â€ per-IP sorted timestamp array
 // O(log n) cleanup on each check using binary search
 class SlidingWindowRateLimiter {
   constructor(windowMs = 5000, maxPerWindow = 1) {
@@ -287,5 +287,6 @@ server.listen(PORT, () => {
   console.log(`Data: ${DATA_DIR}/store.json`);
   console.log(`Auto-archive at ${MAX_DB_SIZE / 1024 / 1024}MB`);
 });
+
 
 
