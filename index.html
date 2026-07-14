@@ -2842,6 +2842,9 @@ function buildSubmissionData(fp, bon) {
   // Self-assessment — user's own rating of how bot-like they think they are (1-5)
   safe.selfAssessment = window.__selfRating || null;
 
+  // IP version — IPv4 vs IPv6 (from the connectivity probe)
+  safe.ipVersion = (fp && fp['IP Version']) || 'unknown';
+
   // Detector version — tracks methodology changes over time
   safe.detectorVersion = 1;
   safe.version = 1;

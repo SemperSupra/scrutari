@@ -72,7 +72,7 @@ export default async (req, context) => {
       fontCount: data.fontCount, gpuClass: data.gpuClass, tzRegion: data.tzRegion,
       cpuCores: data.cpuCores, deviceMemory: data.deviceMemory, darkMode: data.darkMode,
       engine: data.engine, adblockDetected: data.adblockDetected, totalEntropyBits: data.totalEntropyBits,
-      botScore: data.botScore,
+      botScore: data.botScore, ipVersion: data.ipVersion,
     };
     const fpHash = createHash('sha256').update(JSON.stringify(fp)).digest('hex').substring(0, 16);
 
@@ -127,6 +127,7 @@ export default async (req, context) => {
     updateDist(db.distributions, 'fontCount', data.fontCount !== undefined ? String(data.fontCount) : undefined);
     updateDist(db.distributions, 'hasWASM', data.hasWASM !== undefined ? String(data.hasWASM) : undefined);
     updateDist(db.distributions, 'adblockDetected', data.adblockDetected !== undefined ? String(data.adblockDetected) : undefined);
+    updateDist(db.distributions, 'ipVersion', data.ipVersion || 'unknown');
     updateDist(db.distributions, 'source', data.source || 'manual');
 
     db.updated = now;
