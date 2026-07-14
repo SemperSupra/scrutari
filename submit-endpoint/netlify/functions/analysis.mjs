@@ -97,7 +97,7 @@ export default async (req, context) => {
       const avg = data.botScoreValues.length > 0 ? (data.botScoreSum / data.botScoreValues.length) : null;
 
       if (avg !== null) {
-        const predictedBot = avg > threshold;
+        const predictedBot = avg > BOT_THRESHOLD;
         if (actualBot && predictedBot) tp += data.total;
         else if (actualBot && !predictedBot) fn += data.total;
         else if (!actualBot && predictedBot) fp += data.total;
@@ -106,7 +106,7 @@ export default async (req, context) => {
     }
 
     analysis.groundTruth.sources = gtBySource;
-    analysis.groundTruth.threshold = threshold;
+    analysis.groundTruth.threshold = BOT_THRESHOLD;
 
     if (hasBots && hasHumans) {
       const precision = tp / (tp + fp) || 0;
@@ -144,4 +144,5 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
   }
 };
+
 
