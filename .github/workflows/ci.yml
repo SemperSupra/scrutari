@@ -25,10 +25,14 @@ jobs:
         run: npm ci
 
       - name: Run unit tests
-        run: node --test test/**/*.test.mjs
+        run: |
+          shopt -s globstar
+          node --test test/**/*.test.mjs
 
       - name: Lint check (ESLint)
-        run: npx eslint index.html test/**/*.mjs automation/**/*.mjs || echo "Lint warnings (non-blocking)"
+        run: |
+          shopt -s globstar
+          npx eslint index.html test/**/*.mjs automation/**/*.mjs || echo "Lint warnings (non-blocking)"
 
   ipv6-test:
     runs-on: ubuntu-latest

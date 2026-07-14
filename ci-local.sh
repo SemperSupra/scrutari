@@ -30,21 +30,22 @@ if ! $IS_WSL && [ -n "${COMSPEC:-}" ]; then
   IS_GIT_BASH=true
 fi
 
-# Auto-route to act when in WSL2 with Docker access
-if $IS_WSL && [ "$JOB" = "ci" ] || [ "$JOB" = "--act" ]; then
-  echo ""
-  echo "  Detected WSL2 environment — using nektos/act with native Docker socket"
-  echo ""
-
-  ARGS=""
-  if [ "$JOB" != "--act" ] && [ "$JOB" != "ci" ]; then
-    ARGS="--job $JOB"
-  fi
-
+# Auto-route to act via WSL2 (most reliable — native Docker socket access)
+if $IS_WSL; then
+  echo "Detected WSL2 environment — running act with native Docker socket"
+  ARGS=""; [ "$JOB" != "ci" ] && ARGS="--job $JOB"
   exec act --action-offline-mode --pull=false $ARGS
 fi
 
-# In Git Bash on Windows, warn and suggest WSL2
+# From Git Bash: run act inside WSL2 for reliable Docker access
+# WSL2 TCP forwarding drops under load, so delegate to WSL2's act
+if [ -n "${COMSPEC:-}" ] && wsl.exe -d ubuntu -- docker ps >/dev/null 2>&1; then
+  echo "Launching act inside WSL2 Ubuntu for reliable Docker socket access..."
+  ARGS=""; [ "$JOB" != "ci" ] && ARGS="--job $JOB"
+  REPO_WSL="$(echo "$REPO_DIR" | sed 's|^/\([a-zA-Z]\)/|\1/|' | sed 's|^\([a-zA-Z]\)/|/mnt/\1/|')"
+  echo "  Path: $REPO_DIR → $REPO_WSL"
+  exec wsl.exe -d ubuntu -- bash -c "cd '$REPO_WSL' && act --action-offline-mode --pull=false $ARGS" 2>&1
+fi
 if $IS_GIT_BASH; then
   echo "  Git Bash detected — Docker socket not directly accessible."
   echo "  Run CI via WSL2: wsl -d ubuntu bash ci-local.sh $JOB"
