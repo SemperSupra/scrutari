@@ -1,13 +1,23 @@
-﻿// Netlify Function: Research Analysis Dashboard API
-// Reads blob storage and computes statistical measures:
+// Netlify Function: Research Analysis Dashboard API
+// Reads per-key blob storage (v3 format) and computes statistical measures:
 //   - Per-signal effectiveness (bot vs human score separation)
 //   - Ground truth confusion matrix (if labeled data exists)
 //   - Signal detection rate over time
 //   - Precision, recall, F1 per signal
 //
-// GET /api/analysis  â†’  full analysis JSON
+// Key schema: meta, dist, idx, fp:<hash>
+// GET /api/analysis  →  full analysis JSON
 
 import { getStore } from '@netlify/blobs';
+
+async function readKey(store, key, defaultVal = null) {
+  try {
+    const raw = await store.get(key, { type: 'json' });
+    return (raw !== null && raw !== undefined) ? raw : defaultVal;
+  } catch {
+    return defaultVal;
+  }
+}
 
 export default async (req, context) => {
   const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
@@ -24,72 +34,94 @@ export default async (req, context) => {
   }
 
   try {
-    // Load stored data
+    // Load stored data from per-key format
     const store = getStore({ name: 'scrutari-data', siteID: process.env.SITE_ID });
-    let db = { totalSubmissions: 0, uniqueFingerprints: 0, fingerprints: {}, distributions: {} };
-    try {
-      const raw = await store.get('scrutari-data', { type: 'json' });
-      if (raw && raw.version) db = raw;
-    } catch {}
 
-    // â”€â”€â”€ Compute analysis â”€â”€â”€
+    // -- Migration support: check for old v2 single-blob format --
+    let oldBlob = await readKey(store, 'scrutari-data');
+    if (oldBlob && oldBlob.version === 2 && oldBlob.fingerprints) {
+      // Use old format directly while migration happens
+      // (submit.mjs handles migration on write)
+    }
+
+    const meta = await readKey(store, 'meta', {
+      version: 3, totalSubmissions: 0, uniqueFingerprints: 0,
+    });
+    const dist = await readKey(store, 'dist', {});
+    const idx = await readKey(store, 'idx', []);
+
+    // ─── Compute analysis ───
 
     const analysis = {
       generated: new Date().toISOString(),
       detectorVersion: 1,
       summary: {
-        totalSubmissions: db.totalSubmissions || 0,
-        uniqueFingerprints: db.uniqueFingerprints || 0,
-        dedupRatio: db.totalSubmissions > 0
-          ? ((1 - (db.uniqueFingerprints || 0) / db.totalSubmissions) * 100).toFixed(1) + '%'
+        totalSubmissions: meta.totalSubmissions || 0,
+        uniqueFingerprints: meta.uniqueFingerprints || idx.length || 0,
+        dedupRatio: meta.totalSubmissions > 0
+          ? ((1 - (meta.uniqueFingerprints || 0) / meta.totalSubmissions) * 100).toFixed(1) + '%'
           : '0%',
         timeRange: {},
       },
       signals: [],
       groundTruth: { confusionMatrix: null, precision: null, recall: null, f1: null },
-      distributions: db.distributions || {},
+      distributions: dist || {},
       dataQuality: { warnings: [] },
     };
 
+    // ─── Read fingerprint samples for time range and confusion matrix ───
+    // Read a sample of fingerprints for analysis (up to 1000 to avoid timeout)
+    const MAX_SAMPLE = 1000;
+    const fpKeys = idx.slice(0, MAX_SAMPLE);
+    const fps = {};
+
+    for (const hash of fpKeys) {
+      const fpData = await readKey(store, 'fp:' + hash);
+      if (fpData) fps[hash] = fpData;
+    }
+
+    // Also include any from old blob format
+    if (oldBlob && oldBlob.fingerprints) {
+      for (const [hash, fpData] of Object.entries(oldBlob.fingerprints)) {
+        if (!fps[hash]) fps[hash] = fpData;
+      }
+    }
+
     // Time range from fingerprints
-    const fps = db.fingerprints || {};
     const times = Object.values(fps).map(f => f.firstSeen).filter(Boolean).sort();
     if (times.length > 0) {
       analysis.summary.timeRange = { first: times[0], last: times[times.length - 1], spanDays: Math.round((new Date(times[times.length - 1]) - new Date(times[0])) / 86400000) };
     }
 
-    // â”€â”€â”€ Per-signal analysis from distributions â”€â”€â”€
-    const dists = db.distributions || {};
-    for (const [attr, values] of Object.entries(dists)) {
+    // ─── Per-signal analysis from distributions ───
+    for (const [attr, values] of Object.entries(dist)) {
       const total = Object.values(values).reduce((s, v) => s + v, 0);
       const entries = Object.entries(values)
         .sort((a, b) => b[1] - a[1])
         .map(([k, v]) => ({ value: k, count: v, proportion: (v / total * 100).toFixed(1) + '%' }));
-      // Shannon entropy for this attribute
       let entropy = 0;
       for (const v of Object.values(values)) { const p = v / total; if (p > 0) entropy -= p * Math.log2(p); }
       analysis.signals.push({ attribute: attr, total, uniqueValues: Object.keys(values).length, entropy: Math.round(entropy * 10) / 10, topValues: entries.slice(0, 5) });
     }
 
-    // â”€â”€â”€ Ground truth confusion matrix â”€â”€â”€
+    // ─── Ground truth confusion matrix ───
     const botSources = ['automation_playwright', 'automation_puppeteer', 'automation_selenium', 'automation_curl', 'automation_baseline', 'honeypot', 'honeypot_js'];
     const humanSources = ['manual'];
 
     const gtBySource = {};
-    for (const [hash, fp] of Object.entries(fps)) {
-      const source = fp.source || 'unknown';
+    for (const [hash, fpr] of Object.entries(fps)) {
+      const source = fpr.source || 'unknown';
       if (!gtBySource[source]) gtBySource[source] = { total: 0, botScoreSum: 0, botScoreValues: [] };
-      gtBySource[source].total += fp.count || 1;
-      if (fp.fp && fp.fp.botScore !== undefined) {
-        gtBySource[source].botScoreSum += fp.fp.botScore * (fp.count || 1);
-        for (let i = 0; i < (fp.count || 1); i++) gtBySource[source].botScoreValues.push(fp.fp.botScore);
+      gtBySource[source].total += fpr.count || 1;
+      if (fpr.fp && fpr.fp.botScore !== undefined) {
+        gtBySource[source].botScoreSum += fpr.fp.botScore * (fpr.count || 1);
+        for (let i = 0; i < (fpr.count || 1); i++) gtBySource[source].botScoreValues.push(fpr.fp.botScore);
       }
     }
 
-    // Compute confusion matrix if we have both bot and human labeled data
     let hasBots = false, hasHumans = false;
     let tp = 0, fp = 0, tn = 0, fn = 0;
-    const BOT_THRESHOLD = 50; // Scores above 50 = predicted bot (Youden's J default)
+    const BOT_THRESHOLD = 50;
 
     for (const [source, data] of Object.entries(gtBySource)) {
       const actualBot = botSources.includes(source);
@@ -121,15 +153,14 @@ export default async (req, context) => {
       analysis.groundTruth.note = 'Need both bot and human labeled submissions to compute confusion matrix';
     }
 
-    // â”€â”€â”€ Data quality warnings â”€â”€â”€
-    if (analysis.summary.totalSubmissions < 100) analysis.dataQuality.warnings.push('Sample size below 100 â€” results are preliminary');
+    // ─── Data quality warnings ───
+    if (analysis.summary.totalSubmissions < 100) analysis.dataQuality.warnings.push('Sample size below 100 — results are preliminary');
     if (!hasBots) analysis.dataQuality.warnings.push('No bot-labeled submissions in dataset');
     if (!hasHumans) analysis.dataQuality.warnings.push('No human-labeled submissions in dataset');
     if (analysis.summary.uniqueFingerprints === 0) analysis.dataQuality.warnings.push('No fingerprint data collected yet');
 
-    // â”€â”€â”€ Published baselines for comparison â”€â”€â”€
-    // Trust score distribution
-    const trustDist = db.distributions?.trustScore || {};
+    // ─── Trust score distribution ───
+    const trustDist = dist.trustScore || {};
     const trustTotal = Object.values(trustDist).reduce((s, v) => s + v, 0) || 0;
     analysis.trustScores = {
       high: trustDist.high || 0,
@@ -164,6 +195,3 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
   }
 };
-
-
-

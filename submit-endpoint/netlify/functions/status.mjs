@@ -14,6 +14,15 @@ import { getStore } from '@netlify/blobs';
 const BASELINE_KEY = 'baseline-tracking';
 const EXPECTED_INTERVAL_DAYS = 7;
 
+async function readKey(store, key, defaultVal = null) {
+  try {
+    const raw = await store.get(key, { type: 'json' });
+    return (raw !== null && raw !== undefined) ? raw : defaultVal;
+  } catch {
+    return defaultVal;
+  }
+}
+
 export default async (req, context) => {
   const headers = {
     'Content-Type': 'application/json',
@@ -66,12 +75,18 @@ export default async (req, context) => {
     const daysSince = lastRun ? Math.floor((now - lastRun) / 86400000) : null;
     const isStale = daysSince !== null && daysSince > EXPECTED_INTERVAL_DAYS;
 
-    // Count submissions in blob
+    // Read submission counts from per-key meta
     let subCount = 0, uniqueCount = 0;
-    try {
-      const mainData = await store.get('scrutari-data', { type: 'json' });
-      if (mainData) { subCount = mainData.totalSubmissions || 0; uniqueCount = mainData.uniqueFingerprints || 0; }
-    } catch {}
+    const meta = await readKey(store, 'meta');
+    if (meta) { subCount = meta.totalSubmissions || 0; uniqueCount = meta.uniqueFingerprints || 0; }
+
+    // Fallback: check old v2 single-blob format
+    if (!subCount) {
+      try {
+        const mainData = await store.get('scrutari-data', { type: 'json' });
+        if (mainData) { subCount = mainData.totalSubmissions || 0; uniqueCount = mainData.uniqueFingerprints || 0; }
+      } catch {}
+    }
 
     const status = {
       status: isStale ? 'stale' : (lastRun ? 'healthy' : 'never_run'),
