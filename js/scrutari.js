@@ -344,6 +344,46 @@ function calculateFingerprintEntropy(fp) {
   return { bits: bits, total: Math.round(total * 10) / 10, uniqueness: Math.pow(2, total).toExponential(1) };
 }
 
+// ─── Web Worker for CPU-intensive operations ───
+// Offloads PoW, canvas hashing, and BigInt benchmark from main thread.
+var _perfWorker = null;
+var _perfWorkerId = 0;
+var _perfWorkerPending = {};
+
+function _initPerfWorker() {
+  if (typeof Worker === 'undefined') return; // Web Workers not supported
+  try {
+    _perfWorker = new Worker('/js/worker.js');
+    _perfWorker.onmessage = function(e) {
+      var msg = e.data;
+      var resolver = _perfWorkerPending[msg.id];
+      if (resolver) {
+        delete _perfWorkerPending[msg.id];
+        resolver(msg);
+      }
+    };
+    _perfWorker.onerror = function() { _perfWorker = null; }; // Worker failed, fall back to main thread
+  } catch(e) { _perfWorker = null; }
+}
+
+function _workerPost(type, data) {
+  return new Promise(function(resolve) {
+    if (!_perfWorker) {
+      // No worker available — caller must handle fallback
+      resolve(null);
+      return;
+    }
+    var id = ++_perfWorkerId;
+    _perfWorkerPending[id] = resolve;
+    data.type = type;
+    data.id = id;
+    _perfWorker.postMessage(data);
+  });
+}
+
+// Initialize worker early
+_initPerfWorker();
+
 async function captureFingerprint() {
   var grid = document.getElementById('fingerprint-grid');
   var fp = {
@@ -622,45 +662,45 @@ async function captureFingerprint() {
     }
   } catch(e) { fp['Speech'] = 'blocked'; }
 
-  // Proof-of-Work benchmark  measures WASM/hash performance
+  // Proof-of-Work benchmark — measures hash performance via Web Worker
   // Reveals CPU architecture, browser engine differences, and headless detection
   try {
-    var challenge = Array(32).fill(0).map(function() { return Math.random().toString(36)[2]; }).join('');
-    var targetZeros = 16; // How many leading zero bits to require
-    var nonce = 0;
-      var maxAttempts = 50000; // 16-bit PoW target (~50K attempts = 50% success rate for finding a nonce with 16 leading zero bits)
-    var powStart = performance.now();
-    var powResult = null;
+    var _benchChallenge = Array(32).fill(0).map(function() { return Math.random().toString(36)[2]; }).join('');
+    var _benchResult = null;
+    var _benchStart = performance.now();
 
-    // Use Web Crypto API for SHA256 hashing (available in all modern browsers)
-    var encoder = new TextEncoder();
-
-    for (nonce = 0; nonce < maxAttempts; nonce++) {
-      var input = challenge + nonce.toString(16);
-      var hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(input));
-      var hashArray = Array.from(new Uint8Array(hashBuffer));
-
-      // Check how many leading zero bits we have
-      var bits = 0;
-      for (var bi = 0; bi < 32; bi++) {
-        if (hashArray[bi] === 0) { bits += 8; }
-        else {
-          var b = hashArray[bi];
-          while ((b & 0x80) === 0) { bits++; b <<= 1; }
-          break;
+    if (_perfWorker) {
+      _benchResult = await _workerPost('pow', { challenge: _benchChallenge, difficulty: 16, maxAttempts: 50000 });
+    }
+    if (!_benchResult) {
+      // Fallback: main-thread PoW
+      var _encBench = new TextEncoder();
+      var _maxB = 50000;
+      for (var _nb = 0; _nb < _maxB; _nb++) {
+        var _inputB = _benchChallenge + _nb.toString(16);
+        var _bufB = await crypto.subtle.digest('SHA-256', _encBench.encode(_inputB));
+        var _arrB = Array.from(new Uint8Array(_bufB));
+        var _bitsB = 0;
+        for (var _biB = 0; _biB < _arrB.length; _biB++) {
+          if (_arrB[_biB] === 0) { _bitsB += 8; }
+          else {
+            var _bValB = _arrB[_biB];
+            while ((_bValB & 0x80) === 0) { _bitsB++; _bValB <<= 1; }
+            break;
+          }
         }
+        if (_bitsB >= 16) { _benchResult = { nonce: _nb, time: performance.now() - _benchStart, speed: _maxB / ((performance.now() - _benchStart) / 1000) }; break; }
       }
-      if (bits >= targetZeros) { powResult = nonce; break; }
     }
 
-    var powTime = performance.now() - powStart;
-    fp['PoW Found'] = powResult !== null ? 'Yes (nonce=' + powResult + ')' : 'No (max=' + maxAttempts + ')';
-    fp['PoW Time'] = powTime.toFixed(1) + 'ms';
-    fp['PoW Speed'] = (maxAttempts / (powTime / 1000)).toFixed(0) + ' hashes/sec';
-    fp['PoW Hashing'] = 'SHA-256 via Web Crypto API';
+    var _powTime = _benchResult ? _benchResult.time : (performance.now() - _benchStart);
+    var _powSpeed = _benchResult ? _benchResult.speed : 0;
+    fp['PoW Found'] = _benchResult && _benchResult.nonce !== null ? 'Yes (nonce=' + _benchResult.nonce + ')' : 'No (max=50000)';
+    fp['PoW Time'] = _powTime.toFixed(1) + 'ms';
+    fp['PoW Speed'] = _powSpeed.toFixed(0) + ' hashes/sec';
+    fp['PoW Hashing'] = 'SHA-256 via Web Worker';
 
-  // Challenge-response PoW â€” proves JS execution, becomes fingerprint signal
-  try {
+    // Challenge-response PoW — proves JS execution, becomes fingerprint signal
     var _powFpChallenge = null, _powFpNonce = null, _powFpDifficulty = 16;
     var _powFpStart = performance.now();
     var _powFpResp = await fetch('/api/challenge');
@@ -670,26 +710,36 @@ async function captureFingerprint() {
       _powFpDifficulty = _powFpData.difficulty || 16;
     }
     if (_powFpChallenge) {
-      var _powFpEnc = new TextEncoder();
-      var _powFpMax = 200000;
-      for (_powFpNonce = 0; _powFpNonce < _powFpMax; _powFpNonce++) {
-        var _powFpIn = _powFpChallenge + _powFpNonce.toString(16);
-        var _powFpBuf = await crypto.subtle.digest('SHA-256', _powFpEnc.encode(_powFpIn));
-        var _powFpArr = Array.from(new Uint8Array(_powFpBuf));
-        var _powFpBits = 0;
-        for (var _bi2 = 0; _bi2 < _powFpArr.length; _bi2++) {
-          if (_powFpArr[_bi2] === 0) { _powFpBits += 8; }
-          else {
-            var _b2 = _powFpArr[_bi2];
-            while ((_b2 & 0x80) === 0) { _powFpBits++; _b2 <<= 1; }
-            break;
+      var _powFpResult = null;
+      if (_perfWorker) {
+        _powFpResult = await _workerPost('pow', { challenge: _powFpChallenge, difficulty: _powFpDifficulty, maxAttempts: 200000 });
+      }
+      if (!_powFpResult) {
+        // Fallback: main-thread PoW
+        var _encFp = new TextEncoder();
+        var _powFpMax = 200000;
+        for (_powFpNonce = 0; _powFpNonce < _powFpMax; _powFpNonce++) {
+          var _powFpIn = _powFpChallenge + _powFpNonce.toString(16);
+          var _powFpBuf = await crypto.subtle.digest('SHA-256', _encFp.encode(_powFpIn));
+          var _powFpArr = Array.from(new Uint8Array(_powFpBuf));
+          var _powFpBits = 0;
+          for (var _bi2 = 0; _bi2 < _powFpArr.length; _bi2++) {
+            if (_powFpArr[_bi2] === 0) { _powFpBits += 8; }
+            else {
+              var _b2 = _powFpArr[_bi2];
+              while ((_b2 & 0x80) === 0) { _powFpBits++; _b2 <<= 1; }
+              break;
+            }
           }
+          if (_powFpBits >= _powFpDifficulty) { _powFpResult = { nonce: _powFpNonce }; break; }
         }
-        if (_powFpBits >= _powFpDifficulty) { break; }
+      }
+      if (_powFpResult) {
+        _powFpNonce = _powFpResult.nonce;
       }
       var _powFpEnd = performance.now();
-      fp['PoW Challenge'] = _powFpChallenge.substring(0, 16); // truncated for fingerprint stability
-      fp['PoW Nonce'] = _powFpNonce < _powFpMax ? _powFpNonce : 'not found';
+      fp['PoW Challenge'] = _powFpChallenge.substring(0, 16);
+      fp['PoW Nonce'] = _powFpNonce !== null ? _powFpNonce : 'not found';
       fp['PoW Difficulty'] = _powFpDifficulty;
       fp['PoW Proof Time'] = Math.round((_powFpEnd - _powFpStart) * 10) / 10 + 'ms';
     }
