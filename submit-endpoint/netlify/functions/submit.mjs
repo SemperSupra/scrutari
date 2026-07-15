@@ -274,6 +274,9 @@ export default async (req, context) => {
     await writeKey(store, 'meta', meta);
     await writeKey(store, 'dist', dist);
 
+    // Invalidate analysis cache (new data means stale dashboard)
+    try { await store.delete('analysis-cache'); } catch (_ac) { /* cache may not exist */ }
+
     // --- Compute research stats ---
     const totalFP = meta.totalSubmissions;
     const uniqueFP = meta.uniqueFingerprints || 0;

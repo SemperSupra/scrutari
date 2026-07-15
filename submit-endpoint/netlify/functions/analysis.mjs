@@ -37,6 +37,16 @@ export default async (req, context) => {
     // Load stored data from per-key format
     const store = getStore({ name: 'scrutari-data', siteID: process.env.SITE_ID });
 
+    // -- Check analysis cache --
+    const cached = await readKey(store, 'analysis-cache');
+    if (cached && cached.version === 1 && cached.meta?.totalSubmissions !== undefined) {
+      // Validate cache is fresh: check that meta.totalSubmissions matches current
+      const currentMeta = await readKey(store, 'meta', { totalSubmissions: 0 });
+      if (currentMeta.totalSubmissions === cached.meta.totalSubmissions) {
+        return new Response(JSON.stringify(cached.analysis, null, 2), { status: 200, headers });
+      }
+    }
+
     // -- Migration support: check for old v2 single-blob format --
     let oldBlob = await readKey(store, 'scrutari-data');
     if (oldBlob && oldBlob.version === 2 && oldBlob.fingerprints) {
@@ -189,6 +199,14 @@ export default async (req, context) => {
       hidingInCrowd2018: { venue: 'WWW 2018', sampleSize: '2M (French general audience)',
         desktopUniqueness: '33.6%', mobileUniqueness: '18.5%' },
     };
+
+    // --- Write analysis cache ---
+    // Cache stores the computed analysis keyed by current submission count.
+    // Invalidated by submit.mjs on every new submission (deletes analysis-cache key).
+    try {
+      const cachePayload = { version: 1, meta: { totalSubmissions: meta.totalSubmissions }, analysis: analysis };
+      await store.set('analysis-cache', JSON.stringify(cachePayload));
+    } catch (_ce) { /* cache write failure is non-fatal */ }
 
     return new Response(JSON.stringify(analysis, null, 2), { status: 200, headers });
   } catch (e) {
