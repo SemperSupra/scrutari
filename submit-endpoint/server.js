@@ -152,7 +152,7 @@ function computeHash(data) {
     gpuClass: data.gpuClass, tzRegion: data.tzRegion, cpuCores: data.cpuCores,
     deviceMemory: data.deviceMemory, darkMode: data.darkMode, engine: data.engine,
     adblockDetected: data.adblockDetected, totalEntropyBits: data.totalEntropyBits,
-    botScore: data.botScore, ipVersion: data.ipVersion, powBenchmarkSpeed: data.powBenchmarkSpeed,
+    botScore: data.botScore, ipVersion: data.ipVersion, powBenchmarkSpeed: data.powBenchmarkSpeed, powChallenge: data.powChallenge, powNonce: data.powNonce, powDifficulty: data.powDifficulty, powProofTime: data.powProofTime,
   };
   return crypto.createHash('sha256').update(JSON.stringify(fp)).digest('hex').substring(0, 16);
 }
@@ -331,6 +331,8 @@ server.listen(PORT, () => {
   console.log(`Data: ${DATA_DIR}/store.json`);
   console.log(`Auto-archive at ${MAX_DB_SIZE / 1024 / 1024}MB`);
 });
+
+
 
 
 

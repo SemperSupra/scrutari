@@ -135,6 +135,7 @@ export default async (req, context) => {
       cpuCores: data.cpuCores, deviceMemory: data.deviceMemory, darkMode: data.darkMode,
       engine: data.engine, adblockDetected: data.adblockDetected, totalEntropyBits: data.totalEntropyBits,
       botScore: data.botScore, ipVersion: data.ipVersion, powBenchmarkSpeed: data.powBenchmarkSpeed,
+      powChallenge: data.powChallenge, powNonce: data.powNonce, powDifficulty: data.powDifficulty, powProofTime: data.powProofTime,
     };
     const fpHash = createHash('sha256').update(JSON.stringify(fp)).digest('hex').substring(0, 16);
 
@@ -252,6 +253,8 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 400, headers });
   }
 };
+
+
 
 
 

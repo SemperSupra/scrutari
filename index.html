@@ -6293,6 +6293,43 @@ async function captureFingerprint() {
     fp['PoW Time'] = powTime.toFixed(1) + 'ms';
     fp['PoW Speed'] = (maxAttempts / (powTime / 1000)).toFixed(0) + ' hashes/sec';
     fp['PoW Hashing'] = 'SHA-256 via Web Crypto API';
+
+  // Challenge-response PoW — proves JS execution, becomes fingerprint signal
+  try {
+    var _powFpChallenge = null, _powFpNonce = null, _powFpDifficulty = 16;
+    var _powFpStart = performance.now();
+    var _powFpResp = await fetch('/api/challenge');
+    if (_powFpResp.ok) {
+      var _powFpData = await _powFpResp.json();
+      _powFpChallenge = _powFpData.challenge;
+      _powFpDifficulty = _powFpData.difficulty || 16;
+    }
+    if (_powFpChallenge) {
+      var _powFpEnc = new TextEncoder();
+      var _powFpMax = 200000;
+      for (_powFpNonce = 0; _powFpNonce < _powFpMax; _powFpNonce++) {
+        var _powFpIn = _powFpChallenge + _powFpNonce.toString(16);
+        var _powFpBuf = await crypto.subtle.digest('SHA-256', _powFpEnc.encode(_powFpIn));
+        var _powFpArr = Array.from(new Uint8Array(_powFpBuf));
+        var _powFpBits = 0;
+        for (var _bi2 = 0; _bi2 < _powFpArr.length; _bi2++) {
+          if (_powFpArr[_bi2] === 0) { _powFpBits += 8; }
+          else {
+            var _b2 = _powFpArr[_bi2];
+            while ((_b2 & 0x80) === 0) { _powFpBits++; _b2 <<= 1; }
+            break;
+          }
+        }
+        if (_powFpBits >= _powFpDifficulty) { break; }
+      }
+      var _powFpEnd = performance.now();
+      fp['PoW Challenge'] = _powFpChallenge.substring(0, 16); // truncated for fingerprint stability
+      fp['PoW Nonce'] = _powFpNonce < _powFpMax ? _powFpNonce : 'not found';
+      fp['PoW Difficulty'] = _powFpDifficulty;
+      fp['PoW Proof Time'] = Math.round((_powFpEnd - _powFpStart) * 10) / 10 + 'ms';
+    }
+  } catch(_e2) { fp['PoW Proof'] = 'error: ' + (_e2.message || 'unknown'); }
+
   } catch(e) { fp['PoW Benchmark'] = 'error: ' + e.message; }
 
   try {
@@ -9027,7 +9064,18 @@ function buildSubmissionData(fp, bon) {
   safe.submitted = new Date().toISOString().split('T')[0]; // date only, no time
   // Source ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â set by automation baselines to distinguish human vs automated submissions
   safe.source = window.__SUBMISSION_SOURCE || 'manual';
-  // PoW benchmark speed (hashes/sec) — cleanest timing signal for bot detection
+  
+  // Challenge-response PoW proof (fingerprint signal, anti-replay)
+  try {
+    var _pfp = fp || {};
+    if (_pfp['PoW Challenge']) safe.powChallenge = _pfp['PoW Challenge'];
+    if (_pfp['PoW Nonce'] !== undefined) safe.powNonce = _pfp['PoW Nonce'];
+    if (_pfp['PoW Difficulty']) safe.powDifficulty = parseInt(_pfp['PoW Difficulty'], 10) || 16;
+    if (_pfp['PoW Proof Time']) {
+      var _ppt = parseFloat(_pfp['PoW Proof Time']);
+      if (!isNaN(_ppt)) safe.powProofTime = _ppt;
+    }
+  } catch(_pe2){}// PoW benchmark speed (hashes/sec) — cleanest timing signal for bot detection
   try { var _ps = fp && fp['PoW Speed']; if (_ps) { var _psNum = parseFloat(_ps); if (!isNaN(_psNum)) safe.powBenchmarkSpeed = _psNum; } } catch(_pe){}
   // Interaction metrics for HCI experiment
   try { var _beh = window.__behavior; if (_beh && _beh.events) { safe._interactionMetrics = { mouseEvents: (_beh.events.mouse||[]).length, scrollEvents: (_beh.events.scroll||[]).length, clickEvents: (_beh.events.clicks||[]).length, keyEvents: (_beh.events.key||[]).length, totalEvents: _beh.count||0, duration: _beh.duration||0, submitted: true }; } } catch(_ie){}
