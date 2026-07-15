@@ -404,6 +404,59 @@ async function captureFingerprint() {
     fp['Mobile'] = navigator.userAgentData.mobile ? 'Yes' : 'No';
     if (navigator.userAgentData.platform) fp['Platform (CH)'] = navigator.userAgentData.platform;
   }
+
+  // Web Worker environment probe — detects automation that blocks or alters workers
+  try {
+    if (typeof Worker !== 'undefined') {
+      fp['Worker Supported'] = 'Yes';
+      var _wStart = performance.now();
+      var _wEnv = await _workerPost('worker-env', {});
+      fp['Worker Create Time'] = _wEnv ? (performance.now() - _wStart).toFixed(1) + 'ms' : 'unknown';
+
+      if (_wEnv && _wEnv.env) {
+        var _env = _wEnv.env;
+        // Timer precision difference between main thread and worker
+        var _mainPrecision = (function() { var a = performance.now(), b = performance.now(); return b - a; })();
+        fp['Worker Timer Precision'] = _env.workerTimerPrecision.toFixed(4) + 'ms';
+        fp['Timer Precision Delta'] = Math.abs(_env.workerTimerPrecision - _mainPrecision).toFixed(4) + 'ms';
+        // Worker cores — compare to main thread (should match, divergence indicates instrumentation)
+        fp['Worker Cores'] = _env.workerCores !== null ? _env.workerCores : 'unknown';
+        if (_env.workerCores !== null && _env.workerCores !== navigator.hardwareConcurrency) {
+          fp['Worker Core Mismatch'] = 'main:' + navigator.hardwareConcurrency + ' vs worker:' + _env.workerCores;
+        }
+        // Worker navigator language vs main thread (should match)
+        if (_env.workerLanguage && _env.workerLanguage !== navigator.language) {
+          fp['Worker Language Mismatch'] = 'main:' + navigator.language + ' vs worker:' + _env.workerLanguage;
+        }
+        // Worker keys — automation frameworks may inject identifiers
+        if (_env.workerKeys && _env.workerKeys.length > 0) {
+          fp['Worker Injection Keys'] = _env.workerKeys.join(', ');
+        }
+        // Check for automation UA patterns in worker context
+        if (_env.workerAgent && (_env.workerAgent.indexOf('Headless') >= 0 || _env.workerAgent.indexOf('Phantom') >= 0)) {
+          fp['Worker Headless UA'] = 'Yes';
+        }
+      }
+      // Transferable test — some automation blocks structured clone
+      var _xferBuf = new ArrayBuffer(8);
+      try {
+        _perfWorker.postMessage({ type: 'transfer-test', id: 0, buf: _xferBuf }, [_xferBuf]);
+        fp['Transferables'] = 'Yes';
+      } catch(_xe) { fp['Transferables'] = 'No'; }
+
+      // Timer drift measurement — virtualized environments have inaccurate timers
+      var _driftResult = await _workerPost('timer-drift', {});
+      if (_driftResult) {
+        fp['Worker Timer Drift'] = _driftResult.drift.toFixed(2) + 'ms';
+        if (Math.abs(_driftResult.drift) > 20) {
+          fp['Timer Drift Anomaly'] = Math.abs(_driftResult.drift).toFixed(1) + 'ms (expected <20ms)';
+        }
+      }
+    } else {
+      fp['Worker Supported'] = 'No';
+    }
+  } catch(_we) { fp['Worker Probe'] = 'error: ' + (_we.message || 'unknown'); }
+
   try {
     var c = document.createElement('canvas'); c.width = 256; c.height = 256;
     var ctx = c.getContext('2d');

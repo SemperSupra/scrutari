@@ -106,6 +106,58 @@ self.onmessage = async function(e) {
       break;
     }
 
+    // ── Environment probe ──
+    case 'worker-env': {
+      const { id } = msg;
+      const env = {
+        // Worker availability and identity
+        workerSupported: true,
+        workerAgent: navigator.userAgent || null,
+        workerPlatform: navigator.platform || null,
+        workerLanguage: navigator.language || null,
+        workerCores: navigator.hardwareConcurrency || null,
+        workerOnLine: typeof navigator.onLine !== 'undefined' ? navigator.onLine : null,
+
+        // Timer precision in worker context
+        workerTimerPrecision: (function() {
+          var t1 = performance.now();
+          var t2 = performance.now();
+          return (t2 - t1) > 0 ? (t2 - t1) : 0;
+        })(),
+
+        // Whether crypto.subtle is accessible (should be, but bots may block)
+        cryptoSubtleAvailable: typeof crypto.subtle !== 'undefined',
+
+        // Location data (worker has restricted location)
+        workerLocation: typeof self.location !== 'undefined' ? self.location.href : null,
+
+        // Worker identity — some automation frameworks inject unique identifiers
+        workerKeys: Object.keys(self).filter(function(k) {
+          return k.startsWith('__') || k.startsWith('_');
+        }),
+      };
+      self.postMessage({ type: 'worker-env-result', id: id || 0, env: env });
+      break;
+    }
+
+    // ── Timer drift measurement ──
+    case 'timer-drift': {
+      const { id } = msg;
+      var t0 = performance.now();
+      setTimeout(function() {
+        var drift = performance.now() - t0 - 100; // expected 100ms
+        self.postMessage({ type: 'timer-drift-result', id: id || 0, drift: drift, elapsed: performance.now() - t0 });
+      }, 100);
+      break;
+    }
+
+    // ── Transferable test ──
+    case 'transfer-test': {
+      // Simply echo back that we received the transferable buffer
+      self.postMessage({ type: 'transfer-test-result', id: msg.id || 0, received: msg.buf ? msg.buf.byteLength : 0 });
+      break;
+    }
+
     default:
       self.postMessage({ type: 'error', error: 'Unknown message type: ' + msg.type });
   }
