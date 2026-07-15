@@ -1,11 +1,11 @@
-// Netlify Edge Function: PoW Challenge Issuance
+﻿// Netlify Edge Function: PoW Challenge Issuance
 // Issues cryptographic challenges for proof-of-work verification.
 // Browser must compute SHA256(challenge + nonce) with >= difficulty leading zero bits.
 //
-// GET /api/challenge → { challenge, difficulty, expires }
+// GET /api/challenge â†’ { challenge, difficulty, expires }
 //
 // The response includes:
-//   challenge:  random hex string (32 bytes → 64 hex chars)
+//   challenge:  random hex string (32 bytes â†’ 64 hex chars)
 //   difficulty: number of leading zero bits required (default 16)
 //   expires:    ISO timestamp when the challenge expires (default 60s)
 //   algorithm:  'SHA-256'
@@ -62,6 +62,19 @@ export function verifyPoW(challenge, nonce, difficulty) {
 }
 
 export default async (req, context) => {
+    // Parse difficulty parameter (client-side benchmark estimate)
+  var reqDifficulty = DEFAULT_DIFFICULTY;
+  try {
+    var url = new URL(req.url);
+    var diffParam = url.searchParams.get('difficulty');
+    if (diffParam) {
+      var parsed = parseInt(diffParam, 10);
+      if (!isNaN(parsed) && parsed >= 8 && parsed <= 28) {
+        reqDifficulty = parsed;
+      }
+    }
+  } catch(e) {}
+
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -81,16 +94,18 @@ export default async (req, context) => {
   const expires = new Date(expiresAt).toISOString();
 
   // Store in challenge map
-  challenges.set(challenge, { challenge, expiresAt, difficulty: DEFAULT_DIFFICULTY, used: false });
+  challenges.set(challenge, { challenge, expiresAt, difficulty: reqDifficulty, used: false });
 
   // Auto-clean: remove this specific entry on expiry
   setTimeout(() => challenges.delete(challenge), CHALLENGE_TTL);
 
   return new Response(JSON.stringify({
     challenge,
-    difficulty: DEFAULT_DIFFICULTY,
+    difficulty: reqDifficulty,
     expires,
     algorithm: 'SHA-256',
     ttl: CHALLENGE_TTL,
   }), { status: 200, headers });
 };
+
+
