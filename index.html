@@ -3,387 +3,277 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Scrutari ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Browser Leak Detector &amp; Bot-or-NotÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢</title>
+<title>Scrutari — Browser Leak Detector &amp; Bot-or-Not™</title>
 <meta name="description" content="Free, open-source browser privacy leak detector. Test DNS leaks, WebRTC leaks, HTTP headers, browser fingerprint, Bot-or-Not rating.">
 <meta name="keywords" content="bot detection, browser leak test, privacy, fingerprint, k-anonymity">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#0f172a">
-<meta property="og:title" content="Scrutari ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Bot-or-NotÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢">
+<meta property="og:title" content="Scrutari — Bot-or-Not™">
 <meta property="og:description" content="Test how human-like your browser appears. Free, open-source privacy tool.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://sempersupra.github.io/scrutari/og-default.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Scrutari ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Bot-or-NotÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢">
+<meta name="twitter:title" content="Scrutari — Bot-or-Not™">
 <meta name="twitter:description" content="Free browser leak detector with Bot-or-Not human-vs-bot rating. All tests run client-side.">
-
 <link rel="canonical" href="https://sempersupra.github.io/scrutari/">
 <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
-<!-- Resource hints: reduce connection setup latency for third-party origins -->
 <link rel="preconnect" href="https://ipinfo.io">
 <link rel="preconnect" href="https://api.ipify.org">
 <link rel="preconnect" href="https://ipv6.test-ipv6.com">
 <link rel="dns-prefetch" href="https://ipinfo.io">
 <link rel="dns-prefetch" href="https://api.ipify.org">
 <link rel="dns-prefetch" href="https://ipv6.test-ipv6.com">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); color: #e2e8f0; min-height: 100vh; }
-  .container { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem; }
-  .hero { text-align: center; margin-bottom: 2rem; }
-  .hero h1 { font-size: 2rem; font-weight: 700; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .hero .tagline { font-size: 0.9rem; color: #94a3b8; margin-top: 0.5rem; }
-  .hero .tagline span { background: #1e293b; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; color: #60a5fa; }
-  .card { background: #1e293b; border-radius: 0.5rem; padding: 1.25rem; border: 1px solid #334155; margin-bottom: 1rem; }
-  .card h2 { font-size: 1rem; margin-bottom: 0.75rem; color: #e2e8f0; }
-  .result-box { padding: 0.75rem; border-radius: 0.375rem; font-family: monospace; font-size: 0.8rem; margin: 0.375rem 0; }
-  .pass { background: #065f46; color: #6ee7b7; border: 1px solid #065f46; }
-  .fail { background: #7f1d1d; color: #fca5a5; border: 1px solid #7f1d1d; }
-  .info { background: #1e293b; color: #93c5fd; border: 1px solid #334155; }
-  .warn { background: #78350f; color: #fcd34d; border: 1px solid #78350f; }
-  .btn { padding: 0.5rem 1.5rem; background: #3b82f6; color: #fff; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; margin-top: 0.5rem; }
-  .btn:hover { background: #2563eb; }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #334155; }
-  th { color: #64748b; font-weight: 500; font-size: 0.7rem; text-transform: uppercase; }
-  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.65rem; font-weight: 600; }
-  .badge-leak { background: #7f1d1d; color: #fca5a5; }
-  .badge-safe { background: #065f46; color: #6ee7b7; }
-  .badge-warn { background: #78350f; color: #fcd34d; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; }
-  .stat-box { background: #0f172a; padding: 0.75rem; border-radius: 0.375rem; border: 1px solid #1e293b; }
-  .stat-label { color: #64748b; font-size: 0.7rem; text-transform: uppercase; }
-  .stat-value { color: #e2e8f0; font-size: 0.875rem; margin-top: 0.25rem; font-family: monospace; word-break: break-all; }
-  .footer { color: #475569; font-size: 0.75rem; margin-top: 2rem; text-align: center; }
-  .footer a { color: #60a5fa; }
-  .ip-input { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-  .ip-input input { flex: 1; padding: 0.5rem; border: 1px solid #334155; border-radius: 0.375rem; background: #0f172a; color: #e2e8f0; font-family: monospace; }
-  .section-nav { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
-  .section-nav button { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
-  .badge-ok { background: #065f46; color: #6ee7b7; }
-  .badge-review { background: #78350f; color: #fcd34d; }
-  .badge-unique { background: #7f1d1d; color: #fca5a5; }
-  .gauge-card { text-align: center; }
-  .gauge-container { background: #0f172a; border-radius: 0.5rem; padding: 1.25rem; margin: 0.75rem 0; }
-  .gauge-bar { height: 1.75rem; background: #1e293b; border-radius: 9999px; overflow: hidden; position: relative; margin: 0.75rem 0; }
-  .gauge-fill { height: 100%; border-radius: 9999px; transition: width 0.8s ease; }
-  .gauge-label { display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; margin-top: 0.25rem; }
-  .gauge-scale { display: flex; justify-content: space-between; font-size: 0.6rem; color: #475569; margin-top: 0.15rem; padding: 0 0.25rem; }
-  .gauge-emoji { font-size: 2rem; margin-bottom: 0.5rem; }
-  .gauge-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem; }
-  .gauge-subtitle { font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.75rem; }
-  .signal-list { margin-top: 0.75rem; text-align: left; max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
-  .signal-list.open { max-height: 2000px; }
-  .signal-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; font-size: 0.75rem; border-bottom: 1px solid #1e293b; }
-  .signal-item:last-child { border-bottom: none; }
-  .signal-pass { color: #6ee7b7; }
-  .signal-fail { color: #fca5a5; }
-  .signal-neut { color: #94a3b8; }
-  .signal-icon { width: 1.2rem; text-align: center; flex-shrink: 0; }
-  .signal-weight { font-size: 0.6rem; color: #64748b; margin-left: auto; padding-left: 0.5rem; white-space: nowrap; }
-  .signal-detail { color: #64748b; font-size: 0.7rem; }
-  .toggle-link { cursor: pointer; color: #60a5fa; font-size: 0.75rem; text-decoration: none; border-bottom: 1px dashed #60a5fa; }
-  .toggle-link:hover { color: #93c5fd; }
-  .entropy-panel { margin-top: 0.75rem; padding: 0.75rem; background: #0f172a; border-radius: 0.375rem; font-size: 0.8rem; line-height: 1.7; display: none; }
-  .entropy-panel.open { display: block; }
-  .entropy-panel h4 { color: #93c5fd; font-size: 0.85rem; margin-bottom: 0.5rem; }
-  .entropy-panel p { margin-bottom: 0.5rem; }
-  .research-ref { color: #64748b; font-size: 0.7rem; }
-  .research-ref a { color: #60a5fa; }
-  .conf-badge { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 9999px; font-size: 0.6rem; font-weight: 600; margin-left: 0.4rem; }
-  .conf-high { background: #065f46; color: #6ee7b7; }
-  .conf-med { background: #78350f; color: #fcd34d; }
-  .conf-low { background: #7f1d1d; color: #fca5a5; }
-  .rec-progress { height: 0.5rem; background: #1e293b; border-radius: 9999px; overflow: hidden; margin: 0.5rem 0; }
-  .rec-fill { height: 100%; background: #ef4444; border-radius: 9999px; transition: width 0.5s ease; }
-  .rec-fill.rec-complete { background: #22c55e; }
-  .rec-status { font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.5rem; }
-  .rec-dot { display: inline-block; width: 0.6rem; height: 0.6rem; background: #ef4444; border-radius: 50%; margin-right: 0.4rem; animation: pulse 1s infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-  .rec-dot.done { background: #22c55e; animation: none; }
-  .rec-event-count { font-size: 0.7rem; color: #64748b; }
-  .beh-signal-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; font-size: 0.75rem; border-bottom: 1px solid #1e293b; }
-  .beh-signal-item:last-child { border-bottom: none; }
-  .beh-signal-icon { width: 1.2rem; text-align: center; flex-shrink: 0; }
-  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; display: flex; align-items: center; justify-content: center; }
-  .modal-box { background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 1.5rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
-  .modal-box h3 { font-size: 1rem; margin-bottom: 0.75rem; }
-  .modal-close { float: right; cursor: pointer; color: #64748b; font-size: 1.2rem; }
-  .field-preview { font-family: monospace; font-size: 0.7rem; background: #0f172a; padding: 0.5rem; border-radius: 0.375rem; max-height: 200px; overflow-y: auto; margin: 0.5rem 0; white-space: pre-wrap; word-break: break-all; }
-  .field-check { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; font-size: 0.75rem; cursor: pointer; }
-  .field-check input { accent-color: #3b82f6; }
-  .click-flash { position:fixed;width:20px;height:20px;border-radius:50%;border:2px solid #60a5fa;pointer-events:none;z-index:9999;animation:flashOut 0.6s ease-out forwards; }
-  @keyframes flashOut { 0% { transform:scale(0.5);opacity:1; } 100% { transform:scale(2);opacity:0; } }
-  .mouse-dot { position:fixed;width:6px;height:6px;border-radius:50%;background:#60a5fa;pointer-events:none;z-index:9999;opacity:0.5; }
-  .mouse-dot.fade { animation:dotFade 1.5s ease-out forwards; }
-  @keyframes dotFade { 0% { opacity:0.5; } 100% { opacity:0;transform:scale(0.3); } }
-  .beh-indicator { display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.5rem; }
-  .beh-tag { display:inline-block;padding:0.1rem 0.4rem;border-radius:0.25rem;font-size:0.6rem;background:#1e293b;color:#64748b;transition:all 0.3s; }
-  .beh-tag.active { color:#6ee7b7;background:#065f46; }
-  .beh-tag.warn { color:#fcd34d;background:#78350f; }
-  .beh-tag.danger { color:#fca5a5;background:#7f1d1d; }
-  .share-bar { display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:center;margin:1rem 0; }
-  .share-btn { display:inline-flex;align-items:center;gap:0.4rem;padding:0.4rem 0.9rem;border-radius:9999px;font-size:0.75rem;font-weight:500;text-decoration:none;transition:all 0.2s;border:none;cursor:pointer; }
-  .share-btn:hover { transform:translateY(-1px);filter:brightness(1.1); }
-  .share-twitter { background:#1d9bf0;color:#fff; }
-  .share-linkedin { background:#0a66c2;color:#fff; }
-  .share-bluesky { background:#0285ff;color:#fff; }
-  .share-mastodon { background:#6364ff;color:#fff; }
-  .wizard-progress { display:flex;gap:0.25rem;margin-bottom:1rem;justify-content:center; }
-  .wiz-step { width:32px;height:4px;border-radius:2px;background:#334155;transition:background 0.3s; }
-  .wiz-step.active { background:#3b82f6; }
-  .wiz-step.done { background:#22c55e; }
-</style>
-</head>
-<body>
-<div class="container">
-<div class="hero">
-  <h1>ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â Scrutari</h1>
-  <p class="tagline">Browser Leak Detector &middot; <span>Bot-or-NotÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢</span></p>
-  <p style="color:#94a3b8;font-size:0.85rem;margin-top:0.75rem;">Free &amp; open source. All tests run in your browser ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â nothing is sent to any server.</p>
-</div>
-
-<div class="card">
-  <h2>Expected Proxy IP</h2>
-  <div class="ip-input">
-    <input type="text" id="expected-ip" value="1.2.3.4" placeholder="Your VPN/proxy exit IP">
-    <button class="btn" onclick="detectMyIP()">Detect My IP</button>
-  </div>
-</div>
-
-<div id="section-exit-node" class="card">
-  <h2>ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã¢â‚¬â„¢Ãƒâ€šÃ‚Â Exit Node Analysis</h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Classifies your public IP as residential, datacenter, VPN, or Tor exit. Requires ipinfo.io lookup (opt-in).</p>
-  <button class="btn" onclick="analyzeExitNode()">Analyze My Exit Node</button>
-  <div id="exit-node-results">
-    <div class="result-box info" style="margin-top:0.5rem;">Click "Analyze My Exit Node" to classify your IP.</div>
-  </div>
-</div>
-
-<div class="section-nav" id="wizard-nav">
-<button class="btn" onclick="navigateTo('section-exit-node')">1. Network</button>
-<button class="btn" onclick="navigateTo('section-fingerprint')">2. Fingerprint</button>
-<button class="btn" onclick="navigateTo('section-webrtc')">3. WebRTC</button>
-<button class="btn" onclick="navigateTo('section-behavior')">4. Behavior</button>
-<button class="btn" onclick="navigateTo('section-botornot')">5. Results</button>
-</div>
-<div style="margin-top:0.5rem;font-size:0.7rem;color:#64748b;text-align:center;">
-  <span id="page-indicator">Page: 1/5</span> &middot; Navigate through sections in order for behavioral analysis
-</div>
-<div class="wizard-progress" id="wizard-progress">
-  <div class="wiz-step active" id="wiz-0"></div>
-  <div class="wiz-step" id="wiz-1"></div>
-  <div class="wiz-step" id="wiz-2"></div>
-  <div class="wiz-step" id="wiz-3"></div>
-  <div class="wiz-step" id="wiz-4"></div>
-</div>
-
-<div id="section-fingerprint" class="card">
-  <h2>Browser Fingerprint</h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">These attributes can uniquely identify your browser.</p>
-  <button class="btn" onclick="captureFingerprint()">Capture Fingerprint</button>
-  <div id="fingerprint-results"><div class="grid" id="fingerprint-grid"></div></div>
-</div>
-
-<div id="section-botornot" class="card gauge-card">
-  <h2>Bot-or-NotÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; rating how human-like your connection appears</span></h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 36+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
-  <div id="botornot-results">
-    <div class="gauge-container" style="opacity:0.5;">
-      <div class="gauge-emoji">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“</div>
-      <div class="gauge-title">Run fingerprint capture first</div>
-      <div class="gauge-subtitle">Click "Capture Fingerprint" above to generate your Bot-or-Not rating</div>
-    </div>
-  </div>
-</div>
-
-<div id="section-benchmarks" class="card">
-  <h2>ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€¦Ã‚Â  Benchmarks <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; how different browsers score on Bot-or-Not</span></h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Pre-computed scores from real Playwright browser tests (headless/headed) and HTTP clients. Helps you calibrate what your own score means.</p>
-  <button class="btn" onclick="loadBenchmarks()">Load Benchmarks</button>
-  <div id="benchmarks-results">
-    <div class="result-box info" style="margin-top:0.5rem;">Click "Load Benchmarks" to see how common browsers and tools compare.</div>
-  </div>
-</div>
-
-<div id="section-behavior" class="card">
-  <h2>ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â Behavioral Analysis <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; how human-like your interactions look</span></h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
-    Records mouse movements, scrolling, clicks, and typing to detect automation.
-    <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();document.getElementById('entropy-explanation').innerHTML?0:showEntropyExplanation(0,'0')">How does this work?</span>
-  </p>
-  <div id="behavior-results">
-    <div class="gauge-container" style="text-align:center;">
-      <div class="gauge-emoji">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã‚Â½Ãƒâ€šÃ‚Â¯</div>
-      <div class="gauge-title" id="behavior-status">Interaction analysis</div>
-      <div class="gauge-subtitle" id="behavior-substatus">Click start and interact with the page normally</div>
-      <div id="behavior-progress" style="display:none;">
-        <div class="rec-progress"><div class="rec-fill" id="behavior-bar" style="width:0%;"></div></div>
-        <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events Ã‚Â· <span id="behavior-breakdown" style="font-size:0.7rem;color:#94a3b8;"></span> recorded</div>
-      </div>
-      <button class="btn" id="behavior-btn" onclick="toggleBehaviorRecording()">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â¶ Start analysis</button>
-      <!-- form section for interaction analysis -->
-      <div id="behavior-test-area" style="margin-top:1rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;text-align:left;opacity:0.6;transition:opacity 0.3s;">
-        <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">Try interacting with these during the recording:</div>
-        <div style="display:flex;flex-direction:column;gap:0.5rem;">
-          <input type="text" id="input-main" placeholder="Type something here (typing analysis)" autocomplete="off" style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
-          <input type="text" id="input-email" placeholder="Fake email address (not sent anywhere)" autocomplete="off" style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
-          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;" id="btn-primary">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ Normal Button</button>
-            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#7f1d1d;color:#fca5a5;" id="btn-opt-1">Reset settings</button>
-            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#78350f;color:#fcd34d;" id="btn-opt-2">Clear data</button>
-            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#1e293b;color:#64748b;border:1px dashed #334155;" id="btn-opt-3">Export report</button>
-          </div>
-          <!-- extra hidden field -->
-          <input type="text" id="input-ext" tabindex="-1" style="position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;margin:-1px;overflow:hidden;" placeholder="Extra" autocomplete="off">
-        </div>
-      </div>
-      <!-- Challenge form: UX friction traps that slow humans but bots auto-solve -->
-      <div id="challenge-form" style="margin-top:0.75rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;text-align:left;opacity:0.6;transition:opacity 0.3s;">
-        <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">Challenge form (format validation + corrections):</div>
-        <div style="display:flex;flex-direction:column;gap:0.5rem;">
-          <div>
-            <input type="email" id="challenge-email" placeholder="Email address" spellcheck="false"
-              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;"
-              oninput="this.setCustomValidity('');if(!this.validity.valid)this.setCustomValidity('Invalid email format')">
-            <small style="color:#64748b;font-size:0.6rem;">Format: name@domain.com (no typos!)</small>
-          </div>
-          <div>
-            <input type="email" id="challenge-email-confirm" placeholder="Confirm email address" spellcheck="false"
-              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;">
-            <small style="color:#ef4444;font-size:0.6rem;">Must match email above (humans always mess this up)</small>
-          </div>
-          <div style="display:flex;gap:0.5rem;">
-            <input type="password" id="challenge-password" placeholder="Create password" spellcheck="false"
-              style="flex:1;padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
-            <input type="password" id="challenge-password-confirm" placeholder="Confirm password" spellcheck="false"
-              style="flex:1;padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
-          </div>
-          <div>
-            <input type="text" id="challenge-date" placeholder="Date (MM/DD/YYYY)" spellcheck="false"
-              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;"
-              pattern="\d{2}/\d{2}/\d{4}" oninput="this.setCustomValidity('');if(!this.validity.valid)this.setCustomValidity('Format: MM/DD/YYYY')">
-            <small style="color:#64748b;font-size:0.6rem;">Format: MM/DD/YYYY (most users get this wrong)</small>
-          </div>
-          <div>
-            <input type="tel" id="challenge-phone" placeholder="Phone (555-123-4567)" spellcheck="false"
-              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;"
-              pattern="\d{3}-\d{3}-\d{4}" oninput="this.setCustomValidity('');if(!this.validity.valid)this.setCustomValidity('Use dashes: 555-123-4567')">
-            <small style="color:#64748b;font-size:0.6rem;">Format: 555-123-4567 (dashes required)</small>
-          </div>
-          <div>
-            <input type="text" id="challenge-confirm" placeholder='Type "CONFIRM" to proceed' spellcheck="false"
-              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;">
-            <small style="color:#64748b;font-size:0.6rem;">Type: CONFIRM (all caps, no typos)</small>
-          </div>
-          <textarea id="challenge-spellcheck" spellcheck="true" placeholder="Type a paragraph here (spellcheck is ON ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â see the red underlines)"
-            style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;min-height:60px;resize:vertical;"></textarea>
-        </div>
-      </div>
-      <div id="behavior-results-inner"></div>
-    </div>
-  </div>
-</div>
-
-<div id="section-submit" class="card">
-  <h2>ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€šÃ‚Â¤ Contribute to Research <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; help us improve Bot-or-Not</span></h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
-    Submit your anonymized fingerprint to build a public k-anonymity dataset.
-    No IP addresses, no cookies ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â just browser attributes.
-  </p>
-  <div id="submit-results">
-    <div class="gauge-container" style="text-align:center;">
-      <div class="gauge-emoji">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â¬</div>
-      <div class="gauge-title">Run fingerprint + Bot-or-Not first</div>
-      <div class="gauge-subtitle">After capturing your fingerprint, you'll be able to contribute anonymized data to improve detection accuracy.</div>
-      <div id="submit-preview-section" style="display:none;text-align:left;margin-top:0.75rem;"></div>
-      <div id="submit-status" style="margin-top:0.5rem;"></div>
-    </div>
-  </div>
-</div>
-
-<div id="section-entropy" class="card">
-  <h2>ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€¦Ã‚Â  Entropy &amp; Uniqueness <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; what your fingerprint reveals</span></h2>
-  <div id="entropy-results">
-    <div id="fingerprint-entropy" style="margin-bottom:0.5rem;">
-      <div class="result-box info">Run fingerprint capture to see your browser's entropy score.</div>
-    </div>
-    <div id="entropy-explanation"></div>
-  </div>
-</div>
-
-<div id="section-webrtc" class="card">
-  <h2>WebRTC Leak Test</h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Tests if your real IP is exposed via WebRTC STUN requests.</p>
-  <button class="btn" onclick="runWebRTCTests()">Test WebRTC</button>
-  <div id="webrtc-results"></div>
-</div>
-
-<div id="section-time" class="card">
-  <h2>Time & Location Leaks</h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Your browser reveals timezone and locale. Do they match your proxy?</p>
-  <button class="btn" onclick="captureTimeLeaks()">Capture</button>
-  <div id="time-results"></div>
-</div>
-
-<div id="section-headers" class="card">
-  <h2>Compare with Trusted Third-Party Tools</h2>
-  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
-    Cross-reference your results with these high-reputation detectors.
-    All verified non-honeypot. Open each and compare results.
-  </p>
-  <table>
-    <tr><th>Tool</th><th>Trust</th><th>Tests</th></tr>
-    <tr>
-      <td><a href="https://coveryourtracks.eff.org" target="_blank" style="color:#60a5fa;">Cover Your Tracks (EFF)</a></td>
-      <td><span class="badge badge-safe">HIGH</span></td>
-      <td>K-anonymity vs millions of browsers</td>
-    </tr>
-    <tr>
-      <td><a href="https://browserleaks.com" target="_blank" style="color:#60a5fa;">BrowserLeaks</a></td>
-      <td><span class="badge badge-safe">HIGH</span></td>
-      <td>Canvas, WebGL, WebRTC, fonts, TLS (40+)</td>
-    </tr>
-    <tr>
-      <td><a href="https://ipleak.net" target="_blank" style="color:#60a5fa;">IPLeak.net</a></td>
-      <td><span class="badge badge-safe">HIGH</span></td>
-      <td>IP, DNS, WebRTC, IPv6</td>
-    </tr>
-    <tr>
-      <td><a href="https://dnsleaktest.com" target="_blank" style="color:#60a5fa;">DNSLeakTest</a></td>
-      <td><span class="badge badge-safe">HIGH</span></td>
-      <td>DNS resolver path, ISP</td>
-    </tr>
-    <tr>
-      <td><a href="https://github.com/qruiqai/leakish" target="_blank" style="color:#60a5fa;">Leakish</a></td>
-      <td><span class="badge badge-safe">HIGH</span></td>
-      <td>Open-source 8-module audit</td>
-    </tr>
-    <tr>
-      <td><a href="https://privacytests.org" target="_blank" style="color:#60a5fa;">PrivacyTests.org</a></td>
-      <td><span class="badge badge-safe">HIGH</span></td>
-      <td>Cross-browser privacy benchmark</td>
-    </tr>
-  </table>
-<div class="footer">
-  <p><a href="https://sempersupra.github.io/scrutari/">Scrutari</a> &middot; Open source browser leak detector</p>
-  <p style="margin-top:0.5rem;">All tests run client-side. No data leaves your browser.</p>
-  <p style="margin-top:0.25rem;font-size:0.7rem;color:#475569;">Research submissions are anonymized. <a href="https://github.com/SemperSupra/scrutari/blob/main/PRIVACY_AND_COMPLIANCE.md" style="color:#60a5fa;">Privacy policy</a></p>
-  <div class="share-bar" style="margin-top:1rem;">
-    <a class="share-btn share-twitter" href="https://twitter.com/intent/tweet?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20%E2%80%94%20free%2C%20open%20source%20privacy%20tool%20at%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">ÃƒÆ’Ã‚Â°Ãƒâ€šÃ‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚Â Share</a>
-    <a class="share-btn share-linkedin" href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">in Share</a>
-    <a class="share-btn share-bluesky" href="https://bsky.app/intent/compose?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20%E2%80%94%20free%20privacy%20tool%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ Share</a>
-    <a class="share-btn share-mastodon" href="https://mastodon.social/share?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20free%20privacy%20tool%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">M Share</a>
-  </div>
-  <!-- Honeypot links ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â hidden from humans, visible to crawlers -->
-  <a href="/admin/" style="display:none" aria-hidden="true">Admin</a>
-  <a href="/backup/" style="display:none" aria-hidden="true">Backup</a>
-  <a href="/.env" style="display:none" aria-hidden="true">Config</a>
-  <a href="/wp-admin/" style="display:none" aria-hidden="true">Login</a>
-</div>
-
 <script src="/js/scrutari.js" defer></script>
-</div>
-</body>
+</head>
+<body>
+<div class="container">
+<div class="hero">
+  <h1>—Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â Scrutari</h1>
+  <p class="tagline">Browser Leak Detector &middot; <span>Bot-or-Not—Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢</span></p>
+  <p style="color:#94a3b8;font-size:0.85rem;margin-top:0.75rem;">Free &amp; open source. All tests run in your browser —Â¢—Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â nothing is sent to any server.</p>
+</div>
+
+<div class="card">
+  <h2>Expected Proxy IP</h2>
+  <div class="ip-input">
+    <input type="text" id="expected-ip" value="1.2.3.4" placeholder="Your VPN/proxy exit IP">
+    <button class="btn" onclick="detectMyIP()">Detect My IP</button>
+  </div>
+</div>
+
+<div id="section-exit-node" class="card">
+  <h2>—Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã¢â‚¬â„¢Ãƒâ€šÃ‚Â Exit Node Analysis</h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Classifies your public IP as residential, datacenter, VPN, or Tor exit. Requires ipinfo.io lookup (opt-in).</p>
+  <button class="btn" onclick="analyzeExitNode()">Analyze My Exit Node</button>
+  <div id="exit-node-results">
+    <div class="result-box info" style="margin-top:0.5rem;">Click "Analyze My Exit Node" to classify your IP.</div>
+  </div>
+</div>
+
+<div class="section-nav" id="wizard-nav">
+<button class="btn" onclick="navigateTo('section-exit-node')">1. Network</button>
+<button class="btn" onclick="navigateTo('section-fingerprint')">2. Fingerprint</button>
+<button class="btn" onclick="navigateTo('section-webrtc')">3. WebRTC</button>
+<button class="btn" onclick="navigateTo('section-behavior')">4. Behavior</button>
+<button class="btn" onclick="navigateTo('section-botornot')">5. Results</button>
+</div>
+<div style="margin-top:0.5rem;font-size:0.7rem;color:#64748b;text-align:center;">
+  <span id="page-indicator">Page: 1/5</span> &middot; Navigate through sections in order for behavioral analysis
+</div>
+<div class="wizard-progress" id="wizard-progress">
+  <div class="wiz-step active" id="wiz-0"></div>
+  <div class="wiz-step" id="wiz-1"></div>
+  <div class="wiz-step" id="wiz-2"></div>
+  <div class="wiz-step" id="wiz-3"></div>
+  <div class="wiz-step" id="wiz-4"></div>
+</div>
+
+<div id="section-fingerprint" class="card">
+  <h2>Browser Fingerprint</h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">These attributes can uniquely identify your browser.</p>
+  <button class="btn" onclick="captureFingerprint()">Capture Fingerprint</button>
+  <div id="fingerprint-results"><div class="grid" id="fingerprint-grid"></div></div>
+</div>
+
+<div id="section-botornot" class="card gauge-card">
+  <h2>Bot-or-Not—Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; rating how human-like your connection appears</span></h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Analyzes 36+ browser signals to estimate whether you look like a real human or an automated bot. <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();var el=document.querySelector('#fingerprint-entropy .toggle-link');if(el)el.click();">How does this work?</span></p>
+  <div id="botornot-results">
+    <div class="gauge-container" style="opacity:0.5;">
+      <div class="gauge-emoji">—Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“</div>
+      <div class="gauge-title">Run fingerprint capture first</div>
+      <div class="gauge-subtitle">Click "Capture Fingerprint" above to generate your Bot-or-Not rating</div>
+    </div>
+  </div>
+</div>
+
+<div id="section-benchmarks" class="card">
+  <h2>—Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€¦Ã‚Â  Benchmarks <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; how different browsers score on Bot-or-Not</span></h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Pre-computed scores from real Playwright browser tests (headless/headed) and HTTP clients. Helps you calibrate what your own score means.</p>
+  <button class="btn" onclick="loadBenchmarks()">Load Benchmarks</button>
+  <div id="benchmarks-results">
+    <div class="result-box info" style="margin-top:0.5rem;">Click "Load Benchmarks" to see how common browsers and tools compare.</div>
+  </div>
+</div>
+
+<div id="section-behavior" class="card">
+  <h2>—Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚Â¹—Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â Behavioral Analysis <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; how human-like your interactions look</span></h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
+    Records mouse movements, scrolling, clicks, and typing to detect automation.
+    <span class="toggle-link" onclick="document.getElementById('section-entropy').scrollIntoView();document.getElementById('entropy-explanation').innerHTML?0:showEntropyExplanation(0,'0')">How does this work?</span>
+  </p>
+  <div id="behavior-results">
+    <div class="gauge-container" style="text-align:center;">
+      <div class="gauge-emoji">—Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã‚Â½Ãƒâ€šÃ‚Â¯</div>
+      <div class="gauge-title" id="behavior-status">Interaction analysis</div>
+      <div class="gauge-subtitle" id="behavior-substatus">Click start and interact with the page normally</div>
+      <div id="behavior-progress" style="display:none;">
+        <div class="rec-progress"><div class="rec-fill" id="behavior-bar" style="width:0%;"></div></div>
+        <div class="rec-status"><span class="rec-dot" id="behavior-dot"></span><span id="behavior-timer">15s</span> remaining &middot; <span id="behavior-events">0</span> events Ã‚Â· <span id="behavior-breakdown" style="font-size:0.7rem;color:#94a3b8;"></span> recorded</div>
+      </div>
+      <button class="btn" id="behavior-btn" onclick="toggleBehaviorRecording()">—Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â¶ Start analysis</button>
+      <!-- form section for interaction analysis -->
+      <div id="behavior-test-area" style="margin-top:1rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;text-align:left;opacity:0.6;transition:opacity 0.3s;">
+        <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">Try interacting with these during the recording:</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+          <input type="text" id="input-main" placeholder="Type something here (typing analysis)" autocomplete="off" style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
+          <input type="text" id="input-email" placeholder="Fake email address (not sent anywhere)" autocomplete="off" style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;" id="btn-primary">—Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ Normal Button</button>
+            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#7f1d1d;color:#fca5a5;" id="btn-opt-1">Reset settings</button>
+            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#78350f;color:#fcd34d;" id="btn-opt-2">Clear data</button>
+            <button class="btn" style="font-size:0.7rem;padding:0.3rem 0.8rem;background:#1e293b;color:#64748b;border:1px dashed #334155;" id="btn-opt-3">Export report</button>
+          </div>
+          <!-- extra hidden field -->
+          <input type="text" id="input-ext" tabindex="-1" style="position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;margin:-1px;overflow:hidden;" placeholder="Extra" autocomplete="off">
+        </div>
+      </div>
+      <!-- Challenge form: UX friction traps that slow humans but bots auto-solve -->
+      <div id="challenge-form" style="margin-top:0.75rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;text-align:left;opacity:0.6;transition:opacity 0.3s;">
+        <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">Challenge form (format validation + corrections):</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+          <div>
+            <input type="email" id="challenge-email" placeholder="Email address" spellcheck="false"
+              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;"
+              oninput="this.setCustomValidity('');if(!this.validity.valid)this.setCustomValidity('Invalid email format')">
+            <small style="color:#64748b;font-size:0.6rem;">Format: name@domain.com (no typos!)</small>
+          </div>
+          <div>
+            <input type="email" id="challenge-email-confirm" placeholder="Confirm email address" spellcheck="false"
+              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;">
+            <small style="color:#ef4444;font-size:0.6rem;">Must match email above (humans always mess this up)</small>
+          </div>
+          <div style="display:flex;gap:0.5rem;">
+            <input type="password" id="challenge-password" placeholder="Create password" spellcheck="false"
+              style="flex:1;padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
+            <input type="password" id="challenge-password-confirm" placeholder="Confirm password" spellcheck="false"
+              style="flex:1;padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;">
+          </div>
+          <div>
+            <input type="text" id="challenge-date" placeholder="Date (MM/DD/YYYY)" spellcheck="false"
+              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;"
+              pattern="\d{2}/\d{2}/\d{4}" oninput="this.setCustomValidity('');if(!this.validity.valid)this.setCustomValidity('Format: MM/DD/YYYY')">
+            <small style="color:#64748b;font-size:0.6rem;">Format: MM/DD/YYYY (most users get this wrong)</small>
+          </div>
+          <div>
+            <input type="tel" id="challenge-phone" placeholder="Phone (555-123-4567)" spellcheck="false"
+              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;"
+              pattern="\d{3}-\d{3}-\d{4}" oninput="this.setCustomValidity('');if(!this.validity.valid)this.setCustomValidity('Use dashes: 555-123-4567')">
+            <small style="color:#64748b;font-size:0.6rem;">Format: 555-123-4567 (dashes required)</small>
+          </div>
+          <div>
+            <input type="text" id="challenge-confirm" placeholder='Type "CONFIRM" to proceed' spellcheck="false"
+              style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;">
+            <small style="color:#64748b;font-size:0.6rem;">Type: CONFIRM (all caps, no typos)</small>
+          </div>
+          <textarea id="challenge-spellcheck" spellcheck="true" placeholder="Type a paragraph here (spellcheck is ON —Â¢—Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â see the red underlines)"
+            style="padding:0.4rem 0.6rem;background:#1e293b;border:1px solid #334155;border-radius:0.375rem;color:#e2e8f0;font-size:0.8rem;width:100%;min-height:60px;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div id="behavior-results-inner"></div>
+    </div>
+  </div>
+</div>
+
+<div id="section-submit" class="card">
+  <h2>—Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€šÃ‚Â¤ Contribute to Research <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; help us improve Bot-or-Not</span></h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
+    Submit your anonymized fingerprint to build a public k-anonymity dataset.
+    No IP addresses, no cookies —Â¢—Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â just browser attributes.
+  </p>
+  <div id="submit-results">
+    <div class="gauge-container" style="text-align:center;">
+      <div class="gauge-emoji">—Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â¬</div>
+      <div class="gauge-title">Run fingerprint + Bot-or-Not first</div>
+      <div class="gauge-subtitle">After capturing your fingerprint, you'll be able to contribute anonymized data to improve detection accuracy.</div>
+      <div id="submit-preview-section" style="display:none;text-align:left;margin-top:0.75rem;"></div>
+      <div id="submit-status" style="margin-top:0.5rem;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="section-entropy" class="card">
+  <h2>—Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€¦Ã‚Â  Entropy &amp; Uniqueness <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">&mdash; what your fingerprint reveals</span></h2>
+  <div id="entropy-results">
+    <div id="fingerprint-entropy" style="margin-bottom:0.5rem;">
+      <div class="result-box info">Run fingerprint capture to see your browser's entropy score.</div>
+    </div>
+    <div id="entropy-explanation"></div>
+  </div>
+</div>
+
+<div id="section-webrtc" class="card">
+  <h2>WebRTC Leak Test</h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Tests if your real IP is exposed via WebRTC STUN requests.</p>
+  <button class="btn" onclick="runWebRTCTests()">Test WebRTC</button>
+  <div id="webrtc-results"></div>
+</div>
+
+<div id="section-time" class="card">
+  <h2>Time & Location Leaks</h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">Your browser reveals timezone and locale. Do they match your proxy?</p>
+  <button class="btn" onclick="captureTimeLeaks()">Capture</button>
+  <div id="time-results"></div>
+</div>
+
+<div id="section-headers" class="card">
+  <h2>Compare with Trusted Third-Party Tools</h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
+    Cross-reference your results with these high-reputation detectors.
+    All verified non-honeypot. Open each and compare results.
+  </p>
+  <table>
+    <tr><th>Tool</th><th>Trust</th><th>Tests</th></tr>
+    <tr>
+      <td><a href="https://coveryourtracks.eff.org" target="_blank" style="color:#60a5fa;">Cover Your Tracks (EFF)</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>K-anonymity vs millions of browsers</td>
+    </tr>
+    <tr>
+      <td><a href="https://browserleaks.com" target="_blank" style="color:#60a5fa;">BrowserLeaks</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>Canvas, WebGL, WebRTC, fonts, TLS (40+)</td>
+    </tr>
+    <tr>
+      <td><a href="https://ipleak.net" target="_blank" style="color:#60a5fa;">IPLeak.net</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>IP, DNS, WebRTC, IPv6</td>
+    </tr>
+    <tr>
+      <td><a href="https://dnsleaktest.com" target="_blank" style="color:#60a5fa;">DNSLeakTest</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>DNS resolver path, ISP</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/qruiqai/leakish" target="_blank" style="color:#60a5fa;">Leakish</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>Open-source 8-module audit</td>
+    </tr>
+    <tr>
+      <td><a href="https://privacytests.org" target="_blank" style="color:#60a5fa;">PrivacyTests.org</a></td>
+      <td><span class="badge badge-safe">HIGH</span></td>
+      <td>Cross-browser privacy benchmark</td>
+    </tr>
+  </table>
+<div class="footer">
+  <p><a href="https://sempersupra.github.io/scrutari/">Scrutari</a> &middot; Open source browser leak detector</p>
+  <p style="margin-top:0.5rem;">All tests run client-side. No data leaves your browser.</p>
+  <p style="margin-top:0.25rem;font-size:0.7rem;color:#475569;">Research submissions are anonymized. <a href="https://github.com/SemperSupra/scrutari/blob/main/PRIVACY_AND_COMPLIANCE.md" style="color:#60a5fa;">Privacy policy</a></p>
+  <div class="share-bar" style="margin-top:1rem;">
+    <a class="share-btn share-twitter" href="https://twitter.com/intent/tweet?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20%E2%80%94%20free%2C%20open%20source%20privacy%20tool%20at%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">—Â°Ãƒâ€šÃ‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚Â Share</a>
+    <a class="share-btn share-linkedin" href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">in Share</a>
+    <a class="share-btn share-bluesky" href="https://bsky.app/intent/compose?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20%E2%80%94%20free%20privacy%20tool%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">—Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ Share</a>
+    <a class="share-btn share-mastodon" href="https://mastodon.social/share?text=I%20just%20tested%20my%20browser%20with%20Scrutari%20Bot-or-Not%E2%84%A2%20free%20privacy%20tool%20https%3A%2F%2Fsempersupra.github.io%2Fscrutari%2F" target="_blank" rel="noopener">M Share</a>
+  </div>
+  <!-- Honeypot links —Â¢—Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â hidden from humans, visible to crawlers -->
+  <a href="/admin/" style="display:none" aria-hidden="true">Admin</a>
+  <a href="/backup/" style="display:none" aria-hidden="true">Backup</a>
+  <a href="/.env" style="display:none" aria-hidden="true">Config</a>
+  <a href="/wp-admin/" style="display:none" aria-hidden="true">Login</a>
+</div>
+
+<script src="/js/scrutari.js" defer></script>
+</div>
+</body>
 </html>
