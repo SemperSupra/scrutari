@@ -197,6 +197,7 @@ export default async (req, context) => {
     updateDist(db.distributions, 'hasWASM', data.hasWASM !== undefined ? String(data.hasWASM) : undefined);
     updateDist(db.distributions, 'adblockDetected', data.adblockDetected !== undefined ? String(data.adblockDetected) : undefined);
     updateDist(db.distributions, 'ipVersion', data.ipVersion || 'unknown');
+    updateDist(db.distributions, 'powAnomaly', data._powTiming?.anomalyDetected !== undefined ? String(data._powTiming.anomalyDetected) : undefined);
     updateDist(db.distributions, 'source', data.source || 'manual');
 
     db.updated = now;
@@ -251,6 +252,7 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 400, headers });
   }
 };
+
 
 
 

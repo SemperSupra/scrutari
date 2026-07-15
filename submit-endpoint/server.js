@@ -284,6 +284,7 @@ const server = http.createServer((req, res) => {
       updateDistribution(db.distributions, 'hasWASM', data.hasWASM !== undefined ? String(data.hasWASM) : undefined);
       updateDistribution(db.distributions, 'adblockDetected', data.adblockDetected !== undefined ? String(data.adblockDetected) : undefined);
       updateDistribution(db.distributions, 'source', data.source || 'manual');
+      updateDistribution(db.distributions, 'powAnomaly', data._powTiming && data._powTiming.anomalyDetected !== undefined ? String(data._powTiming.anomalyDetected) : undefined);
 
       db.updated = now;
       const blobSize = saveStore(db);
@@ -330,6 +331,7 @@ server.listen(PORT, () => {
   console.log(`Data: ${DATA_DIR}/store.json`);
   console.log(`Auto-archive at ${MAX_DB_SIZE / 1024 / 1024}MB`);
 });
+
 
 
 
