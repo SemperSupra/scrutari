@@ -45,30 +45,57 @@ const ALLOWED_SOURCES = [
 ];
 const MAX_BODY_BYTES = 102400; // 100KB
 
-// Sliding window rate limiter (in-memory, per warm container)
+// Sliding window rate limiter — hybrid in-memory + blob-backed
+// In-memory provides fast intra-container checks.
+// Blob-backed provides consistent cross-container rate limiting.
 const _rateWindows = new Map();
+const RATE_WINDOW_MS = 5000;
+const RATE_MAX_PER_WINDOW = 1;
 
-function checkRateLimit(ip, windowMs = 5000, maxPerWindow = 1) {
+async function checkRateLimit(ip, store, windowMs = RATE_WINDOW_MS, maxPerWindow = RATE_MAX_PER_WINDOW) {
   const now = Date.now();
   const cutoff = now - windowMs;
-  let timestamps = _rateWindows.get(ip);
-  if (timestamps) {
-    let lo = 0, hi = timestamps.length;
-    while (lo < hi) { const mid = (lo + hi) >>> 1; if (timestamps[mid] < cutoff) lo = mid + 1; else hi = mid; }
-    timestamps = timestamps.slice(lo);
+
+  // Tier 1: In-memory check (fast path, per-container)
+  let memTimestamps = _rateWindows.get(ip);
+  if (memTimestamps) {
+    let lo = 0, hi = memTimestamps.length;
+    while (lo < hi) { const mid = (lo + hi) >>> 1; if (memTimestamps[mid] < cutoff) lo = mid + 1; else hi = mid; }
+    memTimestamps = memTimestamps.slice(lo);
   } else {
-    timestamps = [];
+    memTimestamps = [];
   }
-  if (timestamps.length >= maxPerWindow) return false;
-  timestamps.push(now);
-  _rateWindows.set(ip, timestamps);
-  return true;
+  if (memTimestamps.length >= maxPerWindow) return false;
+
+  // Tier 2: Blob-backed check (cross-container consistency)
+  try {
+    const rlKey = 'ratelimit:' + ip;
+    const blobTimestamps = await store.get(rlKey, { type: 'json' });
+    let ts = Array.isArray(blobTimestamps) ? blobTimestamps : [];
+    // Filter expired
+    let valid = [];
+    for (let i = 0; i < ts.length; i++) {
+      if (ts[i] >= cutoff) valid.push(ts[i]);
+    }
+    if (valid.length >= maxPerWindow) return false;
+    // Allow: record in both blob and memory
+    valid.push(now);
+    await store.set(rlKey, JSON.stringify(valid));
+    memTimestamps.push(now);
+    _rateWindows.set(ip, memTimestamps);
+    return true;
+  } catch (_rlErr) {
+    // Blob unavailable — fall back to in-memory only
+    memTimestamps.push(now);
+    _rateWindows.set(ip, memTimestamps);
+    return true;
+  }
 }
 
-// Periodic cleanup of stale rate limit entries
+// Periodic cleanup of stale rate limit entries (in-memory only)
 if (typeof globalThis.__ratePrune === 'undefined') {
   globalThis.__ratePrune = setInterval(() => {
-    const cutoff = Date.now() - 5000;
+    const cutoff = Date.now() - RATE_WINDOW_MS;
     for (const [ip, ts] of _rateWindows) {
       const valid = ts.filter(t => t >= cutoff);
       if (valid.length === 0) _rateWindows.delete(ip);
@@ -125,11 +152,12 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: 'Request body too large' }), { status: 413, headers });
   }
 
-  // Rate limiting
+  // Rate limiting (requires store for blob-backed cross-container consistency)
   const rawClientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
                    || req.headers.get('x-nf-client-connection-ip') || 'unknown';
   const clientIP = normalizeIP(rawClientIP);
-  if (!checkRateLimit(clientIP)) {
+  const store = getStore({ name: STORE_NAME, siteID: SITE_ID });
+  if (!(await checkRateLimit(clientIP, store))) {
     return new Response(JSON.stringify({ error: 'Rate limited' }), { status: 429, headers });
   }
 
@@ -161,7 +189,6 @@ export default async (req, context) => {
     const fpKey = 'fp:' + createHash('sha256').update(JSON.stringify(fp)).digest('hex').substring(0, 16);
 
     console.log(`[Scrutari] Site: ${SITE_ID}, Deploy: ${DEPLOY_ID}`);
-    const store = getStore({ name: STORE_NAME, siteID: SITE_ID });
 
     // --- Migration: check for old v2 single-blob format ---
     const oldBlob = await readKey(store, 'scrutari-data');
@@ -273,6 +300,9 @@ export default async (req, context) => {
     meta.updated = now;
     await writeKey(store, 'meta', meta);
     await writeKey(store, 'dist', dist);
+
+    // Invalidate analysis cache (new data means stale dashboard)
+    try { await store.delete('analysis-cache'); } catch (_ac) { /* cache may not exist */ }
 
     // --- Compute research stats ---
     const totalFP = meta.totalSubmissions;
