@@ -128,6 +128,26 @@ export default async (req, context) => {
     if (analysis.summary.uniqueFingerprints === 0) analysis.dataQuality.warnings.push('No fingerprint data collected yet');
 
     // â”€â”€â”€ Published baselines for comparison â”€â”€â”€
+    // Trust score distribution
+    const trustDist = db.distributions?.trustScore || {};
+    const trustTotal = Object.values(trustDist).reduce((s, v) => s + v, 0) || 0;
+    analysis.trustScores = {
+      high: trustDist.high || 0,
+      medium: trustDist.medium || 0,
+      low: trustDist.low || 0,
+      total: trustTotal,
+      highPct: trustTotal > 0 ? ((trustDist.high || 0) / trustTotal * 100).toFixed(1) + '%' : null,
+      mediumPct: trustTotal > 0 ? ((trustDist.medium || 0) / trustTotal * 100).toFixed(1) + '%' : null,
+      lowPct: trustTotal > 0 ? ((trustDist.low || 0) / trustTotal * 100).toFixed(1) + '%' : null,
+    };
+    analysis.consistencyNotes = [];
+    if (trustTotal > 0 && analysis.trustScores.lowPct && parseFloat(analysis.trustScores.lowPct) > 20) {
+      analysis.consistencyNotes.push('High proportion of low-trust clients — possible automated traffic');
+    }
+    if (analysis.summary.totalSubmissions >= 10) {
+      analysis.consistencyNotes.push('Cross-signal consistency analysis available after N=100 submissions');
+    }
+
     analysis.publishedBaselines = {
       note: 'Per-attribute entropy from published studies for comparison. Our values will differ due to sample size and population.',
       eckersley2010: { venue: 'PETS 2010 (Panopticlick)', sampleSize: '470K',
@@ -144,5 +164,6 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
   }
 };
+
 
 

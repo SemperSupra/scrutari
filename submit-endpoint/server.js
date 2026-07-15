@@ -285,6 +285,13 @@ const server = http.createServer((req, res) => {
       updateDistribution(db.distributions, 'adblockDetected', data.adblockDetected !== undefined ? String(data.adblockDetected) : undefined);
       updateDistribution(db.distributions, 'source', data.source || 'manual');
       updateDistribution(db.distributions, 'powAnomaly', data._powTiming && data._powTiming.anomalyDetected !== undefined ? String(data._powTiming.anomalyDetected) : undefined);
+      // Compute client trust score
+      var _trustScore2 = 100;
+      if (data._powTiming && data._powTiming.anomalyDetected) _trustScore2 -= 20;
+      if (data._powTiming && data._powTiming.anomalyRatio > 5) _trustScore2 -= 15;
+      if (data._powTiming && data._powTiming.anomalyRatio < 0.2) _trustScore2 -= 15;
+      var _trustBucket2 = _trustScore2 >= 80 ? 'high' : (_trustScore2 >= 50 ? 'medium' : 'low');
+      updateDistribution(db.distributions, 'trustScore', _trustBucket2);
 
       db.updated = now;
       const blobSize = saveStore(db);
@@ -331,6 +338,7 @@ server.listen(PORT, () => {
   console.log(`Data: ${DATA_DIR}/store.json`);
   console.log(`Auto-archive at ${MAX_DB_SIZE / 1024 / 1024}MB`);
 });
+
 
 
 

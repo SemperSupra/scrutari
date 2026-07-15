@@ -199,6 +199,15 @@ export default async (req, context) => {
     updateDist(db.distributions, 'adblockDetected', data.adblockDetected !== undefined ? String(data.adblockDetected) : undefined);
     updateDist(db.distributions, 'ipVersion', data.ipVersion || 'unknown');
     updateDist(db.distributions, 'powAnomaly', data._powTiming?.anomalyDetected !== undefined ? String(data._powTiming.anomalyDetected) : undefined);
+    // Compute client trust score from cross-signal consistency
+    // Lower bound: -20 if PoW anomaly detected, starts at 100
+    var _trustScore = 100;
+    if (data._powTiming?.anomalyDetected) _trustScore -= 20;
+    if (data._powTiming?.anomalyRatio > 5) _trustScore -= 15;
+    if (data._powTiming?.anomalyRatio < 0.2) _trustScore -= 15;
+    // Store bucket for aggregate analysis
+    var _trustBucket = _trustScore >= 80 ? 'high' : (_trustScore >= 50 ? 'medium' : 'low');
+    updateDist(db.distributions, 'trustScore', _trustBucket);
     updateDist(db.distributions, 'source', data.source || 'manual');
 
     db.updated = now;
@@ -253,6 +262,7 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 400, headers });
   }
 };
+
 
 
 
