@@ -1453,9 +1453,59 @@ function computeBotOrNot(fp) {
     return fp['Service Worker'] === 'Yes';
   });
 
+  // === WEB WORKER SIGNALS (new in v2) ===
+  // These detect automation that patches the main thread but forgets the worker context
+
+  // 36. Worker not supported at all — some headless/embedded environments block Workers
+  test(5, 'Web Worker supported', false, function() {
+    return fp['Worker Supported'] === 'Yes';
+  });
+
+  // 37. Worker injection keys — automation framework identifiers in worker scope
+  test(5, 'Worker has no injection keys', false, function() {
+    var keys = fp['Worker Injection Keys'] || '';
+    return keys === '' || keys === 'undefined';
+  });
+
+  // 38. Transferables supported — structured clone fails in some headless configurations
+  test(4, 'Transferable objects work', false, function() {
+    return fp['Transferables'] === 'Yes';
+  });
+
+  // 39. Worker core mismatch — worker reports different cores than main thread
+  test(4, 'Worker/main thread cores match', false, function() {
+    var mm = fp['Worker Core Mismatch'] || '';
+    return mm === '' || mm === 'undefined' || mm === null;
+  });
+
+  // 40. Worker language mismatch — different locale between contexts
+  test(3, 'Worker/main thread language matches', false, function() {
+    var lm = fp['Worker Language Mismatch'] || '';
+    return lm === '' || lm === 'undefined' || lm === null;
+  });
+
+  // 41. Timer drift anomaly — virtualized environments have inaccurate timers
+  test(3, 'Worker timer drift within tolerance', false, function() {
+    var ta = fp['Timer Drift Anomaly'] || '';
+    return ta === '' || ta === 'undefined' || ta === null;
+  });
+
+  // 42. Worker headless UA — automation UA detected in worker context
+  test(2, 'Worker UA is not headless', false, function() {
+    return fp['Worker Headless UA'] !== 'Yes';
+  });
+
+  // 43. Worker create time — too fast (<1ms) or too slow (>100ms) suggests non-standard environment
+  test(1, 'Worker create time is typical', false, function() {
+    var ct = fp['Worker Create Time'] || '';
+    var ms = parseFloat(ct);
+    if (isNaN(ms)) return null;
+    return ms >= 1 && ms <= 100; // 1-100ms is normal range
+  });
+
   // === COMPUTE SCORE ===
   var botProb = totalWeight > 0 ? (botWeight / totalWeight) : 0.5;
-  var maxPossibleWeight = 95; // sum of all test weights
+  var maxPossibleWeight = 122; // sum of all test weights (95 original + 27 worker signals)
   var coverage = totalWeight / maxPossibleWeight;
   var confidence = coverage >= 0.8 ? 'High' : (coverage >= 0.5 ? 'Medium' : 'Low');
 
@@ -1464,7 +1514,7 @@ function computeBotOrNot(fp) {
     confidence: confidence,
     coverage: Math.round(coverage * 100),
     testsRun: results.length,
-    testsTotal: 36,
+    testsTotal: 44,
     totalWeight: totalWeight,
     maxWeight: maxPossibleWeight,
     results: results
@@ -2533,8 +2583,8 @@ function buildSubmissionData(fp, bon) {
     safe.botScore = bon.botProbability;
     safe.botConfidence = bon.confidence;
     safe.botTestsRun = bon.testsRun;
-    safe.detectorVersion = 2;
-    safe.maxPossibleScore = bon.maxWeight || 95;
+    safe.detectorVersion = 3;
+    safe.maxPossibleScore = bon.maxWeight || 122;
     safe.botSignalNames = (bon.results || []).filter(function(s) { return s.bot; }).map(function(s) { return s.name; }).slice(0, 10);
     // Per-signal scores ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â critical for signal half-life analysis
     safe.signalScores = {};

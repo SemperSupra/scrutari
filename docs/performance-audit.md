@@ -2,7 +2,8 @@
 
 **Date:** 2026-07-15
 **Scope:** Full system — browser SPA, Netlify serverless/edge functions, Docker endpoint, ML pipeline, storage layer
-**Tests passing:** 126 (baseline before any changes)
+**Tests passing:** 126 (all items implemented, no regressions)
+**Detector signals:** 44 static (was 36) + 82 behavioral = 126 total signals, max possible weight 122
 
 ---
 
@@ -129,6 +130,43 @@ await store.set(BLOB_NAME, dbStr);
 **Impact:** Counterbalanced by 60-second pruning and the fact that rate limiters are ephemeral. Not a concern at expected traffic levels.
 
 ---
+
+## 3B. Web Worker Bot Detection Signals
+
+### Bonus: 8 New Fingerprint Signals from Worker Context
+
+**Finding:** The Web Worker implementation (Item C) revealed that worker context differs from main-thread context in ways that are highly indicative of automation. Automation frameworks (Playwright, Puppeteer, Selenium) invest significant effort patching the main-thread environment (`navigator.webdriver`, `window.__pwInitScripts`, etc.) but frequently overlook the worker context.
+
+### Worker Signal Catalog
+
+| # | Signal | Weight | Bot Indicator | What It Detects |
+|:-:|--------|:------:|:-------------:|-----------------|
+| 36 | Worker Supported | 5 | `No` | Headless/embedded browsers that block Workers entirely |
+| 37 | Worker Injection Keys | 5 | Present | Automation framework identifiers (`__playwright__`, `__puppeteer_...`) leaked into worker scope |
+| 38 | Transferables | 4 | `No` | Structured clone with transferable objects fails in Playwright stealth |
+| 39 | Worker Core Mismatch | 4 | Mismatch det. | Worker reports different `hardwareConcurrency` than main thread |
+| 40 | Worker Language Mismatch | 3 | Mismatch det. | `navigator.language` differs between contexts |
+| 41 | Timer Drift Anomaly | 3 | >20ms | `setTimeout` in worker drifts from expected — virtualized envs |
+| 42 | Worker Headless UA | 2 | `Yes` | HeadlessChrome detected from worker-side UA |
+| 43 | Worker Create Time | 1 | <1ms or >100ms | Unusually fast (no-op worker) or slow (VM throttling) |
+
+### Why These Are Valuable
+
+**Automation frameworks patch the main thread, not the worker.** This creates measurable gaps:
+
+1. **Transferable blocking**: Playwright's stealth mode disables `SharedArrayBuffer` and sometimes breaks structured clone with transferables. The worker's `postMessage(buf, [buf])` fails silently, but the main thread has no idea.
+
+2. **Timer precision**: Headless Chrome uses a virtualized timer with different precision characteristics. The worker's `performance.now()` and `setTimeout` accuracy differs from main-thread timing. Real browsers maintain <5ms drift; virtualized environments drift 20-100ms.
+
+3. **Scope injection**: Automation initialization scripts run in the main-thread global scope. Some frameworks accidentally pollute the worker's `self` object with identifiers. These can be enumerated and detected.
+
+4. **Core count divergence**: In Docker/container environments, `navigator.hardwareConcurrency` may report the host's core count on the main thread but the container's cgroup-limited count in the worker — or vice versa. Either mismatch is suspicious.
+
+### Implementation
+
+All 8 signals are captured as part of `captureFingerprint()` via `_workerPost('worker-env', {})` and related probes. They are weighted into `computeBotOrNot()` with a total contribution of 27 weight points (out of 122 max possible). Detection requires no additional dependencies — the Web Worker is created lazily and falls back gracefully if Workers are unavailable.
+
+The `detectorVersion` was bumped from 2 to 3 to reflect the methodology change for longitudinal analysis.
 
 ## 4. ML Pipeline Performance
 

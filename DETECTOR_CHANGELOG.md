@@ -4,6 +4,42 @@ Tracks methodology changes over time. Each version bump means the detection
 algorithm changed, which may affect cross-version score comparability.
 Submit `detectorVersion` with every data submission for longitudinal analysis.
 
+## Version 3 — 2026-07-15
+
+**Web Worker environment probes added. 44 total static signals.**
+
+### New signals (8, from Web Worker context):
+- **Worker Supported**: Some headless/embedded browsers block Worker creation entirely
+- **Worker Injection Keys**: Automation frameworks (Playwright, Puppeteer) may inject identifiers into worker scope that they forgot to clean
+- **Transferables**: Structured clone with transferable objects fails in some headless configurations
+- **Worker Core Mismatch**: Worker reports different `hardwareConcurrency` than main thread — instrumentation gap
+- **Worker Language Mismatch**: Locale differs between main thread and worker context
+- **Worker Timer Drift**: `setTimeout` in worker drifts >20ms from expected — virtualized environment indicator
+- **Worker Headless UA**: HeadlessChrome detected from worker-side user agent
+- **Worker Create Time**: Worker initialization time outside normal 1-100ms range
+
+### Weight changes:
+- `maxPossibleWeight`: 95 → 122 (+27 from new worker signals)
+- Tests: 36 → 44
+
+### Detection value:
+Worker signals are valuable because automation frameworks patch the main-thread environment
+(overriding `navigator.webdriver`, hiding automation globals) but frequently forget to patch
+the worker context. Transferable blocking and timer drift catch headless Chrome/Playwright
+configurations that otherwise pass all main-thread checks.
+
+## Version 2 — 2026-07-12
+
+**PoW challenge-response, adaptive difficulty, timing anomaly detection.**
+
+### Changes:
+- PoW benchmark integrated into captureFingerprint
+- Server-issued challenge-response PoW for submission verification
+- Adaptive difficulty based on device capability (12-24 bits)
+- PoW timing anomaly detection (expected ~500ms, flags if too fast/slow)
+- Client trust score from cross-signal consistency (0-100)
+- `detectorVersion` incremented to 2
+
 ## Version 1 — 2026-07-12
 
 **Initial research-grade detector.**
