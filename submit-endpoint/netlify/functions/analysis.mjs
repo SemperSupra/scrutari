@@ -100,8 +100,6 @@ export default async (req, context) => {
 
     // ─── Read fingerprint samples for time range and confusion matrix ───
     // Read a sample of fingerprints for analysis (up to 1000 to avoid timeout)
-    const MAX_SAMPLE = 1000;
-    const fpKeys = idx.slice(0, MAX_SAMPLE);
     const fps = {};
 
     for (const hash of fpKeys) {
