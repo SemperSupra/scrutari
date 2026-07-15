@@ -1,0 +1,2608 @@
+// JSON output mode: if URL has ?format=json, run all tests and output JSON
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('format') === 'json') {
+    // Run all tests and output JSON
+    document.addEventListener('DOMContentLoaded', async function() {
+      // Capture fingerprint
+      var fp = {};
+      fp['userAgent'] = navigator.userAgent;
+      fp['platform'] = navigator.platform || 'unknown';
+      fp['language'] = navigator.language;
+      fp['languages'] = navigator.languages || [];
+      fp['screen'] = screen.width + 'x' + screen.height;
+      fp['colorDepth'] = screen.colorDepth;
+      fp['cpuCores'] = navigator.hardwareConcurrency || null;
+      fp['deviceMemory'] = navigator.deviceMemory || null;
+      fp['touchPoints'] = navigator.maxTouchPoints || 0;
+      fp['doNotTrack'] = navigator.doNotTrack || null;
+      fp['timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      fp['cookiesEnabled'] = navigator.cookieEnabled;
+      // Entropy estimation (bits) per EFF Panopticlick methodology
+      // Each attribute contributes a certain number of bits of identifying information
+      var entropy = {};
+      entropy['userAgent'] = estimateEntropy(fp.userAgent, 10000);
+      entropy['platform'] = estimateEntropy(fp.platform, 10);
+      entropy['language'] = 3.5;
+      entropy['screen'] = estimateEntropy(fp.screen, 500);
+      entropy['colorDepth'] = 1.5;
+      entropy['cpuCores'] = 2.0;
+      entropy['deviceMemory'] = 1.5;
+      entropy['timezone'] = 3.2;
+      var totalEntropy = 0;
+      for (var k in entropy) if (entropy[k]) totalEntropy += entropy[k];
+      fp['entropyBits'] = entropy;
+      fp['totalEntropyBits'] = Math.round(totalEntropy * 10) / 10;
+      fp['estimatedUniqueness'] = Math.pow(2, totalEntropy).toExponential(2);
+      var result = {
+        version: 2,
+        timestamp: new Date().toISOString(),
+        fingerprint: fp,
+        webrtc: { ips: [], leakDetected: false },
+        leaks: [],
+      };
+      // Run WebRTC tests
+      try {
+        var ips = new Set();
+        var pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
+        pc.createDataChannel('');
+        await pc.createOffer().then(o => pc.setLocalDescription(o));
+        await new Promise(r => { pc.onicecandidate = e => {
+          if (e.candidate && e.candidate.candidate) {
+            var m = e.candidate.candidate.match(/([0-9]{1,3}(?:\.[0-9]{1,3}){3})/);
+            if (m) ips.add(m[1]);
+          }
+          if (!e.candidate) setTimeout(r, 500);
+        }; setTimeout(r, 3000); });
+        pc.close();
+        result.webrtc.ips = [...ips];
+        var expectedIP = params.get('ip') || '';
+        if (expectedIP) {
+          result.webrtc.leakDetected = [...ips].some(function(ip) {
+            return ip !== expectedIP && !ip.startsWith('10.') && !ip.startsWith('192.168.');
+          });
+          result.webrtc.expectedIP = expectedIP;
+        }
+      } catch(e) {
+        result.webrtc.error = e.message;
+      }
+      // Check for leaks
+      if (result.webrtc.leakDetected) {
+        result.leaks.push({ type: 'webrtc', severity: 'high', detail: 'Real IP exposed via WebRTC' });
+      }
+      if (fp.timezone && params.get('tz') && fp.timezone !== params.get('tz')) {
+        result.leaks.push({ type: 'timezone', severity: 'medium', detail: 'Timezone ' + fp.timezone + ' does not match expected ' + params.get('tz') });
+      }
+      document.body.textContent = JSON.stringify(result, null, 2);
+      document.body.style.fontFamily = 'monospace';
+      document.body.style.whiteSpace = 'pre';
+      document.title = 'Leak Test Results (JSON)';
+    });
+  }
+})();
+// Global for exit node analysis data
+var __ipinfoData = null;
+async function detectMyIP() {
+  // Try Netlify classify endpoint first (faster, no third-party)
+  var endpoint = window.CLASSIFY_ENDPOINT || localStorage.getItem('scrutari_classify') || '/api/classify';
+  try {
+    var resp = await fetch(endpoint);
+    if (resp.ok) {
+      var data = await resp.json();
+      __ipinfoData = { ip: data.ip, country: data.country, region: data.region, city: data.city,
+        loc: data.loc, timezone: data.timezone, org: data.org || data.type };
+      document.getElementById('expected-ip').value = data.ip || '';
+      return;
+    }
+  } catch(e) { /* fall through to ipinfo.io */ }
+  // Fallback: ipinfo.io
+  try {
+    var resp = await fetch('https://ipinfo.io/json');
+    var data = await resp.json();
+    __ipinfoData = data;
+    document.getElementById('expected-ip').value = data.ip || '';
+  } catch(e) {
+    try {
+      var resp = await fetch('https://api.ipify.org?format=json');
+      var data = await resp.json();
+      document.getElementById('expected-ip').value = data.ip || '';
+    } catch(e2) {
+      alert('Could not detect IP: ' + e.message);
+    }
+  }
+}
+function classifyIP(org) {
+  if (!org) return { type: 'Unknown', risk: 'unknown', detail: 'No org data available' };
+  var lower = org.toLowerCase();
+  // Datacenter / cloud providers
+  var datacenter = ['amazon', 'aws', 'google cloud', 'gcp', 'microsoft azure', 'azure',
+    'digitalocean', 'linode', 'vultr', 'hetzner', 'ovh', 'scaleway', 'contabo',
+    'oracle cloud', 'ibm cloud', 'alibaba cloud', 'rackspace', 'kinsta',
+    'cloudflare', 'akamai', 'fastly', 'verizon digital media'];
+  // VPN providers
+  var vpn = ['mullvad', 'nordvpn', 'expressvpn', 'cyberghost', 'private internet access',
+    'protonvpn', 'surfshark', 'windscribe', 'vyprvpn', 'torguard', 'ivpn',
+    'airvpn', 'perfect privacy', 'zerotier', 'tailscale', 'headscale',
+    'openvpn', 'wireguard'];
+  // Known Tor exits (partial ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a complete list requires Tor DNSEL)
+  var tor = ['tor', 'tor exit', 'torproject', 'the tor project'];
+  for (var i = 0; i < tor.length; i++) {
+    if (lower.includes(tor[i])) return { type: 'Tor Exit', risk: 'high', detail: 'Known Tor exit node' };
+  }
+  for (var i = 0; i < vpn.length; i++) {
+    if (lower.includes(vpn[i])) return { type: 'VPN', risk: 'low', detail: org };
+  }
+  for (var i = 0; i < datacenter.length; i++) {
+    if (lower.includes(datacenter[i])) return { type: 'Datacenter', risk: 'medium', detail: org };
+  }
+  // Check for hosting keywords
+  if (lower.includes('hosting') || lower.includes('data center') || lower.includes('datacenter')
+      || lower.includes('colo') || lower.includes('dedicated') || lower.includes('server')) {
+    return { type: 'Datacenter (possible)', risk: 'medium', detail: org };
+  }
+  return { type: 'Likely Residential', risk: 'low', detail: org };
+}
+function countryFlag(countryCode) {
+  if (!countryCode || countryCode.length !== 2) return '';
+  var code = countryCode.toUpperCase();
+  // Unicode regional indicator symbols
+  return String.fromCodePoint(0x1F1E6 + code.charCodeAt(0) - 65) +
+         String.fromCodePoint(0x1F1E6 + code.charCodeAt(1) - 65);
+}
+async function analyzeExitNode() {
+  var div = document.getElementById('exit-node-results');
+  div.innerHTML = '<div class="result-box info">Looking up your IP...</div>';
+  // Fetch ipinfo data if we don't have it
+  if (!__ipinfoData) {
+    try {
+      var resp = await fetch('https://ipinfo.io/json');
+      __ipinfoData = await resp.json();
+      document.getElementById('expected-ip').value = __ipinfoData.ip || '';
+    } catch(e) {
+      div.innerHTML = '<div class="result-box fail">Failed to look up IP: ' + e.message + '</div>';
+      return;
+    }
+  }
+  var d = __ipinfoData;
+  var classification = classifyIP(d.org || d.hostname || '');
+  // Determine if the IP matches proxy expectation
+  var expectedIP = document.getElementById('expected-ip').value.trim();
+  var ipMatch = d.ip === expectedIP;
+  // Risk color
+  var riskColor = classification.risk === 'low' ? '#6ee7b7'
+                : classification.risk === 'medium' ? '#fcd34d'
+                : '#fca5a5';
+  var html = '<div class="gauge-container" style="text-align:left;">';
+  html += '<table style="width:100%;">';
+  html += '<tr><td style="width:120px;color:#64748b;">Your IP</td>' +
+    '<td><strong>' + (d.ip || 'unknown') + '</strong> ' +
+    (ipMatch ? '<span class="badge badge-ok">MATCH</span>' : '<span class="badge badge-review">DIFFERS</span>') +
+    '</td></tr>';
+  html += '<tr><td style="color:#64748b;">Location</td>' +
+    '<td>' + (countryFlag(d.country) + ' ') + (d.city || '') + ', ' + (d.region || '') +
+    ' <span style="color:#64748b;font-size:0.7rem;">(' + (d.country || '') + ')</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Coordinates</td>' +
+    '<td style="font-size:0.75rem;">' + (d.loc || 'unknown') + '</td></tr>';
+  html += '<tr><td style="color:#64748b;">Timezone</td>' +
+    '<td>' + (d.timezone || 'unknown') + ' <span style="color:#64748b;font-size:0.7rem;">(browser: ' + Intl.DateTimeFormat().resolvedOptions().timeZone + ')</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Organization</td>' +
+    '<td style="font-size:0.75rem;">' + (d.org || d.hostname || 'unknown') + '</td></tr>';
+  html += '<tr><td style="color:#64748b;">Classification</td>' +
+    '<td><span class="badge" style="background:#1e293b;color:' + riskColor + ';font-size:0.75rem;">' +
+    classification.type + '</span> <span style="color:#64748b;font-size:0.7rem;">risk: ' + classification.risk + '</span></td></tr>';
+  html += '</table>';
+  // Timezone match check
+  if (d.timezone) {
+    var browserTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    var tzMatch = browserTZ === d.timezone;
+    html += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:0.375rem;font-size:0.75rem;background:#0f172a;">';
+    html += 'ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒâ€šÃ‚Â° Browser timezone <strong>' + (tzMatch ? 'matches' : 'differs from') + '</strong> IP location timezone: ';
+    html += browserTZ + ' vs ' + d.timezone;
+    if (!tzMatch) html += ' <span style="color:#fcd34d;">(possible VPN/proxy indicator)</span>';
+    html += '</div>';
+  }
+  // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ What leaks through VPN checklist ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
+  html += '<div style="margin-top:0.75rem;padding:0.75rem;border-radius:0.375rem;background:#0f172a;">';
+  html += '<h4 style="font-size:0.8rem;margin-bottom:0.5rem;color:#fcd34d;">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â What leaks through your VPN</h4>';
+  html += '<p style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">A VPN only changes your IP. These signals remain visible:</p>';
+  html += '<table style="width:100%;font-size:0.7rem;">';
+  // WebRTC leak check ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â do we have detected IPs?
+  var leakedIPs = [];
+  if (typeof webrtcIPs !== 'undefined' && webrtcIPs.size > 0) {
+    leakedIPs = Array.from(webrtcIPs).filter(function(ip) {
+      return ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.');
+    });
+  }
+  var webrtcLeak = leakedIPs.length > 0;
+  html += '<tr><td style="color:#64748b;width:140px;">Local IP via WebRTC</td>' +
+    '<td>' + (webrtcLeak
+      ? '<span style="color:#fca5a5;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  Leaked: ' + leakedIPs.join(', ') + '</span>'
+      : '<span style="color:#6ee7b7;">Not detected (run WebRTC test)</span>') +
+    '</td></tr>';
+  html += '<tr><td style="color:#64748b;">Screen resolution</td><td><span style="color:#fca5a5;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  Always leaks</span> <span style="color:#64748b;">(' + screen.width + 'ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' + screen.height + ')</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Timezone</td><td>' +
+    (Intl.DateTimeFormat().resolvedOptions().timeZone || '').includes('UTC')
+      ? '<span style="color:#6ee7b7;">Using UTC (Tor-like)</span>'
+      : '<span style="color:#fca5a5;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  Leaks: ' + Intl.DateTimeFormat().resolvedOptions().timeZone + '</span>' +
+    '</td></tr>';
+  var lang = navigator.language;
+  html += '<tr><td style="color:#64748b;">Language / locale</td><td><span style="color:#fca5a5;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  Leaks: ' + lang + '</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Installed fonts</td><td><span style="color:#fca5a5;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  Always leaks</span> <span style="color:#64748b;">(OS fingerprint)</span></td></tr>';
+  html += '<tr><td style="color:#64748b;">Canvas/WebGL</td><td><span style="color:#fca5a5;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  Always leaks</span> <span style="color:#64748b;">(hardware fingerprint)</span></td></tr>';
+  if (classification.type === 'Tor Exit') {
+    html += '<tr><td style="color:#64748b;">Tor Browser protections</td><td><span style="color:#6ee7b7;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ WebRTC blocked, resolution rounded, UTC time</span></td></tr>';
+  } else if (classification.type === 'VPN') {
+    html += '<tr><td style="color:#64748b;">VPN protections</td><td><span style="color:#fcd34d;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  IP hidden but browser identity fully exposed. Use Tor Browser for maximum anonymity.</span></td></tr>';
+  } else if (classification.type === 'Datacenter' || classification.type === 'Datacenter (possible)') {
+    html += '<tr><td style="color:#64748b;">Datacenter risk</td><td><span style="color:#fcd34d;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  Datacenter IPs are easily classified as non-residential. Some sites may block.</span></td></tr>';
+  }
+  html += '</table>';
+  html += '<div style="margin-top:0.5rem;font-size:0.65rem;color:#64748b;">';
+  html += 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢Ãƒâ€šÃ‚Â¡ Run the <a href="#section-webrtc" style="color:#60a5fa;">WebRTC test</a> to check if your real IP leaks through the VPN. ';
+  html += 'VPN + fingerprint randomization (like Tor Browser) is the only way to hide browser identity.';
+  html += '</div></div>';
+  html += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:0.375rem;font-size:0.7rem;color:#64748b;background:#0f172a;">';
+  html += 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  Your IP was sent to ipinfo.io for this analysis. Data is subject to their privacy policy.';
+  html += '</div>';
+  html += '</div>';
+  div.innerHTML = html;
+}
+async function loadBenchmarks() {
+  var div = document.getElementById('benchmarks-results');
+  div.innerHTML = '<div class="result-box info">Loading benchmarks...</div>';
+  try {
+    var resp = await fetch('/benchmarks.json');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    var data = await resp.json();
+    var html = '<div class="gauge-container" style="text-align:left;">';
+    html += '<p style="font-size:0.7rem;color:#64748b;margin-bottom:0.75rem;">' +
+      data.totalConfigs + ' configurations tested via Playwright (chromium, firefox, webkit) and HTTP clients. ' +
+      'Generated ' + new Date(data.generated).toLocaleDateString() + '.</p>';
+    html += '<table style="width:100%;"><tr><th>Client / Browser</th><th>Bot Score</th><th>Confidence</th><th>Key Bot Signals</th></tr>';
+    for (var i = 0; i < data.entries.length; i++) {
+      var e = data.entries[i];
+      var barColor = e.botScore >= 80 ? '#ef4444' : (e.botScore >= 50 ? '#f97316' : (e.botScore >= 25 ? '#eab308' : '#22c55e'));
+      var bar = '<div style="height:4px;background:#1e293b;border-radius:2px;margin-top:2px;"><div style="width:' + e.botScore + '%;height:100%;background:' + barColor + ';border-radius:2px;"></div></div>';
+      var signals = e.topBotSignals ? e.topBotSignals.slice(0, 2).join(', ') : '';
+      html += '<tr><td style="font-size:0.75rem;">' + e.name + '</td>' +
+        '<td style="font-size:0.8rem;font-weight:600;color:' + barColor + '">' + e.botScore + '%' + bar + '</td>' +
+        '<td><span class="badge" style="background:#1e293b;">' + e.confidence + '</span></td>' +
+        '<td style="font-size:0.65rem;color:#94a3b8;">' + (signals || '-') + '</td></tr>';
+    }
+    html += '</table>';
+    html += '<div style="margin-top:0.75rem;font-size:0.7rem;color:#64748b;">';
+    html += 'Sources: ' + data.sources.join(', ') + '. Run <code>node automation/baselines.mjs</code> to regenerate.';
+    html += '</div></div>';
+    div.innerHTML = html;
+  } catch(e) {
+    div.innerHTML = '<div class="result-box fail">Could not load benchmarks: ' + e.message + '. The benchmarks.json file may not be deployed yet.</div>';
+  }
+}
+function statusLabel(ok) {
+  return ok ? '<span class="badge badge-safe">OK</span>' : '<span class="badge badge-leak">LEAK</span>';
+}
+function estimateEntropy(value, maxVariants) {
+  if (!value || value === 'unknown') return 0;
+  // Shannon entropy: log2(N) where N is the number of possible values
+  // We use maxVariants as an upper bound on distinct values
+  return Math.log2(Math.min(maxVariants, 100000)) || 1;
+}
+function calculateFingerprintEntropy(fp) {
+  var bits = {
+    userAgent: 10.5, platform: 2.1, language: 3.5, screen: 4.5,
+    colorDepth: 1.0, cpuCores: 2.0, deviceMemory: 1.5,
+    timezone: 3.2, canvas: 5.8, webgl: 4.5, fonts: 8.3, audio: 3.7,
+    connectionType: 1.5
+  };
+  var total = 0;
+  for (var k in bits) total += bits[k];
+  return { bits: bits, total: Math.round(total * 10) / 10, uniqueness: Math.pow(2, total).toExponential(1) };
+}
+// ─── Web Worker for CPU-intensive operations ───
+// Offloads PoW, canvas hashing, and BigInt benchmark from main thread.
+var _perfWorker = null;
+var _perfWorkerId = 0;
+var _perfWorkerPending = {};
+function _initPerfWorker() {
+  if (typeof Worker === 'undefined') return; // Web Workers not supported
+  try {
+    _perfWorker = new Worker('/js/worker.js');
+    _perfWorker.onmessage = function(e) {
+      var msg = e.data;
+      var resolver = _perfWorkerPending[msg.id];
+      if (resolver) {
+        delete _perfWorkerPending[msg.id];
+        resolver(msg);
+      }
+    };
+    _perfWorker.onerror = function() { _perfWorker = null; }; // Worker failed, fall back to main thread
+  } catch(e) { _perfWorker = null; }
+}
+function _workerPost(type, data) {
+  return new Promise(function(resolve) {
+    if (!_perfWorker) {
+      // No worker available — caller must handle fallback
+      resolve(null);
+      return;
+    }
+    var id = ++_perfWorkerId;
+    _perfWorkerPending[id] = resolve;
+    data.type = type;
+    data.id = id;
+    _perfWorker.postMessage(data);
+  });
+}
+// Initialize worker early
+_initPerfWorker();
+async function captureFingerprint() {
+  var grid = document.getElementById('fingerprint-grid');
+  var fp = {
+    'User Agent': navigator.userAgent,
+    'Platform': navigator.platform || 'unknown',
+    'Language': navigator.language,
+    'Screen': screen.width + 'x' + screen.height,
+    'Color Depth': screen.colorDepth + '-bit',
+    'CPU Cores': navigator.hardwareConcurrency || 'unknown',
+    'RAM': navigator.deviceMemory ? navigator.deviceMemory + 'GB' : 'unknown',
+    'Touch': 'maxTouchPoints=' + (navigator.maxTouchPoints || 0),
+    'Do Not Track': navigator.doNotTrack || 'unspecified',
+    'WebDriver': navigator.webdriver ? 'Yes (automation!)' : 'No',
+  };
+  if (navigator.userAgentData) {
+    if (navigator.userAgentData.brands)
+      fp['Brands'] = navigator.userAgentData.brands.map(b => b.brand + ' v' + b.version).join(', ');
+    fp['Mobile'] = navigator.userAgentData.mobile ? 'Yes' : 'No';
+    if (navigator.userAgentData.platform) fp['Platform (CH)'] = navigator.userAgentData.platform;
+  }
+
+  // Web Worker environment probe — detects automation that blocks or alters workers
+  try {
+    if (typeof Worker !== 'undefined') {
+      fp['Worker Supported'] = 'Yes';
+      var _wStart = performance.now();
+      var _wEnv = await _workerPost('worker-env', {});
+      fp['Worker Create Time'] = _wEnv ? (performance.now() - _wStart).toFixed(1) + 'ms' : 'unknown';
+
+      if (_wEnv && _wEnv.env) {
+        var _env = _wEnv.env;
+        // Timer precision difference between main thread and worker
+        var _mainPrecision = (function() { var a = performance.now(), b = performance.now(); return b - a; })();
+        fp['Worker Timer Precision'] = _env.workerTimerPrecision.toFixed(4) + 'ms';
+        fp['Timer Precision Delta'] = Math.abs(_env.workerTimerPrecision - _mainPrecision).toFixed(4) + 'ms';
+        // Worker cores — compare to main thread (should match, divergence indicates instrumentation)
+        fp['Worker Cores'] = _env.workerCores !== null ? _env.workerCores : 'unknown';
+        if (_env.workerCores !== null && _env.workerCores !== navigator.hardwareConcurrency) {
+          fp['Worker Core Mismatch'] = 'main:' + navigator.hardwareConcurrency + ' vs worker:' + _env.workerCores;
+        }
+        // Worker navigator language vs main thread (should match)
+        if (_env.workerLanguage && _env.workerLanguage !== navigator.language) {
+          fp['Worker Language Mismatch'] = 'main:' + navigator.language + ' vs worker:' + _env.workerLanguage;
+        }
+        // Worker keys — automation frameworks may inject identifiers
+        if (_env.workerKeys && _env.workerKeys.length > 0) {
+          fp['Worker Injection Keys'] = _env.workerKeys.join(', ');
+        }
+        // Check for automation UA patterns in worker context
+        if (_env.workerAgent && (_env.workerAgent.indexOf('Headless') >= 0 || _env.workerAgent.indexOf('Phantom') >= 0)) {
+          fp['Worker Headless UA'] = 'Yes';
+        }
+      }
+      // Transferable test — some automation blocks structured clone
+      var _xferBuf = new ArrayBuffer(8);
+      try {
+        _perfWorker.postMessage({ type: 'transfer-test', id: 0, buf: _xferBuf }, [_xferBuf]);
+        fp['Transferables'] = 'Yes';
+      } catch(_xe) { fp['Transferables'] = 'No'; }
+
+      // Timer drift measurement — virtualized environments have inaccurate timers
+      var _driftResult = await _workerPost('timer-drift', {});
+      if (_driftResult) {
+        fp['Worker Timer Drift'] = _driftResult.drift.toFixed(2) + 'ms';
+        if (Math.abs(_driftResult.drift) > 20) {
+          fp['Timer Drift Anomaly'] = Math.abs(_driftResult.drift).toFixed(1) + 'ms (expected <20ms)';
+        }
+      }
+    } else {
+      fp['Worker Supported'] = 'No';
+    }
+  } catch(_we) { fp['Worker Probe'] = 'error: ' + (_we.message || 'unknown'); }
+
+  try {
+    var c = document.createElement('canvas'); c.width = 256; c.height = 256;
+    var ctx = c.getContext('2d');
+    ctx.textBaseline = 'top'; ctx.font = '14px Arial';
+    ctx.fillStyle = '#f60'; ctx.fillRect(125,1,62,20);
+    ctx.fillStyle = '#069'; ctx.fillText('BrowserLeakTest', 2, 15);
+    fp['Canvas Hash'] = c.toDataURL().length + ' bytes';
+  } catch(e) { fp['Canvas'] = 'blocked'; }
+  // AudioContext fingerprint
+  try {
+    var actx = new (window.AudioContext || window.webkitAudioContext)();
+    var analyser = actx.createAnalyser();
+    var oscillator = actx.createOscillator();
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.value = 440;
+    oscillator.connect(analyser);
+    analyser.connect(actx.destination);
+    var buffer = new Float32Array(analyser.frequencyBinCount);
+    analyser.getFloatFrequencyData(buffer);
+    var hash = buffer.reduce(function(a, b) { return a + Math.abs(b); }, 0).toFixed(2);
+    fp['Audio Hash'] = hash;
+    actx.close();
+  } catch(e) { fp['Audio'] = 'blocked'; }
+  // Font enumeration (CSS-based detection of common fonts)
+  try {
+    var detected = [];
+      // Font enumeration list (26 fonts)
+  // Source: EFF Cover Your Tracks (Panopticlick) font detection methodology
+  // These 26 fonts cover the most common cross-platform fonts. The list must
+  // remain stable for longitudinal fingerprint comparison.
+  var fonts = ['Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia',
+      'Comic Sans MS', 'Trebuchet MS', 'Impact', 'Lucida Console', 'Tahoma', 'Palatino',
+      'Noto Sans', 'Roboto', 'Open Sans', 'Segoe UI', 'system-ui', 'sans-serif', 'serif',
+      'MS Sans Serif', 'MS Serif', 'Monaco', 'Lucida Sans', 'Lucida Sans Unicode',
+      'Apple System', 'BlinkMacSystemFont', '.SFNSDisplay'];
+    var testStr = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    var testSize = '48px';
+    var base = document.createElement('canvas');
+    base.width = 500; base.height = 100;
+    var ctx = base.getContext('2d');
+    for (var i = 0; i < fonts.length; i++) {
+      ctx.clearRect(0, 0, 500, 100);
+      ctx.font = testSize + ' ' + fonts[i] + ', serif';
+      var w1 = ctx.measureText(testStr).width;
+      ctx.font = testSize + ' ' + fonts[i] + ', sans-serif';
+      var w2 = ctx.measureText(testStr).width;
+      if (w1 !== w2) detected.push(fonts[i]);
+    }
+    fp['Fonts Detected'] = detected.length + '/' + fonts.length;
+    fp['Font Sample'] = detected.slice(0, 5).join(', ') + (detected.length > 5 ? '...' : '');
+  } catch(e) { fp['Fonts'] = 'blocked'; }
+  // Connection type
+  if (navigator.connection) {
+    fp['Connection Type'] = navigator.connection.effectiveType || 'unknown';
+    fp['Connection RTT'] = navigator.connection.rtt ? navigator.connection.rtt + 'ms' : 'unknown';
+    fp['Connection Downlink'] = navigator.connection.downlink ? navigator.connection.downlink + ' Mbps' : 'unknown';
+  }
+  // Adblock detection ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â create bait element and check visibility
+  try {
+    var bait = document.createElement('div');
+    bait.className = 'adsbox pub_300x250 ad-banner adsbygoogle';
+    bait.style.cssText = 'position:absolute;left:-999px;width:1px;height:1px;';
+    document.body.appendChild(bait);
+    var baithidden = bait.offsetHeight === 0 || bait.offsetWidth === 0 || bait.offsetParent === null;
+    document.body.removeChild(bait);
+    fp['Adblock Detected'] = baithidden ? 'Yes' : 'No';
+  } catch(e) { fp['Adblock Test'] = 'error'; }
+  // Plugin detection ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â enumerate installed browser plugins
+  try {
+    var plugins = [];
+    if (navigator.plugins && navigator.plugins.length > 0) {
+      for (var pi = 0; pi < navigator.plugins.length; pi++) {
+        plugins.push(navigator.plugins[pi].name);
+      }
+    }
+    fp['Plugins'] = plugins.length > 0 ? plugins.join(', ').slice(0,200) : 'none';
+    fp['Plugin Count'] = plugins.length;
+  } catch(e) { fp['Plugins'] = 'blocked'; }
+  // PDF viewer check
+  try {
+    if (navigator.pdfViewerEnabled !== undefined) {
+      fp['PDF Viewer'] = navigator.pdfViewerEnabled ? 'Built-in' : 'No';
+    } else if (navigator.mimeTypes && navigator.mimeTypes['application/pdf']) {
+      fp['PDF Viewer'] = 'Available';
+    } else {
+      fp['PDF Viewer'] = 'No';
+    }
+  } catch(e) { fp['PDF Viewer'] = 'unknown'; }
+  // JavaScript & WebAssembly capabilities
+  try {
+    var jsc = {};
+    jsc['wasm'] = typeof WebAssembly !== 'undefined';
+    jsc['webgl'] = (function(){ try { var c = document.createElement('canvas'); return !!(c.getContext('webgl') || c.getContext('experimental-webgl')); } catch(e) { return false; } })();
+    jsc['webgl2'] = (function(){ try { var c = document.createElement('canvas'); return !!c.getContext('webgl2'); } catch(e) { return false; } })();
+    jsc['webgpu'] = typeof navigator.gpu !== 'undefined';
+    jsc['serviceWorker'] = 'serviceWorker' in navigator;
+    jsc['gamepad'] = typeof navigator.getGamepads === 'function';
+    jsc['webAuthn'] = typeof navigator.credentials !== 'undefined';
+    var avail = Object.values(jsc).filter(Boolean).length;
+    fp['JS APIs'] = avail + '/' + Object.keys(jsc).length + ' available';
+  } catch(e) { fp['JS Capabilities'] = 'error'; }
+  // WASM compile test
+  try {
+    if (typeof WebAssembly !== 'undefined') {
+      var wm = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,127,3,2,1,0,7,7,1,3,97,100,100,0,0,10,9,1,7,0,65,1,65,2,106,15,11]);
+      var mod = new WebAssembly.Module(wm);
+      var inst = new WebAssembly.Instance(mod);
+      fp['WASM Test'] = '1+2=' + inst.exports.add();
+    } else {
+      fp['WASM Test'] = 'not supported';
+    }
+  } catch(e) { fp['WASM Test'] = 'error'; }
+  // ECMAScript version detection  feature-test each ES version
+  try {
+    var es = {};
+    // ES6 (2015) features
+    es['ES6'] = typeof Promise !== 'undefined' && typeof Symbol !== 'undefined';
+    // ES7 (2016)
+    es['ES7'] = typeof Array.prototype.includes === 'function';
+    // ES8 (2017)
+    es['ES8'] = typeof Object.values === 'function';
+    // ES9 (2018)
+    es['ES9'] = typeof Promise.prototype.finally === 'function';
+    // ES10 (2019)
+    es['ES10'] = typeof Array.prototype.flat === 'function';
+    // ES11 (2020)
+    es['ES11'] = typeof BigInt !== 'undefined' && typeof globalThis !== 'undefined';
+    // ES12 (2021)
+    es['ES12'] = typeof String.prototype.replaceAll === 'function';
+    // ES13 (2022)
+    es['ES13'] = typeof Array.prototype.at === 'function';
+    // ES14 (2023)
+    es['ES14'] = typeof Array.prototype.toSorted === 'function';
+    // ES15 (2024)
+    es['ES15'] = typeof Promise.withResolvers === 'function';
+    // ES16 (2025+)  optional chaining assignment
+    es['ES16'] = (function() { try { eval('var a={};a?.b??=1'); return true; } catch(e) { return false; } })();
+    var maxES = 5;
+    for (var ev = 6; ev <= 16; ev++) {
+      if (es['ES' + ev]) maxES = ev;
+    }
+    fp['ECMAScript Version'] = 'ES' + maxES + ' (ES6-ES' + maxES + ' supported)';
+    fp['ES Unsupported'] = Object.entries(es).filter(function(kv) { return !kv[1]; }).map(function(kv) { return kv[0]; }).join(', ');
+  } catch(e) { fp['ECMAScript'] = 'error'; }
+  // WebAssembly version/feature detection via binary probing
+  try {
+    if (typeof WebAssembly !== 'undefined' && typeof WebAssembly.validate === 'function') {
+      // WASM MVP (base  all modern browsers)
+      var wasmMVP = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,127,3,2,1,0,10,4,1,2,0,11]);
+      fp['WASM MVP'] = WebAssembly.validate(wasmMVP) ? 'Yes' : 'No';
+      // WASM SIMD (i32x4.add instruction  0xFD 0x84)
+      var wasmSIMD = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,65,0,253,132,1,253,11]);
+      fp['WASM SIMD'] = WebAssembly.validate(wasmSIMD) ? 'Yes' : 'No';
+      // WASM Bulk Memory (memory.copy  0xFC 0x0A)
+      var wasmBulk = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,127,3,2,1,0,5,3,1,0,1,10,8,1,6,0,65,0,65,0,65,0,252,10,11]);
+      fp['WASM Bulk Memory'] = WebAssembly.validate(wasmBulk) ? 'Yes' : 'No';
+      // WASM Reference Types (externref  0x6F)
+      var wasmRef = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,64,3,2,1,0,10,4,1,2,0,11]);
+      fp['WASM Reference Types'] = WebAssembly.validate(wasmRef) ? 'Yes' : 'No';
+      // WASM Tail Call (return_call  0x12)
+      var wasmTail = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,1,127,0,3,2,1,0,10,7,1,5,0,32,0,18,0,11]);
+      fp['WASM Tail Call'] = WebAssembly.validate(wasmTail) ? 'Yes' : 'No';
+      // WASM Exception Handling (try  0x06)
+      var wasmExn = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,127,3,2,1,0,10,8,1,6,0,6,0,11,5,1,65,0,15,11]);
+      fp['WASM Exceptions'] = WebAssembly.validate(wasmExn) ? 'Yes' : 'No';
+      // Count features
+      var wasmFeatures = ['MVP','SIMD','Bulk Memory','Reference Types','Tail Call','Exceptions'];
+      var wasmSupported = 0;
+      for (var wi = 0; wi < wasmFeatures.length; wi++) {
+        if (fp['WASM ' + wasmFeatures[wi]] === 'Yes') wasmSupported++;
+      }
+      fp['WASM Features'] = wasmSupported + '/' + wasmFeatures.length;
+      fp['WASM Version'] = wasmSupported >= 5 ? 'WASM 2.0+' : (wasmSupported >= 3 ? 'WASM 1.1' : 'WASM 1.0');
+    } else {
+      fp['WASM MVP'] = 'not supported';
+    }
+  } catch(e) { fp['WASM Features'] = 'error'; }
+  // Browser engine identification (V8/SpiderMonkey/JSC)
+  try {
+    var stackFrames = 0;
+    try { throw new Error(); } catch(ex) { stackFrames = (ex.stack||'').split('\n').length; }
+    fp['JS Engine'] = stackFrames > 3 ? 'V8/Blink (Chrome/Edge)' : (stackFrames > 0 ? 'JSC (Safari)' : 'unknown');
+    if (typeof BigInt !== 'undefined') {
+      var bt = performance.now();
+      var r = 1n; for (var bi = 0; bi < 1000; bi++) { r = (r * 17n) % 1000000007n; }
+      fp['BigInt Perf'] = (performance.now() - bt).toFixed(2) + 'ms';
+    }
+  } catch(e) { fp['JS Engine'] = 'error'; }
+  // Math fingerprint
+  try {
+    fp['Math Sin'] = Math.sin(1.234).toFixed(8);
+    fp['Math Tan'] = Math.tan(1.234).toFixed(8);
+    fp['Math Log'] = Math.log10(12345).toFixed(4);
+  } catch(e) { fp['Math'] = 'error'; }
+  // OS-level preferences ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â dark mode, reduced motion, contrast, color gamut
+  try {
+    fp['Dark Mode'] = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Yes' : 'No';
+    fp['Reduced Motion'] = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'Yes' : 'No';
+    fp['High Contrast'] = window.matchMedia('(prefers-contrast: more)').matches ? 'Yes' : 'No';
+    fp['HDR Display'] = window.matchMedia('(dynamic-range: high)').matches ? 'Yes' : 'No';
+    fp['Color Gamut'] = window.matchMedia('(color-gamut: p3)').matches ? 'P3' : 'sRGB';
+    fp['Pointer Type'] = window.matchMedia('(pointer: fine)').matches ? 'Fine' : 'Coarse';
+    fp['Hover Capable'] = window.matchMedia('(hover: hover)').matches ? 'Yes' : 'No';
+  } catch(e) { fp['OS Prefs'] = 'error'; }
+  // Battery API ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â reveals charging status and level (mobile fingerprint)
+  try {
+    if (navigator.getBattery) {
+      navigator.getBattery().then(function(b) {
+        fp['Battery Charging'] = b.charging ? 'Yes' : 'No';
+        fp['Battery Level'] = Math.round(b.level * 100) + '%';
+      });
+    }
+  } catch(e) { fp['Battery'] = 'blocked'; }
+  // Storage estimation ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â reveals disk usage patterns
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      navigator.storage.estimate().then(function(s) {
+        fp['Storage Used'] = (s.usage / (1024*1024)).toFixed(1) + ' MB';
+        fp['Storage Quota'] = (s.quota / (1024*1024)).toFixed(1) + ' MB';
+      });
+    }
+  } catch(e) { fp['Storage'] = 'blocked'; }
+  // Speech synthesis ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â reveals installed voice packs (OS/language signal)
+  try {
+    if (window.speechSynthesis) {
+      var voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        var voiceNames = [];
+        for (var vi = 0; vi < Math.min(voices.length, 8); vi++) {
+          voiceNames.push(voices[vi].name);
+        }
+        fp['Speech Voices'] = voiceNames.join(', ');
+      }
+    }
+  } catch(e) { fp['Speech'] = 'blocked'; }
+  // Proof-of-Work benchmark — measures hash performance via Web Worker
+  // Reveals CPU architecture, browser engine differences, and headless detection
+  try {
+    var _benchChallenge = Array(32).fill(0).map(function() { return Math.random().toString(36)[2]; }).join('');
+    var _benchResult = null;
+    var _benchStart = performance.now();
+    if (_perfWorker) {
+      _benchResult = await _workerPost('pow', { challenge: _benchChallenge, difficulty: 16, maxAttempts: 50000 });
+    }
+    if (!_benchResult) {
+      // Fallback: main-thread PoW
+      var _encBench = new TextEncoder();
+      var _maxB = 50000;
+      for (var _nb = 0; _nb < _maxB; _nb++) {
+        var _inputB = _benchChallenge + _nb.toString(16);
+        var _bufB = await crypto.subtle.digest('SHA-256', _encBench.encode(_inputB));
+        var _arrB = Array.from(new Uint8Array(_bufB));
+        var _bitsB = 0;
+        for (var _biB = 0; _biB < _arrB.length; _biB++) {
+          if (_arrB[_biB] === 0) { _bitsB += 8; }
+          else {
+            var _bValB = _arrB[_biB];
+            while ((_bValB & 0x80) === 0) { _bitsB++; _bValB <<= 1; }
+            break;
+          }
+        }
+        if (_bitsB >= 16) { _benchResult = { nonce: _nb, time: performance.now() - _benchStart, speed: _maxB / ((performance.now() - _benchStart) / 1000) }; break; }
+      }
+    }
+    var _powTime = _benchResult ? _benchResult.time : (performance.now() - _benchStart);
+    var _powSpeed = _benchResult ? _benchResult.speed : 0;
+    fp['PoW Found'] = _benchResult && _benchResult.nonce !== null ? 'Yes (nonce=' + _benchResult.nonce + ')' : 'No (max=50000)';
+    fp['PoW Time'] = _powTime.toFixed(1) + 'ms';
+    fp['PoW Speed'] = _powSpeed.toFixed(0) + ' hashes/sec';
+    fp['PoW Hashing'] = 'SHA-256 via Web Worker';
+    // Challenge-response PoW — proves JS execution, becomes fingerprint signal
+    var _powFpChallenge = null, _powFpNonce = null, _powFpDifficulty = 16;
+    var _powFpStart = performance.now();
+    var _powFpResp = await fetch('/api/challenge');
+    if (_powFpResp.ok) {
+      var _powFpData = await _powFpResp.json();
+      _powFpChallenge = _powFpData.challenge;
+      _powFpDifficulty = _powFpData.difficulty || 16;
+    }
+    if (_powFpChallenge) {
+      var _powFpResult = null;
+      if (_perfWorker) {
+        _powFpResult = await _workerPost('pow', { challenge: _powFpChallenge, difficulty: _powFpDifficulty, maxAttempts: 200000 });
+      }
+      if (!_powFpResult) {
+        // Fallback: main-thread PoW
+        var _encFp = new TextEncoder();
+        var _powFpMax = 200000;
+        for (_powFpNonce = 0; _powFpNonce < _powFpMax; _powFpNonce++) {
+          var _powFpIn = _powFpChallenge + _powFpNonce.toString(16);
+          var _powFpBuf = await crypto.subtle.digest('SHA-256', _encFp.encode(_powFpIn));
+          var _powFpArr = Array.from(new Uint8Array(_powFpBuf));
+          var _powFpBits = 0;
+          for (var _bi2 = 0; _bi2 < _powFpArr.length; _bi2++) {
+            if (_powFpArr[_bi2] === 0) { _powFpBits += 8; }
+            else {
+              var _b2 = _powFpArr[_bi2];
+              while ((_b2 & 0x80) === 0) { _powFpBits++; _b2 <<= 1; }
+              break;
+            }
+          }
+          if (_powFpBits >= _powFpDifficulty) { _powFpResult = { nonce: _powFpNonce }; break; }
+        }
+      }
+      if (_powFpResult) {
+        _powFpNonce = _powFpResult.nonce;
+      }
+      var _powFpEnd = performance.now();
+      fp['PoW Challenge'] = _powFpChallenge.substring(0, 16);
+      fp['PoW Nonce'] = _powFpNonce !== null ? _powFpNonce : 'not found';
+      fp['PoW Difficulty'] = _powFpDifficulty;
+      fp['PoW Proof Time'] = Math.round((_powFpEnd - _powFpStart) * 10) / 10 + 'ms';
+    }
+  } catch(e) { fp['PoW Benchmark'] = 'error: ' + e.message; }
+  try {
+    var gl = document.createElement('canvas').getContext('webgl');
+    if (gl) {
+      var info = gl.getExtension('WEBGL_debug_renderer_info');
+      if (info) {
+        fp['WebGL Vendor'] = gl.getParameter(info.UNMASKED_VENDOR_WEBGL);
+        fp['WebGL Renderer'] = gl.getParameter(info.UNMASKED_RENDERER_WEBGL);
+      }
+    }
+  } catch(e) {}
+  // === AUTOMATION DETECTION SIGNALS ===
+  // Automation framework classification ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â detect AND name the specific framework
+  try {
+    var autoFrameworks = [];
+    var cd = window.cdc_adoQpoasnfa76pfcZLmcfl_Array ? 'cdc_' : null;
+    // Selenium: checks for the cdc_ property and webdriver-specific eval
+    if (cd || window.__webdriver_evaluate || window.__selenium_evaluate || window.__webdriver_script_fn) {
+      autoFrameworks.push('Selenium');
+    }
+    // Playwright: uses __pwInitScripts or __playwright__ global
+    if (window.__pwInitScripts || window.__playwright__ || window.__pwManualScript) {
+      autoFrameworks.push('Playwright');
+    }
+    // Puppeteer: uses __puppeteer_evaluate_script or puppeteer-specific globals
+    if (window.__puppeteer_evaluate_script || window.__puppeteer) {
+      autoFrameworks.push('Puppeteer');
+    }
+    // Chrome automation (chrome.test / domAutomation)
+    if (window.domAutomation || window.domAutomationController || window.chrome && chrome.automation) {
+      autoFrameworks.push('Chrome Automation');
+    }
+    // Nodriver / undetected-chromedriver ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â zero CDP footprint, harder to detect
+    // Camoufox / rebrowser ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â patch known globals but leave unique traces
+    if (window.__nightmare) autoFrameworks.push('NightmareJS');
+    if (window.__selenium) autoFrameworks.push('Selenium (legacy)');
+    // Headless Chrome detection via chrome.runtime discrepancies
+    try {
+      if (window.chrome && chrome.runtime && chrome.runtime.id === undefined) {
+        // Stealth plugins patch this ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â if missing entirely it's headless
+      }
+    } catch(ch) {}
+    // PhantomJS-specific checks (legacy)
+    if (window.callPhantom || window._phantom) autoFrameworks.push('PhantomJS');
+    fp['Automation Frameworks'] = autoFrameworks.length > 0 ? autoFrameworks.join(', ') : 'none detected';
+    fp['Automation Count'] = autoFrameworks.length;
+  } catch(e) { fp['Automation Frameworks'] = 'error'; }
+  // Iframe webdriver leak ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â stealth plugins patch main frame but miss iframes
+  try {
+    var iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    var iframeWD = !!(iframe.contentWindow && iframe.contentWindow.navigator && iframe.contentWindow.navigator.webdriver);
+    document.body.removeChild(iframe);
+    fp['Iframe WebDriver Leak'] = iframeWD ? 'Yes (automation!)' : 'No';
+  } catch(e) { fp['Iframe WebDriver Leak'] = 'error'; }
+  // History length ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â bots often have session-only history
+  try {
+    fp['History Length'] = window.history.length;
+  } catch(e) { fp['History Length'] = 'error'; }
+  // Screen resolution classification
+  try {
+    var w = screen.width, h = screen.height;
+    var commonResolutions = ['1920x1080','1366x768','1536x864','1440x900','2560x1440','1280x720','1680x1050','1920x1200','3440x1440','3840x2160'];
+    var resStr = w + 'x' + h;
+    var isHeadlessDefault = (w === 800 && h === 600) || (w === 1024 && h === 768) || (w === 1280 && h === 720);
+    fp['Screen Resolution'] = resStr;
+    fp['Screen Common'] = commonResolutions.indexOf(resStr) >= 0 ? 'Yes' : (isHeadlessDefault ? 'Headless default!' : 'Uncommon');
+  } catch(e) { fp['Screen Common'] = 'error'; }
+  // Language/timezone alignment check
+  try {
+    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    var lang = navigator.language || '';
+    var tzRegion = tz.split('/')[0] || '';
+    var langRegion = lang.split('-')[1] || '';
+    var alignMap = {'Europe':'de|fr|nl|en-GB|sv|no|da|fi|it|es|pt|pl','America':'en-US|es|pt|fr|en-CA','Asia':'ja|ko|zh|vi|th|id|hi|ar','Africa':'en-ZA|ar|fr|sw','Australia':'en-AU|en-NZ','Pacific':'en|mi|fj'};
+    var aligned = false;
+    for (var r in alignMap) {
+      if (tzRegion.indexOf(r) >= 0) {
+        var langs = alignMap[r].split('|');
+        for (var li = 0; li < langs.length; li++) {
+          if (lang.indexOf(langs[li]) >= 0) { aligned = true; break; }
+        }
+      }
+    }
+    var isUTCTZ = tz === 'UTC' || tz === 'Etc/UTC';
+    fp['Timezone/Lang Aligned'] = isUTCTZ ? 'UTC (server default)' : (aligned ? 'Yes' : 'Mismatch');
+  } catch(e) { fp['Timezone/Lang Aligned'] = 'error'; }
+  // CPU core count anomaly
+  try {
+    var cores = navigator.hardwareConcurrency || 0;
+    fp['CPU Cores Class'] = cores <= 2 ? 'Low (' + cores + ' ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â possible VM/headless)' : (cores >= 32 ? 'Very High (' + cores + ' ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â possible server)' : 'Normal (' + cores + ')');
+  } catch(e) { fp['CPU Cores Class'] = 'error'; }
+  // Connection RTT presence ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â bots often lack Network Information API
+  try {
+    if (navigator.connection) {
+      fp['Connection RTT Present'] = navigator.connection.rtt !== undefined && navigator.connection.rtt !== null ? 'Yes (' + navigator.connection.rtt + 'ms)' : 'No';
+    } else {
+      fp['Connection RTT Present'] = 'API unavailable';
+    }
+  } catch(e) { fp['Connection RTT Present'] = 'error'; }
+  // Screen orientation lock ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â headless often lacks orientation
+  try {
+    var orient = screen.orientation ? screen.orientation.type : 'API unavailable';
+    fp['Screen Orientation'] = orient;
+  } catch(e) { fp['Screen Orientation'] = 'error'; }
+  // Connected devices ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â gamepads, sensors, peripherals (no permission needed)
+  try {
+    // Gamepad detection ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â bots never have gamepads connected; some humans do
+    var gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var connectedGamepads = 0;
+    for (var gi = 0; gi < (gamepads.length || 0); gi++) {
+      if (gamepads[gi] && gamepads[gi].connected) connectedGamepads++;
+    }
+    fp['Gamepads Connected'] = connectedGamepads > 0 ? 'Yes (' + connectedGamepads + ')' : 'No';
+    fp['Gamepad Names'] = connectedGamepads > 0 ? Array.from(gamepads).filter(Boolean).map(function(g){return g.id||'';}).join(', ') : 'none';
+    // Performance API precision ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â headless browsers have reduced precision (100ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµs vs 5ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµs)
+    try {
+      var pStart = performance.now();
+      var pEnd = performance.now();
+      var pDiff = pEnd - pStart;
+      fp['Performance Precision'] = pDiff < 0.01 ? 'Low (possible headless)' : (pDiff < 1 ? 'Normal' : 'Low precision');
+      // Cross-check: time resolution for detection
+      var pMin = Infinity;
+      for (var pi = 0; pi < 10; pi++) { var pv = performance.now(); if (pv > 0 && pv < pMin) pMin = pv; }
+      fp['Performance Resolution'] = pMin < 0.1 ? 'High' : 'Reduced';
+    } catch(pe) { fp['Performance Precision'] = 'error'; }
+    // Chrome runtime ID ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â stealth patches remove or modify this
+    try {
+      if (window.chrome && chrome.runtime) {
+        fp['Chrome Runtime'] = typeof chrome.runtime.id !== 'undefined' ? 'Present' : 'Missing (patched)';
+      } else {
+        fp['Chrome Runtime'] = 'N/A (non-Chrome)';
+      }
+    } catch(cre) { fp['Chrome Runtime'] = 'error'; }
+    // Media devices ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â available without prompt in some browsers
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        navigator.mediaDevices.enumerateDevices().then(function(devices) {
+          var audioInput = 0, audioOutput = 0, videoInput = 0;
+          for (var di = 0; di < devices.length; di++) {
+            if (devices[di].kind === 'audioinput') audioInput++;
+            else if (devices[di].kind === 'audiooutput') audioOutput++;
+            else if (devices[di].kind === 'videoinput') videoInput++;
+          }
+          var devSummary = [];
+          if (audioInput > 0) devSummary.push(audioInput + ' mic');
+          if (videoInput > 0) devSummary.push(videoInput + ' camera');
+          if (audioOutput > 0) devSummary.push(audioOutput + ' speaker');
+          // Set on a future tick via a stored var
+          var fpEl = document.querySelector('#fingerprint-grid');
+          if (fpEl && devSummary.length > 0) {
+            // Async ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â add to grid if already rendered
+          }
+          window.__mediaDevices = devSummary.length > 0 ? devSummary.join(', ') : 'none detected';
+        }).catch(function(){});
+      }
+    } catch(mde) {}
+  } catch(e) { fp['Connected Devices'] = 'error'; }
+  // Sensor availability ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â mobile sensors are strong fingerprint signals
+  try {
+    fp['Device Orientation API'] = typeof DeviceOrientationEvent !== 'undefined' ? 'Available' : 'No';
+    fp['Device Motion API'] = typeof DeviceMotionEvent !== 'undefined' ? 'Available' : 'No';
+    // Generic Sensor API ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â newer, Chrome-only for most sensor types
+    fp['Accelerometer API'] = typeof Accelerometer !== 'undefined' ? 'Available' : 'No';
+    fp['Gyroscope API'] = typeof Gyroscope !== 'undefined' ? 'Available' : 'No';
+    fp['Magnetometer API'] = typeof Magnetometer !== 'undefined' ? 'Available' : 'No';
+    fp['Ambient Light API'] = typeof AmbientLightSensor !== 'undefined' ? 'Available' : 'No';
+  } catch(e) { fp['Sensor APIs'] = 'error'; }
+  // Device classification ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â mobile, tablet, or desktop
+  try {
+    var ua = navigator.userAgent || '';
+    var isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    var isTablet = /Tablet|iPad|PlayBook|Silk/i.test(ua) && !/Mobi/i.test(ua);
+    var hasTouch = navigator.maxTouchPoints > 0;
+    fp['Device Type'] = isTablet ? 'Tablet' : (isMobile ? 'Mobile' : 'Desktop');
+    fp['Touch Screen'] = hasTouch ? 'Yes' : 'No';
+    fp['Touch Points'] = navigator.maxTouchPoints;
+  } catch(e) { fp['Device Type'] = 'error'; }
+  // Browser name and version parsing
+  try {
+    var ua2 = navigator.userAgent || '';
+    var browserName = 'Unknown';
+    if (ua2.includes('Firefox/')) browserName = 'Firefox';
+    else if (ua2.includes('Edg/') || ua2.includes('Edge/')) browserName = 'Edge';
+    else if (ua2.includes('Chrome/') && !ua2.includes('Edg/')) browserName = 'Chrome';
+    else if (ua2.includes('Safari/') && !ua2.includes('Chrome/')) browserName = 'Safari';
+    else if (ua2.includes('OPR/') || ua2.includes('Opera/')) browserName = 'Opera';
+    var version = 'Unknown';
+    if (browserName === 'Chrome') { var m = ua2.match(/Chrome\/([\d.]+)/); if (m) version = m[1]; }
+    else if (browserName === 'Firefox') { var m = ua2.match(/Firefox\/([\d.]+)/); if (m) version = m[1]; }
+    else if (browserName === 'Safari') { var m = ua2.match(/Version\/([\d.]+)/); if (m) version = m[1]; }
+    else if (browserName === 'Edge') { var m = ua2.match(/Edg\/([\d.]+)/); if (m) version = m[1]; }
+    fp['Browser'] = browserName;
+    fp['Browser Version'] = version;
+  } catch(e) { fp['Browser'] = 'error'; }
+  // HTTP Referrer ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â reveals where the user came from (or empty for direct/bookmark/automation)
+  try {
+    var ref = document.referrer || '(empty - direct visit, bookmark, or automation)';
+    fp['HTTP Referrer'] = ref.length > 80 ? ref.substring(0, 80) + '...' : ref;
+  } catch(e) { fp['HTTP Referrer'] = 'error'; }
+  // CSS Engine Fingerprinting ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â detect browser CSS engine and version via @supports
+  // Different CSS engines (Blink, Gecko, WebKit) support different features at different times
+  try {
+    if (typeof CSS !== 'undefined' && CSS.supports) {
+      fp['CSS Grid'] = CSS.supports('display: grid') ? 'Yes' : 'No';
+      fp['CSS Subgrid'] = CSS.supports('display: subgrid') ? 'Yes' : 'No';
+      fp['CSS :has()'] = CSS.supports('selector(:has(*))') ? 'Yes' : 'No';
+      fp['CSS Container Queries'] = CSS.supports('container-type: inline-size') ? 'Yes' : 'No';
+      fp['CSS scroll() timeline'] = CSS.supports('animation-timeline: scroll()') ? 'Yes' : 'No';
+      fp['CSS view transitions'] = CSS.supports('selector(::view-transition)') ? 'Yes' : 'No';
+      fp['CSS initial-letter'] = CSS.supports('initial-letter: 2') ? 'Yes (Safari)' : 'No';
+      fp['CSS P3 color'] = CSS.supports('color: color(display-p3 1 0.5 0.5)') ? 'Yes' : 'No';
+      fp['CSS -webkit-scrollbar'] = CSS.supports('selector(::-webkit-scrollbar)') ? 'Yes (WebKit/Blink)' : 'No';
+      fp['CSS -moz-appearance'] = CSS.supports('-moz-appearance: none') ? 'Yes (Gecko)' : 'No';
+      fp['CSS Houdini paint'] = typeof CSS.paintWorklet !== 'undefined' ? 'Yes (Chrome)' : 'No';
+      fp['CSS prefers-reduced-data'] = window.matchMedia('(prefers-reduced-data: reduce)').matches ? 'Yes (Safari)' : 'No';
+      fp['CSS forced-colors'] = window.matchMedia('(forced-colors: active)').matches ? 'Yes' : 'No';
+      fp['CSS inverted-colors'] = window.matchMedia('(inverted-colors: inverted)').matches ? 'Yes' : 'No';
+    } else {
+      fp['CSS Engine'] = 'No CSS.supports (ancient browser)';
+    }
+  } catch(e) { fp['CSS Fingerprint'] = 'error'; }
+  // IPv6 connectivity detection
+  try {
+    var ipv6Res = await probeIPv6Connectivity();
+    fp['IPv6 Available'] = ipv6Res.available ? 'Yes' : 'No';
+    fp['IP Version'] = ipv6Res.ipVersion;
+  } catch(e) { fp['IPv6 Available'] = 'error'; }
+  // DNS check ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â browser's available DNS resolution methods
+  try {
+    var dnsFeatures = [];
+    // DNS-over-HTTPS check via Chrome's experimental API
+    if (window.chrome && chrome.dns && chrome.dns.resolve) dnsFeatures.push('chrome.dns API');
+    // Check if connection has DNS-related hints
+    if (navigator.connection && navigator.connection.private) dnsFeatures.push('private DNS');
+    if (navigator.connection && navigator.connection.distribution) dnsFeatures.push('DNS distribution');
+    // Service worker DNS caching
+    if ('serviceWorker' in navigator) dnsFeatures.push('SW DNS cache');
+    fp['DNS Features'] = dnsFeatures.length > 0 ? dnsFeatures.join(', ') : 'standard (no advanced DNS APIs)';
+  } catch(e) { fp['DNS Features'] = 'error'; }
+  // Advanced browser API detection ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â reveals browser, version, and privacy settings
+  try {
+    fp['Cookies Enabled'] = navigator.cookieEnabled ? 'Yes' : 'No';
+    // Check if cookies are partitioned (CHIPS ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Chrome-only)
+    try { var cp = document.cookie; fp['Cookies Accessible'] = cp !== undefined ? 'Yes' : 'No'; } catch(ce) { fp['Cookies Accessible'] = 'Blocked'; }
+    // localStorage
+    try { localStorage.setItem('_scr_test', '1'); localStorage.removeItem('_scr_test'); fp['localStorage'] = 'Yes'; } catch(e) { fp['localStorage'] = 'Blocked'; }
+    // sessionStorage
+    try { sessionStorage.setItem('_scr_test', '1'); sessionStorage.removeItem('_scr_test'); fp['sessionStorage'] = 'Yes'; } catch(e) { fp['sessionStorage'] = 'Blocked'; }
+    // indexedDB
+    try { fp['IndexedDB'] = typeof indexedDB !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['IndexedDB'] = 'error'; }
+    // Cache API
+    try { fp['Cache API'] = typeof caches !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['Cache API'] = 'error'; }
+    // Service Worker
+    try { fp['Service Worker'] = 'serviceWorker' in navigator ? 'Yes' : 'No'; } catch(e) { fp['Service Worker'] = 'error'; }
+    // BroadcastChannel (cross-tab communication)
+    try { fp['BroadcastChannel'] = typeof BroadcastChannel !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['BroadcastChannel'] = 'error'; }
+    // SharedWorker
+    try { fp['SharedWorker'] = typeof SharedWorker !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['SharedWorker'] = 'error'; }
+    // WebLocks API
+    try { fp['Web Locks'] = navigator.locks !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Web Locks'] = 'error'; }
+    // File System Access
+    try { fp['File System Access'] = typeof showOpenFilePicker !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['File System Access'] = 'error'; }
+    // Navigation API (new)
+    try { fp['Navigation API'] = typeof Navigation !== 'undefined' ? 'Yes' : 'No'; } catch(e) { fp['Navigation API'] = 'error'; }
+    // USB ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â only available in secure contexts, reveals Chrome
+    try { fp['WebUSB'] = navigator.usb !== undefined ? 'Yes' : 'No'; } catch(e) { fp['WebUSB'] = 'error'; }
+    // Bluetooth ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â mobile/Chrome
+    try { fp['Bluetooth'] = navigator.bluetooth !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Bluetooth'] = 'error'; }
+    // Serial API
+    try { fp['Web Serial'] = navigator.serial !== undefined ? 'Yes' : 'No'; } catch(e) { fp['Web Serial'] = 'error'; }
+    // Installed Related Apps (Chrome) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â reveals installed PWAs/native apps (privacy signal)
+    try { if (navigator.getInstalledRelatedApps) {
+      navigator.getInstalledRelatedApps().then(function(apps) {
+        fp['Installed Apps'] = apps.length > 0 ? apps.map(function(a){return a.id||a.platform||'?'}).join(', ') : 'none';
+      }).catch(function(){});
+    }} catch(e) {}
+    // Tracking / ad technology detectable in window scope
+    try {
+      var adTech = [];
+      if (window.googletag) adTech.push('GPT');
+      if (window.ga) adTech.push('GA');
+      if (window.gtag) adTech.push('gtag');
+      if (window.fbq) adTech.push('Facebook Pixel');
+      if (window.dataLayer) adTech.push('GTM');
+      fp['Ad Tech Detected'] = adTech.length > 0 ? adTech.join(', ') : 'none';
+    } catch(e) { fp['Ad Tech Detected'] = 'error'; }
+  } catch(e) { fp['Advanced APIs'] = 'error'; }
+  // Security & integrity checks ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â detect if page is compromised or framed
+  try {
+    // Frame check ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â are we in an iframe? (clickjacking detection)
+    fp['In Iframe'] = window !== window.top ? 'Yes (framed!)' : 'No';
+    fp['Parent Domain'] = window !== window.top ? (document.referrer || 'unknown') : 'N/A';
+    // Cross-origin isolation status
+    fp['Cross-Origin Isolated'] = window.crossOriginIsolated ? 'Yes' : 'No';
+    // Global Privacy Control (GPC) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â privacy signal
+    try { fp['GPC Signal'] = navigator.globalPrivacyControl ? 'Yes' : 'No'; } catch(gpc) { fp['GPC Signal'] = 'unsupported'; }
+    // Do Not Track
+    fp['Do Not Track'] = navigator.doNotTrack || 'unspecified';
+    // Opener check ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â was window opened by another site?
+    try {
+      fp['Opener Present'] = window.opener !== null ? 'Yes' : 'No';
+      if (window.opener) fp['Opener Origin'] = 'cross-origin (potential CSRF)';
+    } catch(oe) { fp['Opener Present'] = 'Blocked (cross-origin)'; }
+    // Performance entry analysis ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â check for injected scripts/extensions
+    var injected = [];
+    try {
+      var entries = performance.getEntriesByType('resource') || [];
+      var knownExtensions = ['tampermonkey', 'violentmonkey', 'greasemonkey', 'grammarly', 'lastpass',
+        '1password', 'bitwarden', 'ublock', 'adblock', 'react-devtools', 'redux-devtools'];
+      for (var ei = 0; ei < entries.length; ei++) {
+        var url = entries[ei].name || '';
+        for (var ki = 0; ki < knownExtensions.length; ki++) {
+          if (url.toLowerCase().indexOf(knownExtensions[ki]) >= 0) {
+            if (injected.indexOf(knownExtensions[ki]) < 0) injected.push(knownExtensions[ki]);
+          }
+        }
+      }
+    } catch(pe) {}
+    fp['Detected Extensions'] = injected.length > 0 ? injected.join(', ') : 'none detected';
+    fp['Resource Entries'] = entries ? (entries.length || '0') : 'blocked';
+    // Check for DOM modifications by extensions (known injection patterns)
+    try {
+      var domExtras = [];
+      // Check for common extension-injected elements
+      if (document.querySelector('#_hjRemoteVarsFrame')) domExtras.push('HotJar');
+      if (document.querySelector('#__BVID__')) domExtras.push('BootstrapVue');
+      if (document.querySelector('.grammarly-desktop-integration')) domExtras.push('Grammarly');
+      if (document.querySelector('#web-developer-toolbar')) domExtras.push('WebDeveloper');
+      if (document.querySelector('[data-reactroot]') && !document.querySelector('#fingerprint-grid')) domExtras.push('React');
+      fp['Extension DOM Traces'] = domExtras.length > 0 ? domExtras.join(', ') : 'none';
+    } catch(de) { fp['Extension DOM Traces'] = 'error'; }
+    // Enterprise protection detection ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â detect proxies, RBI, isolation systems
+    try {
+      var epSignals = [];
+      // Low hardware resources (RBI/thin client indicator)
+      var cores = navigator.hardwareConcurrency || 0;
+      var mem = navigator.deviceMemory || 0;
+      if (cores > 0 && cores <= 2) epSignals.push('Low CPU (RBI/proxy)');
+      if (mem > 0 && mem <= 2) epSignals.push('Low RAM (RBI/proxy)');
+      // Software WebGL renderer (virtual GPU)
+      try {
+        var tmpGl = document.createElement('canvas').getContext('webgl');
+        if (tmpGl) {
+          var rInfo = tmpGl.getExtension('WEBGL_debug_renderer_info');
+          if (rInfo) {
+            var rStr = tmpGl.getParameter(rInfo.UNMASKED_RENDERER_WEBGL) || '';
+            if (rStr.includes('llvmpipe') || rStr.includes('swiftshader') || rStr.includes('mesa')) {
+              epSignals.push('Software GPU (VM/RBI)');
+            }
+          }
+        }
+      } catch(ge) {}
+      // Injected RBI markers in DOM
+      if (document.querySelector('[class*=\"menlo\"]') || document.querySelector('[id*=\"menlo\"]')) epSignals.push('Menlo detected');
+      if (document.querySelector('[class*=\"zscaler\"]')) epSignals.push('Zscaler detected');
+      if (document.querySelector('[class*=\"netskope\"]')) epSignals.push('Netskope detected');
+      // Plugin count (stripped browser = possible RBI)
+      if (navigator.plugins && navigator.plugins.length === 0) epSignals.push('No plugins (RBI/stripped)');
+      fp['Enterprise Protection'] = epSignals.length > 0 ? epSignals.join('; ') : 'none detected';
+    } catch(ee) { fp['Enterprise Protection'] = 'error'; }
+  } catch(e) { fp['Security Checks'] = 'error'; }
+  var ent = calculateFingerprintEntropy(fp);
+  document.getElementById('fingerprint-entropy').innerHTML =
+    '<div class="result-box info"><strong>Fingerprint Entropy: ' + ent.total + ' bits</strong> &mdash; ' +
+    'Estimated uniqueness: 1 in ' + ent.uniqueness + ' browsers' +
+    ' <span class="toggle-link" onclick="showEntropyExplanation(' + ent.total + ', \'' + ent.uniqueness + '\')">What does this mean?</span></div>';
+  // Compute Bot-or-Not rating
+  var bon = computeBotOrNot(fp);
+  // Set globals for submission section
+  __lastFingerprintData = fp;
+  __lastBotOrNotData = bon;
+  var bonDiv = document.getElementById('botornot-results');
+  bonDiv.innerHTML = renderBotOrNot(bon);
+  var html = '';
+  for (const [k, v] of Object.entries(fp))
+    html += '<div class="stat-box"><div class="stat-label">' + k + '</div><div class="stat-value">' + v + '</div></div>';
+  grid.innerHTML = html;
+}
+// ===== BOT-OR-NOT ENGINE =====
+function computeBotOrNot(fp) {
+  var results = [];
+  var totalWeight = 0, botWeight = 0;
+  function test(weight, name, indicatesBot, testFn) {
+    try {
+      var r = testFn();
+      if (r === null) return; // inconclusive
+      totalWeight += weight;
+      if (r === indicatesBot) botWeight += weight;
+      results.push({
+        name: name,
+        bot: r === indicatesBot,
+        weight: weight,
+        isBotSignal: indicatesBot,
+        detail: r === indicatesBot ? (indicatesBot ? 'Bot-like' : 'Human-like') : (indicatesBot ? 'Human-like' : 'Bot-like')
+      });
+    } catch(e) {
+      // test failed ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â skip
+    }
+  }
+  // === STRONG SIGNALS (weight 5) ===
+  // 1. navigator.webdriver
+  test(5, 'WebDriver flag', true, function() { return navigator.webdriver === true; });
+  // 2. Automation framework globals ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â weighted by number of frameworks found
+  test(5, 'Automation framework detected', true, function() {
+    var count = 0;
+    if (window.cdc_adoQpoasnfa76pfcZLmcfl_Array || window.__webdriver_evaluate) count++;
+    if (window.__pwInitScripts || window.__playwright__) count++;
+    if (window.__puppeteer_evaluate_script) count++;
+    if (window.domAutomation || window.domAutomationController) count++;
+    return count > 0;
+  });
+  // 2b. Multiple automation frameworks = definite automation
+  test(4, 'Multiple automation frameworks', true, function() {
+    var count = 0;
+    if (window.cdc_adoQpoasnfa76pfcZLmcfl_Array || window.__webdriver_evaluate) count++;
+    if (window.__pwInitScripts || window.__playwright__) count++;
+    if (window.__puppeteer_evaluate_script) count++;
+    if (window.domAutomation || window.domAutomationController) count++;
+    if (window.__nightmare) count++;
+    if (window.callPhantom) count++;
+    return count >= 2;
+  });
+  // 3. Iframe webdriver leak
+  test(5, 'Iframe webdriver leak', true, function() {
+    var iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    var leaked = !!(iframe.contentWindow && iframe.contentWindow.navigator && iframe.contentWindow.navigator.webdriver);
+    document.body.removeChild(iframe);
+    return leaked;
+  });
+  // === MEDIUM-HIGH SIGNALS (weight 4) ===
+  // 4. Zero fonts detected
+  test(4, 'Fonts detected', false, function() {
+    var f = fp['Fonts Detected'] || '';
+    var m = f.match(/\d+/);
+    if (!m) return null;
+    return parseInt(m[0]) > 0;
+  });
+  // 5. Software WebGL renderer (llvmpipe/SwiftShader)
+  test(4, 'Real GPU (not software)', false, function() {
+    var r = (fp['WebGL Renderer'] || '').toLowerCase();
+    if (!r) return null;
+    return !r.includes('llvmpipe') && !r.includes('swiftshader') && !r.includes('mesa') && !r.includes('google swift');
+  });
+  // 6. Missing plugins
+  test(4, 'Browser plugins present', false, function() {
+    return navigator.plugins && navigator.plugins.length > 0;
+  });
+  // 7. Empty plugins
+  test(4, 'Plugins have content', false, function() {
+    return navigator.plugins && navigator.plugins.length >= 3;
+  });
+  // 8. Canvas rendering works
+  test(4, 'Canvas rendering', false, function() {
+    return fp['Canvas Hash'] && !fp['Canvas Hash'].includes('blocked') && !fp['Canvas Hash'].includes('0 bytes');
+  });
+  // === MEDIUM SIGNALS (weight 3) ===
+  // 9. AudioContext works
+  test(3, 'AudioContext functional', false, function() {
+    return fp['Audio Hash'] && !fp['Audio'].includes('blocked');
+  });
+  // 10. Headless default screen resolution
+  test(3, 'Screen resolution is human-typical', false, function() {
+    var w = screen.width, h = screen.height;
+    return !((w === 800 && h === 600) || (w === 1024 && h === 768));
+  });
+  // 11. UTC timezone (server default)
+  test(3, 'Timezone is region-specific', false, function() {
+    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    return tz !== 'UTC' && tz !== 'Etc/UTC';
+  });
+  // 12. Language/timezone alignment
+  test(3, 'Language matches timezone region', false, function() {
+    var a = fp['Timezone/Lang Aligned'] || '';
+    return a === 'Yes';
+  });
+  // 13. navigator.languages available
+  test(3, 'Browser language list', false, function() {
+    return navigator.languages && navigator.languages.length > 0;
+  });
+  // 14. deviceMemory present (headless often lacks it)
+  test(3, 'Device memory API available', false, function() {
+    return navigator.deviceMemory !== undefined && navigator.deviceMemory !== null;
+  });
+  // 15. PoW time anomaly (headless V8 is much faster)
+  test(3, 'PoW timing is human-typical', false, function() {
+    var t = fp['PoW Time'] || '';
+    var ms = parseFloat(t);
+    if (isNaN(ms)) return null;
+    return ms >= 10; // under 10ms for 50K SHA-256 = headless-speed
+  });
+  // 16. PDF viewer
+  test(3, 'Built-in PDF viewer', false, function() {
+    if (navigator.pdfViewerEnabled !== undefined) return navigator.pdfViewerEnabled;
+    return navigator.mimeTypes && !!navigator.mimeTypes['application/pdf'];
+  });
+  // 17. Speech synthesis voices
+  test(3, 'Speech voices available', false, function() {
+    return fp['Speech Voices'] && !fp['Speech'].includes('blocked') && !fp['Speech Voices'].includes('0');
+  });
+  // 18. Storage used > 0 (bots have fresh sessions)
+  test(3, 'Non-empty browser storage', false, function() {
+    return fp['Storage Used'] && parseFloat(fp['Storage Used']) > 0;
+  });
+  // 19. OS-level preferences (dark mode, etc.)
+  test(3, 'OS preference signals present', false, function() {
+    return fp['Dark Mode'] !== undefined || fp['Reduced Motion'] !== undefined;
+  });
+  // === WEAK SIGNALS (weight 1-2) ===
+  // 20. CPU cores not VM-low
+  test(2, 'CPU core count is human-typical', false, function() {
+    var c = navigator.hardwareConcurrency || 0;
+    return c >= 4 && c <= 24;
+  });
+  // 21. Math fingerprint valid
+  test(2, 'Math precision normal', false, function() {
+    return fp['Math Sin'] && !fp['Math'].includes('error');
+  });
+  // 22. History length > 1 (not fresh session)
+  test(2, 'Browsing history present', false, function() {
+    return window.history.length > 1;
+  });
+  // 23. Connection API has RTT data
+  test(1, 'Network RTT measurable', false, function() {
+    return navigator.connection && navigator.connection.rtt !== undefined && navigator.connection.rtt !== null && navigator.connection.rtt > 0;
+  });
+  // 24. WASM features match expected for engine
+  test(1, 'WASM feature level expected', false, function() {
+    var wf = fp['WASM Features'] || '';
+    var m = wf.match(/(\d+)\/(\d+)/);
+    if (!m) return null;
+    return parseInt(m[1]) >= 3; // most real browsers support 4-6
+  });
+  // 25. Has battery API on mobile / no battery on desktop (rough)
+  test(1, 'Battery API context normal', false, function() {
+    if (fp['Battery Charging'] !== undefined) return true; // API present, normal
+    return null; // can't determine
+  });
+  // 26. HTTP Referrer ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â humans often arrive from other pages, bots usually don't
+  test(1, 'HTTP Referrer present', false, function() {
+    var ref = fp['HTTP Referrer'] || '';
+    return ref.length > 0 && !ref.includes('(empty');
+  });
+  // 27. CSS Houdini Paint Worklet ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Chrome-only API, suspicious if missing from Chrome
+  test(1, 'CSS Houdini Paint API', false, function() {
+    return fp['CSS Houdini paint'] && fp['CSS Houdini paint'] === 'Yes (Chrome)';
+  });
+  // 28. CSS :has() selector ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â widely supported in modern browsers, missing = old/unusual
+  test(1, 'CSS :has() selector', false, function() {
+    return fp['CSS :has()'] === 'Yes';
+  });
+  // 29. CSS Container Queries ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â modern responsive feature, missing = old browser
+  test(1, 'CSS Container Queries', false, function() {
+    return fp['CSS Container Queries'] === 'Yes';
+  });
+  // 30. IPv6 connectivity ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â modern networks have IPv6; missing = restrictive/old/Tor
+  test(2, 'IPv6 connectivity', false, function() {
+    return fp['IPv6 Available'] === 'Yes';
+  });
+  // 31. IP version ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â IPv4 vs IPv6 (IPv6 can be a fingerprint signal)
+  test(1, 'IP version (v4/v6)', false, function() {
+    // Both v4 and v6 can be normal, this is informational
+    return true; // neutral ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â doesn't affect score
+  });
+  // 32. Adblock detected ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â real users often have adblock, bots usually don't
+  test(2, 'Adblock detected', false, function() {
+    return fp['Adblock Detected'] === 'Yes';
+  });
+  // 33. localStorage available ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â privacy-conscious users block it, bots usually don't
+  test(1, 'localStorage available', false, function() {
+    return fp['localStorage'] === 'Yes';
+  });
+  // 34. Cookies enabled ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â almost all real users have cookies, bots might not
+  test(1, 'Cookies enabled', false, function() {
+    return fp['Cookies Enabled'] === 'Yes';
+  });
+  // 35. Service Worker support ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â modern browsers only
+  test(1, 'Service Worker support', false, function() {
+    return fp['Service Worker'] === 'Yes';
+  });
+
+  // === WEB WORKER SIGNALS (new in v2) ===
+  // These detect automation that patches the main thread but forgets the worker context
+
+  // 36. Worker not supported at all — some headless/embedded environments block Workers
+  test(5, 'Web Worker supported', false, function() {
+    return fp['Worker Supported'] === 'Yes';
+  });
+
+  // 37. Worker injection keys — automation framework identifiers in worker scope
+  test(5, 'Worker has no injection keys', false, function() {
+    var keys = fp['Worker Injection Keys'] || '';
+    return keys === '' || keys === 'undefined';
+  });
+
+  // 38. Transferables supported — structured clone fails in some headless configurations
+  test(4, 'Transferable objects work', false, function() {
+    return fp['Transferables'] === 'Yes';
+  });
+
+  // 39. Worker core mismatch — worker reports different cores than main thread
+  test(4, 'Worker/main thread cores match', false, function() {
+    var mm = fp['Worker Core Mismatch'] || '';
+    return mm === '' || mm === 'undefined' || mm === null;
+  });
+
+  // 40. Worker language mismatch — different locale between contexts
+  test(3, 'Worker/main thread language matches', false, function() {
+    var lm = fp['Worker Language Mismatch'] || '';
+    return lm === '' || lm === 'undefined' || lm === null;
+  });
+
+  // 41. Timer drift anomaly — virtualized environments have inaccurate timers
+  test(3, 'Worker timer drift within tolerance', false, function() {
+    var ta = fp['Timer Drift Anomaly'] || '';
+    return ta === '' || ta === 'undefined' || ta === null;
+  });
+
+  // 42. Worker headless UA — automation UA detected in worker context
+  test(2, 'Worker UA is not headless', false, function() {
+    return fp['Worker Headless UA'] !== 'Yes';
+  });
+
+  // 43. Worker create time — too fast (<1ms) or too slow (>100ms) suggests non-standard environment
+  test(1, 'Worker create time is typical', false, function() {
+    var ct = fp['Worker Create Time'] || '';
+    var ms = parseFloat(ct);
+    if (isNaN(ms)) return null;
+    return ms >= 1 && ms <= 100;
+  });
+
+  // === COMPUTE SCORE ===
+  var botProb = totalWeight > 0 ? (botWeight / totalWeight) : 0.5;
+  var maxPossibleWeight = 122; // sum of all test weights (95 original + 27 worker signals)
+  var coverage = totalWeight / maxPossibleWeight;
+  var confidence = coverage >= 0.8 ? 'High' : (coverage >= 0.5 ? 'Medium' : 'Low');
+  return {
+    botProbability: Math.round(botProb * 100),
+    confidence: confidence,
+    coverage: Math.round(coverage * 100),
+    testsRun: results.length,
+    testsTotal: 44,
+    totalWeight: totalWeight,
+    maxWeight: maxPossibleWeight,
+    results: results
+  };
+}
+function renderBotOrNot(bon) {
+  var pct = bon.botProbability;
+  var pctInv = 100 - pct;
+  // Determine category
+  var category, emoji, color;
+  if (pct <= 15) {
+    category = 'Likely Human';
+    emoji = '\u{1F9D1}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â\u{1F4BB}';
+    color = '#22c55e';
+  } else if (pct <= 30) {
+    category = 'Probably Human';
+    emoji = '\u{1F468}';
+    color = '#84cc16';
+  } else if (pct <= 50) {
+    category = 'Uncertain';
+    emoji = '\u{1F937}';
+    color = '#eab308';
+  } else if (pct <= 75) {
+    category = 'Probably Bot';
+    emoji = '\u{1F916}';
+    color = '#f97316';
+  } else {
+    category = 'Likely Bot';
+    emoji = '\u{1F47E}';
+    color = '#ef4444';
+  }
+  var confClass = bon.confidence === 'High' ? 'conf-high' : (bon.confidence === 'Medium' ? 'conf-med' : 'conf-low');
+  var html = '<div class="gauge-container">';
+  html += '<div class="gauge-emoji">' + emoji + '</div>';
+  html += '<div class="gauge-title">' + category + '</div>';
+  html += '<div class="gauge-subtitle">' + pct + '% bot-like &middot; ' + pctInv + '% human-like <span class="conf-badge ' + confClass + '">' + bon.confidence + ' confidence</span></div>';
+  // Gauge bar
+  html += '<div class="gauge-bar" style="background: linear-gradient(to right, #22c55e 0%, #84cc16 25%, #eab308 50%, #f97316 75%, #ef4444 100%);">';
+  html += '<div class="gauge-fill" style="width:' + pct + '%;background:rgba(15,23,42,0.4);"></div></div>';
+  html += '<div class="gauge-label"><span>Human</span><span>Uncertain</span><span>Bot</span></div>';
+  // Signal breakdown (collapsible)
+  html += '<div style="margin-top:0.75rem;">';
+  html += '<span class="toggle-link" onclick="var s=document.getElementById(\'bot-signals\');s.classList.toggle(\'open\')">Show ' + bon.testsRun + '/' + bon.testsTotal + ' signal details ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â¼</span>';
+  html += '</div>';
+  html += '<div id="bot-signals" class="signal-list">';
+  // Sort: bot-like first, then by weight descending
+  var sorted = bon.results.slice().sort(function(a, b) {
+    if (a.bot !== b.bot) return a.bot ? -1 : 1;
+    return b.weight - a.weight;
+  });
+  for (var i = 0; i < sorted.length; i++) {
+    var s = sorted[i];
+    var icon = s.bot ? 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â ' : 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ';
+    var cls = s.bot ? 'signal-fail' : 'signal-pass';
+    html += '<div class="signal-item"><span class="signal-icon ' + cls + '">' + icon + '</span>';
+    html += '<span class="' + cls + '">' + s.name + '</span>';
+    html += '<span class="signal-detail">' + s.detail + '</span>';
+    html += '<span class="signal-weight">w' + s.weight + '</span></div>';
+  }
+  html += '</div></div>';
+  // Share buttons
+  html += '<div class="share-bar" style="margin-top:0.75rem;">';
+  html += '<button class="share-btn share-twitter" onclick="shareScore(\'twitter\')">ÃƒÆ’Ã‚Â°Ãƒâ€šÃ‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚Â Post score</button>';
+  html += '<button class="share-btn share-linkedin" onclick="shareScore(\'linkedin\')">in Post score</button>';
+  html += '<button class="share-btn share-bluesky" onclick="shareScore(\'bluesky\')">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ Post score</button>';
+  html += '<button class="share-btn share-mastodon" onclick="shareScore(\'mastodon\')">M Post score</button>';
+  html += '<button class="share-btn" style="background:#334155;color:#e2e8f0;" onclick="downloadScoreCard()">ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ Download card</button>';
+  html += '</div>';
+  // Self-assessment: let the user rate how bot-like they think they are
+  html += '<div style="margin-top:1rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;">';
+  html += '<div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€¦Ã‚Â  How bot-like do YOU think you are?</div>';
+  html += '<div style="display:flex;gap:0.35rem;justify-content:center;flex-wrap:wrap;">';
+  for (var si = 1; si <= 5; si++) {
+    var labels = ['Human','Probably Human','Not Sure','Probably Bot','Definitely Bot'];
+    html += '<button class="btn btn-sm" style="font-size:0.7rem;padding:0.3rem 0.6rem;background:#1e293b;color:#94a3b8;border:1px solid #334155;" ';
+    html += 'onclick="recordSelfAssessment(' + si + ')">' + si + ' ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ' + labels[si - 1] + '</button>';
+  }
+  html += '</div><div id="self-assessment-result" style="font-size:0.7rem;color:#64748b;margin-top:0.4rem;"></div></div>';
+  // Visible "I am not a bot" button ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â bots click it, humans ignore it
+  html += '<button id="verify-btn" style="position:fixed;bottom:1rem;right:1rem;z-index:9999;background:#1e293b;color:#64748b;border:1px solid #334155;border-radius:8px;padding:0.5rem 1rem;font-size:0.7rem;cursor:pointer;opacity:0.5;" ';
+  html += 'onclick="caughtVisibleTrap()">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ Tap to continue</button>';
+  // Hidden access link ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â invisible to humans, automation may interact
+  html += '<button id="hidden-access-btn" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" ';
+  html += 'onclick="caughtHiddenTrap()">Access</button>';
+  return html;
+}
+var __selfRating = null;
+function recordSelfAssessment(rating) {
+  __selfRating = rating;
+  var labels = ['Human','Probably Human','Not Sure','Probably Bot','Definitely Bot'];
+  var div = document.getElementById('self-assessment-result');
+  if (div) {
+    div.innerHTML = 'You rated yourself: <strong>' + labels[rating - 1] + '</strong> (' + rating + '/5)' +
+      (typeof __lastBotOrNotData !== 'undefined' && __lastBotOrNotData
+        ? ' &middot; Bot-or-Not calculated: <strong>' + __lastBotOrNotData.botProbability + '%</strong>'
+        : '');
+  }
+}
+// Bot-only signals ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â auto-capture fingerprint and submit when triggered
+// Lawful basis: GDPR Art. 6(1)(f) legitimate interest ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â security monitoring
+function autoCaptureBotSignal(signalName) {
+  // Run fingerprint capture immediately
+  if (typeof captureFingerprint === 'function') {
+    // Schedule async to not block the UI
+    setTimeout(function() {
+      captureFingerprint();
+      // Set source and submit
+      window.__SUBMISSION_SOURCE = 'automation_triggered';
+      window.SUBMISSION_ENDPOINT = window.SUBMISSION_ENDPOINT || localStorage.getItem('scrutari_endpoint') || '/api/submit';
+      setTimeout(function() {
+        if (typeof submitResults === 'function') {
+          submitResults().catch(function() {});
+        }
+        // Also fire sendBeacon as backup
+        if (typeof __lastFingerprintData !== 'undefined' && __lastFingerprintData && navigator.sendBeacon) {
+          var beaconData = buildSubmissionData(__lastFingerprintData, __lastBotOrNotData);
+          beaconData.triggeredBy = signalName;
+          navigator.sendBeacon('/api/submit', JSON.stringify(beaconData));
+        }
+      }, 6000);
+    }, 100);
+  }
+}
+function caughtVisibleTrap() {
+  var btn = document.getElementById('verify-btn');
+  if (btn) { btn.style.background = '#7f1d1d'; btn.style.color = '#fca5a5'; btn.style.opacity = '1'; }
+  showBotTrapWarning('not-a-bot');
+  autoCaptureBotSignal('not-a-bot-button');
+}
+function caughtHiddenTrap() {
+  showBotTrapWarning('is-a-bot');
+  autoCaptureBotSignal('is-a-bot-button');
+}
+function showBotTrapWarning(type) {
+  var label = type === 'not-a-bot' ? 'verification' : 'access';
+  var div = document.getElementById('botornot-results');
+  if (div) {
+    var warn = document.createElement('div');
+    warn.style.cssText = 'margin-top:0.5rem;padding:0.5rem;background:#7f1d1d;color:#fca5a5;border-radius:0.375rem;font-size:0.75rem;text-align:center;';
+    warn.textContent = 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  Hidden ' + label + ' element activated.';
+    div.appendChild(warn);
+  }
+}
+function showEntropyExplanation(totalBits, uniqueness) {
+  var panel = document.getElementById('entropy-explanation');
+  if (panel.classList.contains('open')) {
+    panel.classList.remove('open');
+    return;
+  }
+  panel.innerHTML =
+    '<div class="entropy-panel open">' +
+    '<h4>What does entropy mean?</h4>' +
+    '<p><strong>Fingerprint entropy</strong> measures how uniquely identifiable your browser is. ' +
+    'If your fingerprint has <strong>N bits</strong> of entropy, only about <strong>1 in 2<sup>N</sup></strong> browsers shares your exact fingerprint.</p>' +
+    '<p>Your score: <strong>' + totalBits + ' bits</strong> &mdash; roughly <strong>1 in ' + uniqueness + '</strong> browsers.</p>' +
+    '<h4>Context from research</h4>' +
+    '<p>ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ <strong>18 bits</strong> (1 in ~262K browsers) &mdash; Eckersley (2010) Panopticlick study found the average 2010 browser had 18.1 bits. ' +
+    '<a href="https://coveryourtracks.eff.org" target="_blank" style="color:#60a5fa;">Source</a></p>' +
+    '<p>ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ <strong>22-33 bits</strong> (1 in 4M to 1 in 8B) &mdash; modern browsers are far more unique. ' +
+    'The Google study (WWW 2024) analyzed 5,383 Web API surfaces across millions of Chrome browsers. ' +
+    '<a href="https://arxiv.org/abs/2403.15607" target="_blank" style="color:#60a5fa;">Source</a></p>' +
+    '<p>ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ <strong>81% of fingerprints</strong> were unique in the FP-STALKER study (2021) across 216 attributes and 2M visitors.</p>' +
+    '<h4>Important limitation</h4>' +
+    '<p>Our calculation adds each attribute\'s entropy <strong>individually</strong>, which <strong>overestimates</strong> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ' +
+    'real entropy is lower because attributes correlate (screen size ties to GPU, language ties to timezone). ' +
+    'The 2024 Google study found accounting for correlation reduces effective entropy by ~30%.</p>' +
+    '<h4>What drives your score</h4>' +
+    '<p>The most identifying attributes for most browsers: fonts (8.3 bits), canvas fingerprint (5.8 bits), ' +
+    'WebGL renderer (4.5 bits), screen resolution (4.5 bits), and user agent (10.5 bits).</p>' +
+    '<h4>Bot-or-Not vs Entropy</h4>' +
+    '<p>They measure different things: entropy tells you how <em>unique</em> you are. Bot-or-Not tells you how <em>human-like</em> you appear. ' +
+    'A Tor Browser user has high entropy (rare fingerprint) but looks very human. A headless scraper using default settings ' +
+    'has low entropy (common fingerprint) but looks like a bot.</p>' +
+    '<div class="research-ref">' +
+    'References: Eckersley, P. "How Unique Is Your Web Browser?" PETS 2010. &bull; ' +
+    'Bacis et al. "Assessing Web Fingerprinting Risk." WWW 2024. &bull; ' +
+    'Boussaha et al. "FP-tracer." PoPETs 2024. &bull; ' +
+    'Andriamilanto et al. "FP-STALKER." 2021. &bull; ' +
+    'EFF Cover Your Tracks (<a href="https://coveryourtracks.eff.org" target="_blank">coveryourtracks.eff.org</a>)' +
+    '</div></div>';
+}
+var webrtcIPs = new Set();
+var webrtcIPv6 = new Set(); // separate tracking for IPv6 addresses
+// Extract IPs (both v4 and v6) from ICE candidate strings.
+// ICE candidate format: "candidate:1 1 UDP 123456 192.168.1.1 12345 typ host"
+// The IP is always the 5th space-delimited field.
+function extractCandidateIPs(candidateStr) {
+  var ips = [];
+  if (!candidateStr) return ips;
+  var parts = candidateStr.split(' ');
+  if (parts.length >= 5) {
+    var ip = parts[4];
+    // Validate ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â IPv4 or IPv6
+    if (ip.includes(':')) {
+      // IPv6: validate it's not a port number, has at least one colon
+      if (ip.split(':').length >= 3) ips.push(ip);
+    } else if (ip.match(/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/)) {
+      ips.push(ip);
+    }
+  }
+  return ips;
+}
+function isPrivateIP(ip) {
+  // IPv4 private ranges
+  if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.')) return true;
+  if (ip.match(/^127\./) || ip.match(/^169\.254\./)) return true; // loopback, link-local
+  // IPv6 private / special ranges
+  var lower = ip.toLowerCase();
+  if (lower.startsWith('fe80:')) return true; // link-local
+  if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // unique local (ULA)
+  if (lower === '::1') return true; // loopback
+  return false;
+}
+async function runWebRTCTests() {
+  var div = document.getElementById('webrtc-results');
+  var expected = document.getElementById('expected-ip').value.trim();
+  webrtcIPs = new Set();
+  webrtcIPv6 = new Set();
+  div.innerHTML = '<div class="result-box info">Running WebRTC tests...</div>';
+  var techniques = [
+    { name: 'Classic STUN', test: async function() {
+      var ips = [], ips6 = []; var pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
+      pc.createDataChannel(''); await pc.createOffer().then(o => pc.setLocalDescription(o));
+      var stunTimeout = parseInt(new URLSearchParams(window.location.search).get('stunTimeout')) || 3000; await new Promise(r => { pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var found = extractCandidateIPs(e.candidate.candidate); found.forEach(function(ip) { if (ip.includes(':')) ips6.push(ip); else ips.push(ip); }); } if (!e.candidate) setTimeout(r, 500); }; setTimeout(r, stunTimeout); });
+      pc.close(); return {v4: ips, v6: ips6};
+    }},
+    { name: 'Multi-STUN', test: async function() {
+      var ips = [], ips6 = [];
+      for (const url of ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.voip.blackberry.com:3478']) {
+        try { var pc = new RTCPeerConnection({ iceServers: [{ urls: [url] }] });
+        pc.createDataChannel(''); await pc.createOffer().then(o => pc.setLocalDescription(o));
+        await new Promise(r => { pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var found = extractCandidateIPs(e.candidate.candidate); found.forEach(function(ip) { if (ip.includes(':')) ips6.push(ip); else ips.push(ip); }); } if (!e.candidate) setTimeout(r, 200); }; setTimeout(r, 2000); });
+        pc.close(); } catch(e) {}
+      } return {v4: ips, v6: ips6};
+    }},
+    { name: 'ICE Trickle', test: async function() {
+      var ips = [], ips6 = []; var pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
+      pc.createDataChannel(''); pc.onicecandidate = e => { if (e.candidate && e.candidate.candidate) { var found = extractCandidateIPs(e.candidate.candidate); found.forEach(function(ip) { if (ip.includes(':')) ips6.push(ip); else ips.push(ip); }); } };
+      await pc.createOffer().then(o => pc.setLocalDescription(o));
+      await new Promise(r => setTimeout(r, 3000)); pc.close(); return {v4: ips, v6: ips6};
+    }},
+  ];
+  var html = '<table><tr><th>Technique</th><th>IPv4 Found</th><th>IPv6 Found</th><th>Status</th></tr>';
+  for (const t of techniques) {
+    try {
+      var result = await t.test();
+      var ips = result.v4;
+      var ips6 = result.v6;
+      var allIPs = ips.concat(ips6);
+      var isLeak = allIPs.some(function(ip) { return ip !== expected && !isPrivateIP(ip); });
+      var hasIPv6 = ips6.length > 0;
+      html += '<tr><td>' + t.name + '</td><td>' + (ips.length ? ips.join(', ') : '(none)') + '</td><td>' +
+        (ips6.length ? '<span style="color:#60a5fa;">' + ips6.join(', ') + '</span>' : '(none)') +
+        '</td><td>' + (isLeak ? '<span class="badge badge-leak">LEAK</span>' : (hasIPv6 ? '<span class="badge badge-info">IPv6</span>' : '<span class="badge badge-safe">SAFE</span>')) + '</td></tr>';
+      ips.forEach(function(ip) { webrtcIPs.add(ip); });
+      ips6.forEach(function(ip) { webrtcIPv6.add(ip); webrtcIPs.add(ip); });
+    } catch(e) {
+      html += '<tr><td>' + t.name + '</td><td>Error</td><td></td><td><span class="badge badge-warn">ERROR</span></td></tr>';
+    }
+  }
+  html += '</table>';
+  if (webrtcIPs.size) html += '<div style="margin-top:0.5rem;font-size:0.8rem;">All IPs: ' + [...webrtcIPs].join(', ') + '</div>';
+  if (webrtcIPv6.size) html += '<div style="margin-top:0.25rem;font-size:0.75rem;color:#60a5fa;">IPv6 detected: ' + [...webrtcIPv6].join(', ') + ' ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â IPv6 leak possible</div>';
+  var leakFound = [...webrtcIPs].some(function(ip) { return ip !== expected && !isPrivateIP(ip); });
+  html += '<div class="result-box ' + (leakFound ? 'fail' : 'pass') + '" style="margin-top:0.5rem;">' +
+    (leakFound ? 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  WebRTC LEAK DETECTED' : 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ No WebRTC leak detected') + '</div>';
+  // Add IPv6/DNS probe results if available
+  var ipv6test = await probeIPv6Connectivity();
+  if (ipv6test.available) {
+    html += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:0.375rem;background:#0f172a;font-size:0.75rem;">';
+    html += 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã¢â‚¬â„¢Ãƒâ€šÃ‚Â <strong>IPv6 connectivity</strong>: ' + (ipv6test.available ? '<span style="color:#6ee7b7;">Yes</span>' : '<span style="color:#94a3b8;">No</span>');
+    html += ' &middot; Your IP appears to be <strong>' + ipv6test.ipVersion + '</strong>';
+    if (ipv6test.available && webrtcIPv6.size === 0) {
+      html += ' <span style="color:#fcd34d;">(WebRTC IPv6 candidates not found ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â browser may block IPv6 in WebRTC)</span>';
+    }
+    html += '</div>';
+  }
+  div.innerHTML = html;
+}
+// Probe for IPv6 connectivity by trying to reach IPv6-only endpoints
+async function probeIPv6Connectivity() {
+  var result = { available: false, ipVersion: 'unknown' };
+  // Check ipinfo data if available ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â it tells us our IP
+  if (__ipinfoData && __ipinfoData.ip) {
+    result.ipVersion = __ipinfoData.ip.includes(':') ? 'IPv6' : 'IPv4';
+  } else if (document.getElementById('expected-ip').value.trim().includes(':')) {
+    result.ipVersion = 'IPv6';
+  }
+  // Try an IPv6-only endpoint (timeout fast)
+  try {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 3000);
+    await fetch('https://ipv6.test-ipv6.com/', { signal: controller.signal, mode: 'no-cors' });
+    clearTimeout(timeoutId);
+    result.available = true;
+  } catch(e) {
+    // IPv6 not available or blocked
+  }
+  return result;
+}
+function captureTimeLeaks() {
+  var div = document.getElementById('time-results');
+  var browserTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  var browserLang = navigator.language;
+  var expectedLang = 'de-DE';
+  var expectedTZ = 'Europe/Berlin';
+  var langMatch = browserLang.toLowerCase().includes('de') || browserLang.toLowerCase().includes('en');
+  var html = '<table><tr><th>Property</th><th>Browser Value</th><th>Status</th></tr>';
+  html += '<tr><td>Timezone</td><td>' + browserTZ + '</td><td>' + (browserTZ === expectedTZ ? '<span class="badge badge-ok">MATCH</span>' : '<span class="badge badge-review">REVIEW</span>') + '</td></tr>';
+  html += '<tr><td>Language</td><td>' + browserLang + '</td><td>' + (langMatch ? '<span class="badge badge-ok">OK</span>' : '<span class="badge badge-unique">UNIQUE</span>') + '</td></tr>';
+  html += '<tr><td>Local Time</td><td>' + new Date().toString() + '</td><td><span class="badge badge-info">INFO</span></td></tr>';
+  html += '</table>';
+  div.innerHTML = html;
+}
+// ===== BEHAVIORAL TRACKING ENGINE =====
+var __behavior = { running: false, timer: null, timeout: null, duration: 15000, startTime: null,
+  events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [], touch: [], input: [], formClicks: [], inputFocus: [] }, count: 0 };
+function __trackMouse(e) { if (!__behavior.running) return;
+    var m = __behavior.events.mouse;
+  if (m.length >= 5000) m.shift();
+  m.push({ x: e.clientX, y: e.clientY, t: performance.now() }); __behavior.count++; __updateBehaviorUI();
+  // Visual mouse trail dot
+  var dot = document.createElement('div'); dot.className = 'mouse-dot';
+  dot.style.left = e.clientX + 'px'; dot.style.top = e.clientY + 'px';
+  document.body.appendChild(dot);
+  requestAnimationFrame(function() { dot.classList.add('fade'); setTimeout(function() { dot.remove(); }, 1500); }); }
+function __trackScroll() { if (!__behavior.running) return;
+    var sc = __behavior.events.scroll;
+  if (sc.length >= 500) sc.shift();
+  sc.push({ y: window.scrollY, t: performance.now() }); __behavior.count++; __updateBehaviorUI(); }
+function __trackClick(e) { if (!__behavior.running) return;
+  var el = e.target;
+  var id = el.id || '';
+  var tag = el.tagName || '';
+  var text = (el.textContent || '').trim().substring(0, 30);
+    var cl = __behavior.events.click;
+  if (cl.length >= 200) cl.shift();
+  cl.push({ x: e.clientX, y: e.clientY, t: performance.now(), target: tag, id: id, text: text }); __behavior.count++; __updateBehaviorUI();
+  // Visual click flash
+  var flash = document.createElement('div'); flash.className = 'click-flash';
+  flash.style.left = (e.clientX - 10) + 'px'; flash.style.top = (e.clientY - 10) + 'px';
+  document.body.appendChild(flash);
+  setTimeout(function() { flash.remove(); }, 600);
+  // Also track honeypot/form button clicks specifically
+  if (id.startsWith('beh-btn-')) {
+    __behavior.events.formClicks.push({ id: id, text: text, t: performance.now() });
+  } }
+function __trackKey(e) { if (!__behavior.running) return;
+    var k = __behavior.events.key;
+  if (k.length >= 1000) k.shift();
+  k.push({ key: e.key, t: performance.now(), type: e.type }); __behavior.count++; __updateBehaviorUI(); }
+function __trackFocus(e) { if (!__behavior.running) return;
+  __behavior.events.focus.push({ t: performance.now(), type: e.type }); }
+function __trackResize() { if (!__behavior.running) return;
+  __behavior.events.resize.push({ w: window.innerWidth, h: window.innerHeight, t: performance.now() }); }
+function __trackZoom() { if (!__behavior.running) return;
+  __behavior.events.zoom = __behavior.events.zoom || [];
+  __behavior.events.zoom.push({ dpr: window.devicePixelRatio, t: performance.now() }); }
+function __trackPageNav(e) { if (!__behavior.running) return;
+  __behavior.events.pageNav = __behavior.events.pageNav || [];
+  __behavior.events.pageNav.push({ from: window.location.hash || '(top)', to: e.target?.hash || '', t: performance.now() }); }
+function __trackMotion(e) { if (!__behavior.running) return;
+  __behavior.events.motion = __behavior.events.motion || [];
+  __behavior.events.motion.push({ accel: e.accelerationIncludingGravity || null, rot: e.rotationRate || null, t: performance.now() }); }
+function __trackOrientation(e) { if (!__behavior.running) return;
+  __behavior.events.orientation = __behavior.events.orientation || [];
+  __behavior.events.orientation.push({ alpha: e.alpha, beta: e.beta, gamma: e.gamma, t: performance.now() }); }
+function __trackTouch(e) { if (!__behavior.running) return;
+  var t = e.touches ? e.touches[0] : e.changedTouches ? e.changedTouches[0] : null;
+  if (!t) return;
+  __behavior.events.touch = __behavior.events.touch || [];
+  __behavior.events.touch.push({ x: t.clientX, y: t.clientY, t: performance.now(), type: e.type,
+    force: t.force || null, radius: t.radiusX || null, id: t.identifier || 0 }); __behavior.count++; __updateBehaviorUI(); }
+function __trackInput(e) { if (!__behavior.running) return;
+  var el = e.target;
+  if (el.id === 'input-main' || el.id === 'input-email' || el.id === 'input-ext' ||
+      el.id === 'challenge-email' || el.id === 'challenge-date' || el.id === 'challenge-phone' ||
+      el.id === 'challenge-confirm' || el.id === 'challenge-spellcheck' ||
+      el.id === 'challenge-email-confirm' || el.id === 'challenge-password' || el.id === 'challenge-password-confirm') {
+    __behavior.events.input.push({ id: el.id, valueLen: el.value.length, t: performance.now(), inputType: e.inputType || '' });
+    __behavior.count++; __updateBehaviorUI();
+  } }
+function __trackInputFocus(e) { if (!__behavior.running) return;
+  var el = e.target;
+  if (el.id === 'input-main' || el.id === 'input-email') {
+    __behavior.events.inputFocus.push({ id: el.id, type: e.type, t: performance.now() });
+  } }
+function __trackVisibility() { if (!__behavior.running) return;
+  __behavior.events.visibility = __behavior.events.visibility || [];
+  __behavior.events.visibility.push({ hidden: document.hidden, t: performance.now() }); }
+function __trackPaste(e) { if (!__behavior.running) return;
+  __behavior.events.paste = __behavior.events.paste || [];
+  __behavior.events.paste.push({ t: performance.now(), target: e.target?.id || '', len: e.target?.value?.length || 0 }); __behavior.count++; __updateBehaviorUI(); }
+function __updateBehaviorUI() {
+  var elapsed = performance.now() - __behavior.startTime;
+  var remaining = Math.max(0, Math.round((__behavior.duration - elapsed) / 1000));
+  var pct = Math.min(100, Math.round(elapsed / __behavior.duration * 100));
+  document.getElementById('behavior-bar').style.width = pct + '%';
+  document.getElementById('behavior-timer').textContent = remaining + 's';
+  document.getElementById('behavior-events').textContent = __behavior.count;
+  var eBd = __behavior.events; var bdItems = [];
+  if (eBd.mouse.length > 0) bdItems.push('Mouse: ' + eBd.mouse.length);
+  if (eBd.clicks.length > 0) bdItems.push('Clicks: ' + eBd.clicks.length);
+  if (eBd.key.length > 0) bdItems.push('Keys: ' + eBd.key.length);
+  if (eBd.scroll.length > 0) bdItems.push('Scroll: ' + eBd.scroll.length);
+  if (eBd.touch.length > 0) bdItems.push('Touch: ' + eBd.touch.length);
+  var elBrkd = document.getElementById('behavior-breakdown');
+  if (elBrkd) elBrkd.textContent = bdItems.join(' | ');
+  // Real-time signal indicators
+  var e = __behavior.events;
+  var tags = [];
+  if (e.mouse.length > 20) tags.push({label:'Mouse',cls:'active'});
+  else if (e.mouse.length > 0) tags.push({label:'Mouse',cls:'warn'});
+  if (e.scroll.length > 3) tags.push({label:'Scroll',cls:'active'});
+  if (e.clicks.length > 0) tags.push({label:'Clicks',cls:'active'});
+  if (e.key.length > 10) tags.push({label:'Typing',cls:'active'});
+  if (e.input.length > 3) tags.push({label:'Form',cls:'active'});
+  if (e.formClicks.length > 0) {
+    var hasDecoy = e.formClicks.some(function(f) { return f.id !== 'btn-primary'; });
+    tags.push({label: hasDecoy ? 'Extra' : 'Buttons', cls: hasDecoy ? 'danger' : 'active'});
+  }
+  if (e.resize.length > 0) tags.push({label:'Resize',cls:'active'});
+  if (e.focus.length > 1) tags.push({label:'Tab switch',cls:'active'});
+  if (document.getElementById('input-ext') && document.getElementById('input-ext').value.length > 0) {
+    tags.push({label:'Extra field',cls:'danger'});
+  }
+  var html = '<div class="beh-indicator">' + tags.map(function(t) { return '<span class="beh-tag ' + t.cls + '">' + t.label + '</span>'; }).join('') + '</div>';
+  var el = document.getElementById('behavior-indicators');
+  if (el) el.innerHTML = html;
+}
+function toggleBehaviorRecording() { __behavior.running ? stopBehaviorRecording() : startBehaviorRecording(); }
+// Wizard page navigation ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â tracks navigation path for behavioral analysis
+function navigateTo(sectionId) {
+  var el = document.getElementById(sectionId);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth' });
+    // Set hash for page tracking
+    window.location.hash = sectionId.replace('section-', '');
+    // Update page indicator
+    var order = ['section-exit-node', 'section-fingerprint', 'section-webrtc', 'section-behavior', 'section-botornot'];
+    var idx = order.indexOf(sectionId);
+    if (idx >= 0) {
+      document.getElementById('page-indicator').textContent = 'Page: ' + (idx + 1) + '/' + order.length;
+      // Update wizard progress bar
+      for (var wi = 0; wi < 5; wi++) {
+        var step = document.getElementById('wiz-' + wi);
+        if (step) {
+          step.className = 'wiz-step';
+          if (wi < idx) step.classList.add('done');
+          else if (wi === idx) step.classList.add('active');
+        }
+      }
+    }
+  }
+}
+function startBehaviorRecording() {
+  if (__behavior.running) return;
+  var dur = parseInt(new URLSearchParams(window.location.search).get('duration'), 10) || 15000;
+  __behavior = { running: true, timer: null, timeout: null, duration: dur, startTime: performance.now(),
+    events: { mouse: [], scroll: [], click: [], key: [], focus: [], resize: [], touch: [], input: [], formClicks: [], inputFocus: [] }, count: 0 };
+  document.getElementById('behavior-btn').textContent = 'ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒâ€šÃ‚Â¹ Stop';
+  document.getElementById('behavior-progress').style.display = 'block';
+  document.getElementById('behavior-status').textContent = 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â¡ Active';
+  document.getElementById('behavior-substatus').textContent = 'Interact with the page naturally';
+  document.getElementById('behavior-bar').style.width = '0%';
+  document.getElementById('behavior-dot').className = 'rec-dot';
+  document.getElementById('behavior-bar').className = 'rec-fill';
+  document.getElementById('behavior-results-inner').innerHTML = '';
+  // Highlight test area during recording
+  var testArea = document.getElementById('behavior-test-area');
+  if (testArea) testArea.style.opacity = '1';
+  document.addEventListener('mousemove', __trackMouse, {passive: true});
+  // Mobile touch tracking
+  document.addEventListener('touchstart', __trackTouch, {passive: true});
+  document.addEventListener('touchmove', __trackTouch, {passive: true});
+  document.addEventListener('touchend', __trackTouch, {passive: true});
+  document.addEventListener('scroll', __trackScroll, {passive: true});
+  document.addEventListener('click', __trackClick, {passive: true});
+  document.addEventListener('keydown', __trackKey, {passive: true});
+  document.addEventListener('keyup', __trackKey, {passive: true});
+  window.addEventListener('focus', __trackFocus);
+  window.addEventListener('blur', __trackFocus);
+  window.addEventListener('resize', __trackResize, {passive: true});
+  // Form input tracking
+  document.addEventListener('input', __trackInput, {passive: true});
+  // Paste detection ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â AI agents use Ctrl+V, humans type
+  document.addEventListener('paste', __trackPaste, {passive: true});
+  // Zoom and page navigation tracking
+  window.matchMedia('(resolution: 1dppx)').addEventListener('change', __trackZoom);
+  // Sensor tracking ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â mobile devices expose orientation and motion without permission
+  try { window.addEventListener('deviceorientation', __trackOrientation, {passive:true}); } catch(se) {}
+  try { window.addEventListener('devicemotion', __trackMotion, {passive:true}); } catch(se) {}
+  window.addEventListener('hashchange', __trackPageNav);
+  document.getElementById('input-main')?.addEventListener('focus', __trackInputFocus);
+  document.getElementById('input-main')?.addEventListener('blur', __trackInputFocus);
+  document.getElementById('input-email')?.addEventListener('focus', __trackInputFocus);
+  document.getElementById('input-email')?.addEventListener('blur', __trackInputFocus);
+  document.addEventListener('visibilitychange', __trackVisibility);
+  // Capture page navigation / performance timing
+  try {
+    var nav = performance.getEntriesByType('navigation')[0];
+    if (nav) {
+      __behavior.pageLoadMs = Math.round(nav.domContentLoadedEventEnd || 0);
+      __behavior.navType = nav.type || 'navigate';
+    }
+  } catch(e) {}
+  __behavior.timer = setInterval(__updateBehaviorUI, 100);
+  __behavior.timeout = setTimeout(stopBehaviorRecording, __behavior.duration);
+}
+function stopBehaviorRecording() {
+  if (!__behavior.running) return;
+  __behavior.running = false;
+  clearInterval(__behavior.timer); clearTimeout(__behavior.timeout);
+  document.removeEventListener('mousemove', __trackMouse);
+  document.removeEventListener('touchstart', __trackTouch);
+  document.removeEventListener('touchmove', __trackTouch);
+  document.removeEventListener('touchend', __trackTouch);
+  document.removeEventListener('scroll', __trackScroll);
+  document.removeEventListener('click', __trackClick);
+  document.removeEventListener('keydown', __trackKey);
+  document.removeEventListener('keyup', __trackKey);
+  window.removeEventListener('focus', __trackFocus);
+  window.removeEventListener('blur', __trackFocus);
+  window.removeEventListener('resize', __trackResize);
+  document.removeEventListener('input', __trackInput);
+  document.removeEventListener('paste', __trackPaste);
+  window.matchMedia('(resolution: 1dppx)').removeEventListener('change', __trackZoom);
+  try { window.removeEventListener('deviceorientation', __trackOrientation); } catch(se) {}
+  try { window.removeEventListener('devicemotion', __trackMotion); } catch(se) {}
+  window.removeEventListener('hashchange', __trackPageNav);
+  document.getElementById('input-main')?.removeEventListener('focus', __trackInputFocus);
+  document.getElementById('input-main')?.removeEventListener('blur', __trackInputFocus);
+  document.getElementById('input-email')?.removeEventListener('focus', __trackInputFocus);
+  document.getElementById('input-email')?.removeEventListener('blur', __trackInputFocus);
+  document.removeEventListener('visibilitychange', __trackVisibility);
+  document.getElementById('behavior-btn').textContent = 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â¶ Start analysis';
+  document.getElementById('behavior-status').textContent = 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ Recording complete';
+  document.getElementById('behavior-dot').className = 'rec-dot done';
+  document.getElementById('behavior-bar').className = 'rec-fill rec-complete';
+  __lastBehaviorResult = analyzeBehavior(__behavior.events);
+  displayBehaviorResults(__lastBehaviorResult);
+}
+function analyzeBehavior(events) {
+  var signals = [], totalWeight = 0, botWeight = 0;
+  function t(w, name, isBot, fn) { try {
+    var r = fn(); if (r === null) return; totalWeight += w;
+    if (r === isBot) botWeight += w;
+    signals.push({ name: name, bot: r === isBot, weight: w, value: r,
+      humanLabel: isBot ? (r ? 'Bot-like' : 'Human-like') : (r ? 'Human-like' : 'Bot-like') });
+  } catch(e) {} }
+  var m = events.mouse || [], s = events.scroll || [], c = events.click || [], k = events.key || [], f = events.focus || [], rsz = events.resize || [], tch = events.touch || [];
+  t(1, 'Mouse movement present', false, function() { return m.length >= 30; });
+  if (m.length >= 5) {
+    var spd = [];
+    for (var i = 1; i < m.length; i++) {
+      var dt = m[i].t - m[i-1].t, dx = m[i].x - m[i-1].x, dy = m[i].y - m[i-1].y;
+      var dist = Math.sqrt(dx*dx + dy*dy);
+      if (dt > 0 && dist > 0) spd.push(dist / dt);
+    }
+    t(4, 'Mouse speed variance', true, function() {
+      if (spd.length < 5) return null;
+      var avg = spd.reduce(function(a,b){return a+b;},0)/spd.length;
+      var variance = spd.reduce(function(a,b){return a+(b-avg)*(b-avg);},0)/spd.length;
+      return Math.sqrt(variance)/(avg||0.001) < 0.5;
+    });
+    t(4, 'Mouse path curvature', true, function() {
+      if (m.length < 10) return null;
+      var straight = 0;
+      for (var i = 2; i < m.length; i++) {
+        var a1 = Math.atan2(m[i].y-m[i-1].y, m[i].x-m[i-1].x);
+        var a2 = Math.atan2(m[i-1].y-m[i-2].y, m[i-1].x-m[i-2].x);
+        if (Math.abs(a1-a2) < 0.01) straight++;
+      }
+      return straight/(m.length-2) > 0.8;
+    });
+    t(3, 'Mouse pause frequency', true, function() {
+      var pauses = 0;
+      for (var i = 1; i < m.length; i++) if (m[i].t - m[i-1].t > 200) pauses++;
+      return pauses / (m.length/100) < 0.5;
+    });
+    t(2, 'Mouse speed', true, function() {
+      if (spd.length < 5) return null;
+      return spd.reduce(function(a,b){return a+b;},0)/spd.length > 1.5;
+    });
+    // 5. Velocity profile ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â humans accelerate then decelerate; bots instant on/off
+    // BeCAPTCHA-Mouse (Acien 2022) found this is the MOST discriminative feature
+    t(4, 'Natural velocity profile', false, function() {
+      if (spd.length < 10) return null;
+      // Compute acceleration (change in speed) for each segment
+      var acc = [];
+      for (var ai = 1; ai < spd.length; ai++) acc.push(spd[ai] - spd[ai-1]);
+      if (acc.length < 5) return null;
+      // Human velocity: gradual acceleration + gradual deceleration (wide acc distribution)
+      // Bot velocity: instant acceleration, plateau, instant stop (narrow acc distribution)
+      var accAvg = acc.reduce(function(a,b){return a+b;},0)/acc.length;
+      var accVar = acc.reduce(function(a,b){return a+(b-accAvg)*(b-accAvg);},0)/acc.length;
+      var accCV = Math.sqrt(accVar)/(Math.abs(accAvg)||0.001);
+      // High CV of acceleration = varied acceleration/deceleration = human-like
+      return accCV > 0.8;
+    });
+    // 6. Trajectory optimality ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â humans take winding paths; bots go near-straight
+    t(3, 'Natural trajectory path', false, function() {
+      if (m.length < 5) return null;
+      // Compute actual path length
+      var actualDist = 0;
+      for (var di = 1; di < m.length; di++) {
+        actualDist += Math.sqrt(Math.pow(m[di].x-m[di-1].x,2) + Math.pow(m[di].y-m[di-1].y,2));
+      }
+      // Compute straight-line distance from first to last point
+      var straightDist = Math.sqrt(Math.pow(m[m.length-1].x-m[0].x,2) + Math.pow(m[m.length-1].y-m[0].y,2));
+      if (straightDist < 5) return null; // No meaningful movement
+      var optimality = actualDist / straightDist;
+      // Human path is 2-8x longer than straight line (winding, exploring)
+      // Bot path is 1-1.5x (near-optimal, direct)
+      return optimality >= 1.5 && optimality <= 20;
+    });
+    // 7. Overshoot frequency ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â humans overshoot targets and correct; bots don't
+    t(3, 'Mouse overshoot corrections', false, function() {
+      if (m.length < 10) return null;
+      // Count direction changes (micro-corrections) in the movement
+      var corrections = 0;
+      for (var oi = 3; oi < m.length; oi++) {
+        var d1 = Math.atan2(m[oi-1].y-m[oi-2].y, m[oi-1].x-m[oi-2].x);
+        var d2 = Math.atan2(m[oi].y-m[oi-1].y, m[oi].x-m[oi-1].x);
+        if (Math.abs(d1-d2) > 0.5) corrections++;
+      }
+      var corrRate = corrections / (m.length / 10);
+      // Humans have 2-5 corrections per 10 data points
+      // Bots have 0-1 (near-straight)
+      return corrRate >= 0.5 && corrRate <= 10;
+    });
+  }
+  // Mobile touch detection ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â touch events indicate mobile device, not bot by itself
+  t(1, 'Touch interaction detected', false, function() { return tch.length >= 3; });
+  // Mobile sensor analysis ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â detect if sensor data is present and realistic
+  var mot = events.motion || [];
+  var ori = events.orientation || [];
+  // Sensor data presence ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â real mobile devices produce sensor data; emulators often don't
+  t(2, 'Motion sensor data present', false, function() {
+    return mot.length >= 3;
+  });
+  t(2, 'Orientation sensor data present', false, function() {
+    return ori.length >= 3;
+  });
+  // Gravity vector stability ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â real devices have ~9.8 m/sÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â² gravity (g);
+  // Emulated/mocked data often has 0 gravity or unrealistic values
+  if (mot.length >= 5) {
+    t(3, 'Realistic gravity reading', false, function() {
+      var gravCount = 0;
+      for (var mi = 0; mi < mot.length; mi++) {
+        var a = mot[mi].accel;
+        if (a) {
+          var mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+          // Gravity should be near 9.8 m/sÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â² on real devices
+          if (mag > 8 && mag < 12) gravCount++;
+        }
+      }
+      var gravPct = gravCount / mot.length;
+      return gravPct >= 0.3; // At least 30% of readings show realistic gravity
+    });
+    // Movement variance ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â real humans have varied acceleration; stationary bots have none
+    t(2, 'Natural movement variance', false, function() {
+      var accelValues = [];
+      for (var mi2 = 0; mi2 < mot.length; mi2++) {
+        var a2 = mot[mi2].accel;
+        if (a2) accelValues.push(Math.sqrt(a2.x*a2.x + a2.y*a2.y + a2.z*a2.z));
+      }
+      if (accelValues.length < 3) return null;
+      var avg = accelValues.reduce(function(a,b){return a+b;},0)/accelValues.length;
+      var var_ = accelValues.reduce(function(a,b){return a+(b-avg)*(b-avg);},0)/accelValues.length;
+      return Math.sqrt(var_) > 0.1; // Some variance = real movement
+    });
+  }
+  t(1, 'Scrolling present', false, function() { return s.length >= 5; });
+  if (s.length >= 5) {
+    t(3, 'Scroll reading pauses', true, function() {
+      for (var i = 1; i < s.length; i++) if (s[i].t - s[i-1].t > 500) return false;
+      return true;
+    });
+    t(2, 'Scroll direction changes', true, function() {
+      var ch = 0;
+      for (var i = 2; i < s.length; i++) if ((s[i-1].y-s[i-2].y)*(s[i].y-s[i-1].y) < 0) ch++;
+      return ch === 0 && s.length > 10;
+    });
+    // Scroll pattern classification ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â continuous vs discrete scrolling
+    // FP-Agent: AI agents scroll in discrete jumps (instant to known coords)
+    // Humans scroll continuously with variable speed
+    t(3, 'Natural scrolling pattern', false, function() {
+      if (s.length < 5) return null;
+      // Compute scroll speeds
+      var scrollSpeeds = [];
+      for (var si = 1; si < s.length; si++) {
+        var dt = s[si].t - s[si-1].t;
+        var dy = Math.abs(s[si].y - s[si-1].y);
+        if (dt > 0) scrollSpeeds.push(dy / dt);
+      }
+      if (scrollSpeeds.length < 3) return null;
+      // Check for zero-duration scrolls (instant jumps = bot)
+      var instantJumps = scrollSpeeds.filter(function(sp) { return sp > 50; });
+      // Human scroll: varied speeds, no instant jumps
+      // AI scroll: instant jumps to exact positions
+      return instantJumps.length === 0;
+    });
+  }
+  t(1, 'Clicks detected', false, function() { return c.length >= 1; });
+  if (c.length >= 1) {
+    t(3, 'Time to first interaction', true, function() {
+      return (c[0].t - (__behavior.startTime||0)) < 500;
+    });
+  }
+  t(2, 'Tab switching', true, function() { return f.length === 0; });
+  t(2, 'Window resize', true, function() { return rsz.length === 0; });
+  t(1, 'Keyboard input detected', false, function() { return k.length >= 5; });
+  if (k.length >= 10) {
+    t(3, 'Typing speed variance', true, function() {
+      var down = {}, holds = [];
+      for (var i = 0; i < k.length; i++) {
+        if (k[i].type === 'keydown') down[k[i].key] = k[i].t;
+        else if (k[i].type === 'keyup' && down[k[i].key]) { holds.push(k[i].t - down[k[i].key]); delete down[k[i].key]; }
+      }
+      if (holds.length < 3) return null;
+      var avg = holds.reduce(function(a,b){return a+b;},0)/holds.length;
+      var variance = holds.reduce(function(a,b){return a+(b-avg)*(b-avg);},0)/holds.length;
+      return Math.sqrt(variance)/(avg||0.001) < 0.3;
+    });
+  }
+  // --- Form, honeypot, visibility signals ---
+  var inp = events.input || [];
+  var formC = events.formClicks || [];
+  var v = events.visibility || [];
+  var inputF = events.inputFocus || [];
+  // Hidden field check
+  t(4, 'Extra field untouched', false, function() {
+    for (var i = 0; i < inp.length; i++) if (inp[i].id === 'input-ext' && inp[i].valueLen > 0) return false;
+    return true;
+  });
+  // Decoy button clicks
+  t(3, 'Extra buttons not clicked', false, function() {
+    var decoyIds = ['btn-opt-1', 'btn-opt-2', 'btn-opt-3'];
+    for (var i = 0; i < formC.length; i++) if (decoyIds.indexOf(formC[i].id) >= 0) return false;
+    return true;
+  });
+  // Typing hesitation
+  t(3, 'Natural typing hesitation', false, function() {
+    if (inputF.length < 2 || inp.length < 1) return null;
+    for (var fi = 0; fi < inputF.length; fi++) {
+      if (inputF[fi].type === 'focus') {
+        var fieldId = inputF[fi].id, focusTime = inputF[fi].t;
+        for (var ii = 0; ii < inp.length; ii++) {
+          if (inp[ii].id === fieldId && inp[ii].t > focusTime) return (inp[ii].t - focusTime) >= 100;
+        }
+      }
+    }
+    return null;
+  });
+  // Typing corrections ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â humans backspace/delete (~5-15% of keystrokes)
+  t(2, 'Typing corrections (backspace)', false, function() {
+    var corrections = 0;
+    for (var i = 0; i < inp.length; i++) {
+      if (inp[i].inputType && inp[i].inputType.indexOf('delete') >= 0) corrections++;
+    }
+    return corrections > 0;
+  });
+  // Tab visibility
+  t(2, 'Tab switches detected', true, function() {
+    if (v.length < 1) return null;
+    var wasHidden = false;
+    for (var i = 0; i < v.length; i++) wasHidden = wasHidden || v[i].hidden === true;
+    return !wasHidden;
+  });
+  // Page timing
+  try {
+    var navType = __behavior.navType || 'navigate';
+    var loadMs = __behavior.pageLoadMs || 0;
+    t(1, 'Page navigation type', true, function() { return navType !== 'navigate'; });
+    t(1, 'Natural page load time', false, function() { return loadMs > 200; });
+  } catch(e) {}
+  // Per-character typing speed
+  if (inp.length >= 3) {
+    t(3, 'Natural typing speed', false, function() {
+      var intervals = [];
+      for (var i = 1; i < inp.length; i++) {
+        var gap = inp[i].t - inp[i-1].t;
+        if (gap > 0 && gap < 2000 && inp[i].id === inp[i-1].id) intervals.push(gap);
+      }
+      if (intervals.length < 3) return null;
+      var avg = intervals.reduce(function(a,b){return a+b;},0)/intervals.length;
+      return avg >= 30 && avg <= 500;
+    });
+  }
+  // --- Pattern-of-life / sequence signals ---
+  var zn = events.zoom || [];
+  var pg = events.pageNav || [];
+  var inputF = events.inputFocus || [];
+  // Zoom change ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â humans zoom in/out, bots never do
+  t(2, 'Zoom level changes', true, function() {
+    return zn.length === 0;
+  });
+  // Paste detection ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â AI agents (ChatGPT Agent, Atlas, Comet) use Ctrl+V
+  // Humans type character-by-character; paste = bot signal
+  var pe = events.paste || [];
+  t(3, 'Paste-based input detected', true, function() {
+    return pe.length > 0;
+  });
+  // Page navigation ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â humans navigate between sections
+  t(2, 'Page / section navigation', true, function() {
+    return pg.length === 0;
+  });
+  // Multi-field navigation ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â humans tab between fields in natural order
+  if (inputF.length >= 2) {
+    t(2, 'Multi-field navigation', false, function() {
+      // Check if user visited multiple different form fields
+      var fields = {};
+      for (var fi = 0; fi < inputF.length; fi++) {
+        if (inputF[fi].type === 'focus') fields[inputF[fi].id] = true;
+      }
+      var fieldCount = Object.keys(fields).length;
+      return fieldCount >= 2;
+    });
+  }
+  // Field re-visit ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â humans go back to fix things
+  if (inputF.length >= 4) {
+    t(2, 'Field re-visit (correction)', false, function() {
+      var seq = [];
+      for (var fi = 0; fi < inputF.length; fi++) {
+        if (inputF[fi].type === 'focus') seq.push(inputF[fi].id);
+      }
+      for (var si = 1; si < seq.length; si++) {
+        // Check if we saw this field before (not consecutive)
+        for (var sj = 0; sj < si - 1; sj++) {
+          if (seq[sj] === seq[si]) return true; // re-visited = human
+        }
+      }
+      return false;
+    });
+  }
+  // Common typos ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â humans make predictable errors (teh, recieve, etc.)
+  // Check for known keyboard-proximity typos and edit distance
+  if (inp.length >= 5) {
+    t(2, 'Common typos detected', false, function() {
+      // Reconstruct what was typed from input events
+      var textByField = {};
+      for (var ii = 0; ii < inp.length; ii++) {
+        var e = inp[ii];
+        if (!e.id || e.id === 'input-ext') continue;
+        // Track value length changes to detect deletions
+        textByField[e.id] = textByField[e.id] || { len: 0, corrections: 0 };
+        if (e.inputType && e.inputType.indexOf('delete') >= 0) {
+          textByField[e.id].corrections++;
+        }
+      }
+      var hasCorrections = false;
+      for (var f in textByField) {
+        if (textByField[f].corrections > 0) hasCorrections = true;
+      }
+      return hasCorrections;
+    });
+  }
+  // --- Challenge form signals ---
+  var challengeFields = ['challenge-email', 'challenge-email-confirm', 'challenge-date', 'challenge-phone', 'challenge-confirm', 'challenge-spellcheck', 'challenge-password', 'challenge-password-confirm'];
+  var challengeInteractions = inp.filter(function(i) { return challengeFields.indexOf(i.id) >= 0; });
+  var challengeUnique = {};
+  challengeInteractions.forEach(function(i) { challengeUnique[i.id] = (challengeUnique[i.id]||0) + 1; });
+  var challengeCount = Object.keys(challengeUnique).length;
+  t(2, 'Challenge form interaction', false, function() { return challengeCount >= 2; });
+  if (challengeUnique['challenge-email']) {
+    t(3, 'Email format corrections', true, function() {
+      var ei = challengeInteractions.filter(function(i){return i.id==='challenge-email';});
+      var c = ei.filter(function(i){return i.inputType&&i.inputType.indexOf('delete')>=0;});
+      return c.length === 0;
+    });
+  }
+  // Email confirmation match check
+  if (challengeUnique['challenge-email'] && challengeUnique['challenge-email-confirm']) {
+    t(3, 'Email confirmation match', true, function() {
+      var elA = document.getElementById('challenge-email');
+      var elB = document.getElementById('challenge-email-confirm');
+      if (!elA || !elB) return null;
+      var vA = elA.value, vB = elB.value;
+      if (!vA || !vB) return null;
+      return vA === vB;
+    });
+  }
+  // Password confirmation match
+  if (challengeUnique['challenge-password'] && challengeUnique['challenge-password-confirm']) {
+    t(2, 'Password confirmation match', true, function() {
+      var p1 = document.getElementById('challenge-password');
+      var p2 = document.getElementById('challenge-password-confirm');
+      if (!p1 || !p2) return null;
+      var v1 = p1.value, v2 = p2.value;
+      if (!v1 || !v2) return null;
+      return v1 === v2;
+    });
+  }
+  if (challengeUnique['challenge-date']) {
+    t(3, 'Date format hesitation', true, function() {
+      var di = challengeInteractions.filter(function(i){return i.id==='challenge-date';});
+      var d = di.filter(function(i){return i.inputType&&i.inputType.indexOf('delete')>=0;});
+      return d.length === 0;
+    });
+  }
+  if (challengeUnique['challenge-confirm']) {
+    t(2, 'Confirmation hesitation', true, function() {
+      var ci = challengeInteractions.filter(function(i){return i.id==='challenge-confirm';});
+      if (ci.length < 2) return null;
+      return ci[ci.length-1].t - ci[0].t < 1000;
+    });
+  }
+  if (challengeUnique['challenge-spellcheck']) {
+    t(1, 'Spellcheck active', false, function() {
+      try { var ta = document.getElementById('challenge-spellcheck'); return ta && ta.spellcheck === true; } catch(e) { return null; }
+    });
+  }
+  var bp = totalWeight > 0 ? (botWeight / totalWeight) : 0.5;
+  var coverage = totalWeight / 95;
+  return {
+    botProbability: Math.round(bp * 100), confidence: coverage >= 0.5 ? 'High' : (coverage >= 0.25 ? 'Medium' : 'Low'),
+    signals: signals, totalWeight: totalWeight, maxWeight: 122,
+    eventCount: { mouse: m.length, scroll: s.length, clicks: c.length, keys: k.length, focus: f.length, resize: rsz.length, touch: tch.length,
+      input: inp.length, formClicks: formC.length, visibilityEvents: v.length, paste: pe.length }
+  };
+}
+function displayBehaviorResults(r) {
+  var pct = r.botProbability, inv = 100-pct;
+  var cat, emoji, color;
+  if (pct<=15) { cat='Human-like Behavior'; emoji='ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â§ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“'; color='#22c55e'; }
+  else if (pct<=35) { cat='Mostly Human'; emoji='ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡'; color='#84cc16'; }
+  else if (pct<=55) { cat='Uncertain'; emoji='ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â·'; color='#eab308'; }
+  else if (pct<=80) { cat='Bot-like Behavior'; emoji='ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“'; color='#f97316'; }
+  else { cat='Automated Behavior'; emoji='ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â'; color='#ef4444'; }
+  var cc = r.confidence==='High'?'conf-high':(r.confidence==='Medium'?'conf-med':'conf-low');
+  var html = '<div style="margin-top:0.75rem;padding:0.75rem;background:#0f172a;border-radius:0.375rem;">';
+  html += '<div style="font-size:1.5rem;margin-bottom:0.25rem;">'+emoji+'</div>';
+  html += '<div style="font-size:0.9rem;font-weight:600;">'+cat+'</div>';
+  html += '<div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">'+pct+'% bot-like behavior <span class="conf-badge '+cc+'">'+r.confidence+'</span></div>';
+  html += '<div class="gauge-bar" style="height:0.75rem;background:linear-gradient(to right,#22c55e,#84cc16,#eab308,#f97316,#ef4444);">';
+  html += '<div class="gauge-fill" style="width:'+pct+'%;background:rgba(15,23,42,0.4);height:100%;"></div></div>';
+  html += '<div class="gauge-label"><span>Human</span><span>Bot</span></div>';
+  var ev = r.eventCount;
+  html += '<div style="font-size:0.7rem;color:#64748b;margin:0.5rem 0;">Events: '+(ev.mouse||0)+' mouse, '+(ev.scroll||0)+' scroll, '+(ev.clicks||0)+' clicks, '+(ev.keys||0)+' keys' +
+    ((ev.input||0) > 0 ? ', '+(ev.input||0)+' input' : '') + ((ev.formClicks||0) > 0 ? ', '+(ev.formClicks||0)+' btn clicks' : '') +
+    ((ev.visibilityEvents||0) > 0 ? ', '+(ev.visibilityEvents||0)+' vis events' : '') + ((ev.paste||0) > 0 ? ', '+(ev.paste||0)+' paste' : '') +
+    ((ev.touch||0) > 0 ? ', '+(ev.touch||0)+' touch' : '')+'</div>';
+  html += '<div style="margin-top:0.5rem;"><span class="toggle-link" onclick="var s=document.getElementById(\'beh-signals\');s.classList.toggle(\'open\')">Show '+r.signals.length+' signal details ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â¼</span></div>';
+  html += '<div id="beh-signals" class="signal-list">';
+  for (var i = 0; i < r.signals.length; i++) {
+    var s = r.signals[i], icon = s.bot ? 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â ' : 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ', cls = s.bot ? 'signal-fail' : 'signal-pass';
+    html += '<div class="beh-signal-item"><span class="beh-signal-icon '+cls+'">'+icon+'</span>';
+    html += '<span class="'+cls+'">'+s.name+'</span><span class="signal-detail">'+s.humanLabel+'</span><span class="signal-weight">w'+s.weight+'</span></div>';
+  }
+  html += '</div></div>';
+  document.getElementById('behavior-results-inner').innerHTML = html;
+}
+// ===== SUBMISSION ENGINE =====
+var __lastFingerprintData = null;
+var __lastBehaviorResult = null;
+var __lastBotOrNotData = null;
+// Hook into captureFingerprint to store data for submission
+// We patch captureFingerprint by storing results when Bot-or-Not is computed
+// This is called from the renderBotOrNot hook point
+function enableSubmission(fp, bon) {
+  window.__submissionEnabled = true;
+  __lastFingerprintData = fp;
+  __lastBotOrNotData = bon;
+  var sec = document.getElementById('submit-preview-section');
+  sec.style.display = 'block';
+  // Build data preview
+  var previewData = buildSubmissionData(fp, bon);
+  var previewJSON = JSON.stringify(previewData, null, 2);
+  sec.innerHTML =
+    '<div style="background:#0f172a;border-radius:0.375rem;padding:0.75rem;">' +
+    '<h4 style="font-size:0.85rem;margin-bottom:0.5rem;">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â Data Preview ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â what will be sent</h4>' +
+    '<p style="font-size:0.7rem;color:#94a3b8;margin-bottom:0.5rem;">' +
+    'No IP addresses, cookies, or personal identifiers are included. ' +
+    'Only browser attribute hashes and aggregate stats are collected. ' +
+    '<a href="https://github.com/SemperSupra/scrutari#privacy" target="_blank" style="color:#60a5fa;">Privacy policy</a></p>' +
+    '<div class="field-preview">' + escapeHtml(previewJSON) + '</div>' +
+    '<div style="margin-top:0.75rem;">' +
+    '<label class="field-check"><input type="checkbox" id="submit-consent" onchange="document.getElementById(\'submit-btn\').disabled=!this.checked"> ' +
+    'I consent to submitting these anonymized browser attributes for research purposes. ' +
+    'I understand this data will be publicly available.</label></div>' +
+    '<button class="btn" id="submit-btn" disabled onclick="submitResults()" style="margin-top:0.5rem;">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€šÃ‚Â¤ Submit Anonymous Results</button>' +
+    '<div id="submit-result-msg" style="margin-top:0.5rem;font-size:0.75rem;"></div>' +
+    '</div>';
+}
+function buildSubmissionData(fp, bon) {
+  if (!fp) return { error: 'no data' };
+  // Strip identifying fields ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â keep only aggregate stats and hashes
+  var safe = {};
+  // Bot-or-Not scores (aggregate + per-signal for longitudinal analysis)
+  if (bon) {
+    safe.botScore = bon.botProbability;
+    safe.botConfidence = bon.confidence;
+    safe.botTestsRun = bon.testsRun;
+    safe.detectorVersion = 3;
+    safe.maxPossibleScore = bon.maxWeight || 122;
+    safe.botSignalNames = (bon.results || []).filter(function(s) { return s.bot; }).map(function(s) { return s.name; }).slice(0, 10);
+    // Per-signal scores ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â critical for signal half-life analysis
+    safe.signalScores = {};
+    var sigResults = bon.results || [];
+    for (var si = 0; si < sigResults.length; si++) {
+      var sig = sigResults[si];
+      safe.signalScores[sig.name] = { w: sig.weight, bot: sig.bot ? 1 : 0 };
+    }
+  }
+  // Entropy bits (aggregate, not per-attribute)
+  safe.totalEntropyBits = fp.totalEntropyBits || null;
+  // Screen resolution class (not exact ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â bucket for k-anonymity)
+  var w = screen.width, h = screen.height;
+  if (w >= 3840) safe.screenClass = '4K+';
+  else if (w >= 2560) safe.screenClass = 'QHD+';
+  else if (w >= 1920) safe.screenClass = 'Full HD';
+  else if (w >= 1366) safe.screenClass = 'HD+';
+  else safe.screenClass = '<HD';
+  // JS capabilities (boolean arrays, not version numbers)
+  safe.hasWASM = typeof WebAssembly !== 'undefined';
+  safe.hasWebGL = fp['webgl'] === true || fp['WebGL Renderer'] !== undefined;
+  safe.hasCanvas = !!(fp['Canvas Hash'] && (fp['Canvas Hash'] + '').indexOf('blocked') < 0);
+  safe.hasAudio = !!(fp['Audio Hash'] && (fp['Audio'] || '').indexOf('blocked') < 0);
+  safe.hasServiceWorker = 'serviceWorker' in navigator;
+  // Font count (not which fonts)
+  var fontMatch = (fp['Fonts Detected'] || '').match(/\d+/);
+  safe.fontCount = fontMatch ? parseInt(fontMatch[0]) : null;
+  // OS signals (boolean preferences)
+  safe.darkMode = !!(fp['Dark Mode'] === 'Yes');
+  safe.reducedMotion = !!(fp['Reduced Motion'] === 'Yes');
+  safe.hasTouch = navigator.maxTouchPoints > 0;
+  safe.deviceType = fp['Device Type'] || null;
+  safe.browser = fp['Browser'] || null;
+  safe.browserVersion = fp['Browser Version'] || null;
+  // CPU/memory buckets
+  var cores = navigator.hardwareConcurrency || 0;
+  safe.cpuCores = cores <= 2 ? 'low' : (cores <= 8 ? 'medium' : 'high');
+  safe.deviceMemory = navigator.deviceMemory ? (navigator.deviceMemory <= 4 ? 'low' : navigator.deviceMemory <= 8 ? 'medium' : 'high') : null;
+  // Timezone region (not specific timezone)
+  var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  safe.tzRegion = tz.split('/')[0] || 'unknown';
+  // Adblock
+  safe.adblockDetected = fp['Adblock Detected'] === 'Yes';
+  // Browser engine
+  safe.engine = fp['JS Engine'] || 'unknown';
+  // WebGL renderer class (not specific model)
+  var renderer = (fp['WebGL Renderer'] || '').toLowerCase();
+  if (renderer.includes('nvidia')) safe.gpuClass = 'nvidia';
+  else if (renderer.includes('amd') || renderer.includes('radeon')) safe.gpuClass = 'amd';
+  else if (renderer.includes('intel')) safe.gpuClass = 'intel';
+  else if (renderer.includes('apple') || renderer.includes('metal')) safe.gpuClass = 'apple';
+  else if (renderer.includes('llvmpipe') || renderer.includes('swiftshader')) safe.gpuClass = 'software';
+  else safe.gpuClass = 'other';
+  // Timestamp (anonymized to day)
+  safe.submitted = new Date().toISOString().split('T')[0]; // date only, no time
+  // Source ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â set by automation baselines to distinguish human vs automated submissions
+  safe.source = window.__SUBMISSION_SOURCE || 'manual';
+  // PoW benchmark speed (hashes/sec) â€” cleanest timing signal for bot detection
+  try { var _ps = fp && fp['PoW Speed']; if (_ps) { var _psNum = parseFloat(_ps); if (!isNaN(_psNum)) safe.powBenchmarkSpeed = _psNum; } } catch(_pe){}
+  // Interaction metrics for HCI experiment
+  try { var _beh = window.__behavior; if (_beh && _beh.events) { safe._interactionMetrics = { mouseEvents: (_beh.events.mouse||[]).length, scrollEvents: (_beh.events.scroll||[]).length, clickEvents: (_beh.events.clicks||[]).length, keyEvents: (_beh.events.key||[]).length, totalEvents: _beh.count||0, duration: _beh.duration||0, submitted: true }; } } catch(_ie){}
+  // Self-assessment ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â user's own rating of how bot-like they think they are (1-5)
+  safe.selfAssessment = window.__selfRating || null;
+  // IP version ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â IPv4 vs IPv6 (from the connectivity probe)
+  safe.ipVersion = (fp && fp['IP Version']) || 'unknown';
+  // Detector version ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â tracks methodology changes over time
+  safe.detectorVersion = 1;
+  safe.version = 1;
+  // Environment snapshot ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â browser, OS, viewport for longitudinal subgroup analysis
+  try {
+    var ua = navigator.userAgent || '';
+    var ver = 'unknown';
+    if (ua.includes('Chrome/')) { var m = ua.match(/Chrome\/([\d.]+)/); if (m) ver = m[1]; }
+    else if (ua.includes('Firefox/')) { var m = ua.match(/Firefox\/([\d.]+)/); if (m) ver = m[1]; }
+    else if (ua.includes('Version/')) { var m = ua.match(/Version\/([\d.]+)/); if (m) ver = m[1]; }
+    safe.browserVersion = ver;
+    safe.osArch = navigator.platform || '';
+    safe.viewport = window.innerWidth + 'x' + window.innerHeight;
+    safe.dpr = window.devicePixelRatio || 1;
+    safe.lang = navigator.language || '';
+  } catch(e) {}
+  // Session context ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â links related submissions for longitudinal tracking (no PII)
+  try {
+    if (!window.__sessionID) {
+      window.__sessionID = 'anon-' + Math.random().toString(36).substring(2, 10) +
+        Math.random().toString(36).substring(2, 6);
+    }
+    safe.sessionID = window.__sessionID;
+    window.__visitCount = (window.__visitCount || 0) + 1;
+    safe.visitNumber = window.__visitCount;
+  } catch(e) {}
+  return safe;
+}
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function getOGImageURL() {
+  var pct = __lastBotOrNotData?.botProbability;
+  if (pct === undefined) return '';
+  var siteUrl = window.location.origin;
+  return siteUrl + '/api/og?score=' + pct + '&engine=' + encodeURIComponent(__lastFingerprintData?.['JS Engine'] || 'unknown');
+}
+function shareScore(platform) {
+  var pct = __lastBotOrNotData?.botProbability;
+  if (pct === undefined) { alert('Run Bot-or-Not first!'); return; }
+  var inv = 100 - pct;
+  var engine = __lastFingerprintData?.['JS Engine'] || 'unknown';
+  var text = 'I just ran Scrutari Bot-or-NotÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ and my browser scored ' + pct + '% bot-like, ' + inv + '% human-like. Engine: ' + engine;
+  var url = window.location.origin + '/?score=' + pct;
+  var encoded = encodeURIComponent(text);
+  var encodedUrl = encodeURIComponent(url);
+  var links = {
+    twitter: 'https://twitter.com/intent/tweet?text=' + encoded + '&url=' + encodedUrl,
+    linkedin: 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodedUrl,
+    bluesky: 'https://bsky.app/intent/compose?text=' + encoded + '%20' + encodedUrl,
+    mastodon: 'https://mastodon.social/share?text=' + encoded + '%20' + encodedUrl,
+  };
+  window.open(links[platform], '_blank', 'width=600,height=500');
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+function downloadScoreCard() {
+  var pct = __lastBotOrNotData?.botProbability;
+  if (pct === undefined) { alert('Run Bot-or-Not first!'); return; }
+  var inv = 100 - pct;
+  var engine = __lastFingerprintData?.['JS Engine'] || 'unknown';
+  var cat = pct <= 15 ? 'Likely Human' : pct <= 35 ? 'Mostly Human' : pct <= 55 ? 'Uncertain' : pct <= 80 ? 'Bot-like' : 'Likely Bot';
+  // Render to canvas and download as PNG
+  var c = document.createElement('canvas');
+  c.width = 520; c.height = 320;
+  var ctx = c.getContext('2d');
+  var w = c.width, h = c.height;
+  // Background
+  var grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
+  ctx.fillStyle = grad; roundRect(ctx, 0, 0, w, h, 16); ctx.fill();
+  // Title
+  ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â Scrutari Bot-or-NotÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢', w/2, 44);
+  // Category
+  var catColor = pct <= 15 ? '#22c55e' : pct <= 35 ? '#84cc16' : pct <= 55 ? '#eab308' : pct <= 80 ? '#f97316' : '#ef4444';
+  ctx.font = '40px sans-serif'; ctx.fillText(pct <= 15 ? 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â§ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“' : pct <= 35 ? 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡' : pct <= 55 ? 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â·' : pct <= 80 ? 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“' : 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â', w/2, 90);
+  ctx.font = 'bold 18px sans-serif'; ctx.fillStyle = catColor; ctx.fillText(cat, w/2, 130);
+  ctx.font = '13px sans-serif'; ctx.fillStyle = '#94a3b8'; ctx.fillText(inv + '% human ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' + pct + '% bot', w/2, 160);
+  // Gauge
+  var gx = 60, gy = 180, gw = 400, gh = 18;
+  ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.roundRect(gx, gy, gw, gh, 9); ctx.fill();
+  var barGrad = ctx.createLinearGradient(gx, 0, gx+gw, 0);
+  barGrad.addColorStop(0, '#22c55e'); barGrad.addColorStop(0.25, '#84cc16'); barGrad.addColorStop(0.5, '#eab308'); barGrad.addColorStop(0.75, '#f97316'); barGrad.addColorStop(1, '#ef4444');
+  var bw = (pct/100) * gw;
+  ctx.fillStyle = barGrad; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.roundRect(gx, gy, bw, gh, 9); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#0f172a'; ctx.globalAlpha = 0.4; ctx.beginPath(); ctx.roundRect(gx+bw, gy, gw-bw, gh, 9); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.font = '11px sans-serif'; ctx.fillStyle = '#94a3b8';
+  ctx.textAlign = 'left'; ctx.fillText('Human', gx, gy+34);
+  ctx.textAlign = 'center'; ctx.fillText('Uncertain', gx+gw/2, gy+34);
+  ctx.textAlign = 'right'; ctx.fillText('Bot', gx+gw, gy+34);
+  // Footer
+  ctx.textAlign = 'center';
+  ctx.font = '12px sans-serif'; ctx.fillStyle = '#94a3b8'; ctx.fillText('Engine: ' + engine, w/2, 240);
+  ctx.font = '11px sans-serif'; ctx.fillText('Check your browser at scrutari.netlify.app', w/2, 280);
+  ctx.font = '9px sans-serif'; ctx.fillStyle = '#475569'; ctx.fillText('Free & open source', w/2, 300);
+  // Download
+  var link = document.createElement('a');
+  link.download = 'scrutari-score-' + pct + '-pct-bot.png';
+  link.href = c.toDataURL('image/png');
+  link.click();
+}
+async function submitResults() {
+  var btn = document.getElementById('submit-btn');
+  var msg = document.getElementById('submit-result-msg');
+  if (btn) { btn.disabled = true; btn.textContent = 'ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒâ€šÃ‚Â³ Submitting...'; }
+  if (msg) msg.innerHTML = '';
+  var data = buildSubmissionData(__lastFingerprintData, __lastBotOrNotData);
+  // Endpoint: set window.SUBMISSION_ENDPOINT in console to configure, or deploy Docker container.
+  // Default: Docker endpoint on localhost:3456. Change to your server's address in production.
+  // Deployment: docker build -t scrutari-submit submit-endpoint/ && docker run -p 3456:3456 scrutari-submit
+  var endpoint = window.SUBMISSION_ENDPOINT || localStorage.getItem('scrutari_endpoint') || '/api/submit';
+  try {
+    var resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (resp.ok) {
+      if (msg) msg.innerHTML = '<span style="color:#6ee7b7;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ Thank you! Your data helps improve k-anonymity research.</span>';
+      btn.textContent = 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ Submitted';
+    } else {
+      var errText = await resp.text().catch(function() { return 'unknown error'; });
+      throw new Error('HTTP ' + resp.status + ': ' + errText);
+    }
+  } catch(e) {
+    if (msg) msg.innerHTML = '<span style="color:#fca5a5;">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  Submission failed: ' + escapeHtml(e.message) + '.</span>';
+    if (btn) { btn.disabled = false; btn.textContent = 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€šÃ‚Â¤ Retry Submission'; }
+  }
+}
+// Patch captureFingerprint to enable submission when results are ready
+// We intercept via the renderBotOrNot call in captureFingerprint
+// The enableSubmission function is called from captureFingerprint via a hook
+// that we set up by patching the bot-or-not rendering path
+// Actually, we integrate it into captureFingerprint by adding a call after renderBotOrNot
+// Let's do it via a simple override of the existing flow
+// captureFingerprint already calls renderBotOrNot after computeBotOrNot
+// We add the enableSubmission call right after that
+// Store the original renderBotOrNot if we need to patch it
+// Better approach: we modify captureFingerprint to call enableSubmission
+// But since we've already shipped captureFingerprint, we hook in via setInterval
+// that checks for new bot data
+// Simpler: the renderBotOrNot function is called from captureFingerprint.
+// We modify the flow at the point where botornot-results is set.
+// Let's add the hook by wrapping the bonDiv assignment.
+// Cleanest: just check if bon data appeared every 2 seconds
+window.__submissionCheck = setInterval(function() {
+  if (window.__submissionEnabled) { clearInterval(__submissionCheck); return; }
+  if (__lastBotOrNotData && __lastFingerprintData) {
+    var sec = document.getElementById('submit-preview-section');
+    if (sec && sec.style.display !== 'block') {
+      enableSubmission(__lastFingerprintData, __lastBotOrNotData);
+    }
+  }
+}, 2000);
+// Clean up intervals on page unload
+window.addEventListener('beforeunload', function() {
+  if (window.__submissionCheck) { clearInterval(window.__submissionCheck); window.__submissionCheck = null; }
+});
+// Initialize submission section
+document.addEventListener('DOMContentLoaded', function() {
+  var sec = document.getElementById('submit-results');
+  if (sec) {
+    sec.innerHTML =
+      '<div class="gauge-container" style="text-align:center;">' +
+      '<div class="gauge-emoji">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â¬</div>' +
+      '<div class="gauge-title">Run fingerprint + Bot-or-Not first</div>' +
+      '<div class="gauge-subtitle">After capturing your fingerprint, you\'ll be able to contribute anonymized data.</div>' +
+      '<div id="submit-preview-section" style="display:none;text-align:left;margin-top:0.75rem;"></div>' +
+      '<div id="submit-status" style="margin-top:0.5rem;"></div>' +
+      '</div>';
+  }
+});
