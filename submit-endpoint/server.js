@@ -211,6 +211,23 @@ function verifyPoW(challenge, nonce, difficulty) {
   return bits >= difficulty;
 }
 
+// Simple in-process mutex for atomic store operations
+// Prevents lost updates when concurrent requests interleave loadStore/modify/saveStore
+class StoreMutex {
+  constructor() { this._queue = []; this._locked = false; }
+  acquire() {
+    return new Promise(resolve => {
+      if (!this._locked) { this._locked = true; resolve(); }
+      else this._queue.push(resolve);
+    });
+  }
+  release() {
+    if (this._queue.length > 0) { const next = this._queue.shift(); next(); }
+    else this._locked = false;
+  }
+}
+const storeMutex = new StoreMutex();
+
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -250,11 +267,13 @@ const server = http.createServer((req, res) => {
   });
   req.on('end', () => {
     try {
+      await storeMutex.acquire();
       const data = JSON.parse(body);
       const schemaErrors = schemaValidate(data);
       if (schemaErrors) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: schemaErrors.join('; ') }));
+        storeMutex.release();
         return;
       }
 
@@ -313,6 +332,7 @@ const server = http.createServer((req, res) => {
       console.log(`[Scrutari] #${totalFP} | unique: ${uniqueFP} | dedup: ${dedupRatio}% | entropy: ${marginalEntropy.toFixed(1)}b`);
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
+      storeMutex.release();
       res.end(JSON.stringify({
         status: 'ok',
         submission: `#${totalFP}`,
@@ -338,6 +358,7 @@ server.listen(PORT, () => {
   console.log(`Data: ${DATA_DIR}/store.json`);
   console.log(`Auto-archive at ${MAX_DB_SIZE / 1024 / 1024}MB`);
 });
+
 
 
 

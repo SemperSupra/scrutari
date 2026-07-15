@@ -210,6 +210,7 @@ export default async (req, context) => {
     updateDist(db.distributions, 'trustScore', _trustBucket);
     updateDist(db.distributions, 'source', data.source || 'manual');
 
+    db.storeVersion = (db.storeVersion || 0) + 1;
     db.updated = now;
 
     // Estimate blob size before saving
@@ -262,6 +263,7 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: e.message }), { status: 400, headers });
   }
 };
+
 
 
 
