@@ -34,7 +34,9 @@
     "playwright": "^1.61.1"
   },
   "devDependencies": {
+    "@types/node": "^26.1.1",
     "fast-check": "^4.9.0",
-    "globals": "^17.7.0"
+    "globals": "^17.7.0",
+    "typescript": "^7.0.2"
   }
 }
