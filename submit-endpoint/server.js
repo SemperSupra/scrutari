@@ -1,6 +1,7 @@
 ﻿'use strict';
 const http = require('http');
 const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
 
@@ -9,6 +10,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const RATE_LIMIT_MS = process.env.RATE_LIMIT_MS ? parseInt(process.env.RATE_LIMIT_MS, 10) : 5000;
 const MAX_BODY_BYTES = parseInt(process.env.MAX_BODY_BYTES, 10) || 102400; // 100KB default
 
+// Ensure data directory exists (sync on startup is fine)
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // Normalize IP address for consistent rate limiting and anonymization
@@ -91,14 +93,16 @@ function schemaValidate(data) {
   return errors.length > 0 ? errors : null;
 }
 
-// Load or initialize store
-function loadStore() {
+// Load or initialize store (async)
+async function loadStore() {
   const file = path.join(DATA_DIR, 'store.json');
   try {
-    if (fs.existsSync(file)) {
-      return JSON.parse(fs.readFileSync(file, 'utf-8'));
-    }
-  } catch (e) { console.error('Error loading store:', e.message); }
+    await fsp.access(file);
+    const content = await fsp.readFile(file, 'utf-8');
+    return JSON.parse(content);
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.error('Error loading store:', e.message);
+  }
   return {
     version: 2, created: new Date().toISOString().split('T')[0], updated: null,
     totalSubmissions: 0, uniqueFingerprints: 0,
@@ -106,38 +110,44 @@ function loadStore() {
   };
 }
 
-function saveStore(db) {
+async function saveStore(db) {
   const file = path.join(DATA_DIR, 'store.json');
   const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(db), 'utf-8');
-  fs.renameSync(tmp, file);
+  const str = JSON.stringify(db);
+  await fsp.writeFile(tmp, str, 'utf-8');
+  await fsp.rename(tmp, file);
   // Archive: if store gets large, copy to dated backup and reset
-  const size = fs.statSync(file).size;
-  if (size > MAX_DB_SIZE) {
-    const archiveFile = path.join(DATA_DIR, `store-archive-${new Date().toISOString().split('T')[0]}.json`);
-    fs.copyFileSync(file, archiveFile);
-    // Reset store (keep metadata)
-    db.fingerprints = {};
-    db.distributions = {};
-    db.archivedAt = new Date().toISOString();
-    saveStore(db);
-    console.log(`Archived store to ${archiveFile}, reset for continuing collection`);
+  try {
+    const stat = await fsp.stat(file);
+    if (stat.size > MAX_DB_SIZE) {
+      const archiveFile = path.join(DATA_DIR, `store-archive-${new Date().toISOString().split('T')[0]}.json`);
+      await fsp.copyFile(file, archiveFile);
+      // Reset store (keep metadata)
+      db.fingerprints = {};
+      db.distributions = {};
+      db.archivedAt = new Date().toISOString();
+      await saveStore(db);
+      console.log(`Archived store to ${archiveFile}, reset for continuing collection`);
 
-    // Prune old archives: keep only the MAX_ARCHIVES most recent
-    try {
-      const archives = fs.readdirSync(DATA_DIR)
-        .filter(f => f.startsWith('store-archive-'))
-        .sort()
-        .reverse();
-      for (let i = MAX_ARCHIVES; i < archives.length; i++) {
-        fs.unlinkSync(path.join(DATA_DIR, archives[i]));
-        console.log(`Removed old archive: ${archives[i]}`);
+      // Prune old archives: keep only the MAX_ARCHIVES most recent
+      try {
+        const entries = await fsp.readdir(DATA_DIR);
+        const archives = entries
+          .filter(f => f.startsWith('store-archive-'))
+          .sort()
+          .reverse();
+        for (let i = MAX_ARCHIVES; i < archives.length; i++) {
+          await fsp.unlink(path.join(DATA_DIR, archives[i]));
+          console.log(`Removed old archive: ${archives[i]}`);
+        }
+      } catch (e) {
+        console.error('Error pruning archives:', e.message);
       }
-    } catch (e) {
-      console.error('Error pruning archives:', e.message);
     }
+    return stat.size;
+  } catch (e) {
+    return str.length; // fallback if stat fails
   }
-  return size;
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -277,7 +287,7 @@ const server = http.createServer((req, res) => {
         return;
       }
 
-      const db = loadStore();
+      const db = await loadStore();
       const fpHash = computeHash(data);
       const now = new Date().toISOString();
 
@@ -313,7 +323,7 @@ const server = http.createServer((req, res) => {
       updateDistribution(db.distributions, 'trustScore', _trustBucket2);
 
       db.updated = now;
-      const blobSize = saveStore(db);
+      const blobSize = await saveStore(db);
 
       // Stats
       const totalFP = db.totalSubmissions;

@@ -60,6 +60,25 @@ export default async (req, context) => {
     const dist = await readKey(store, 'dist', {});
     const idx = await readKey(store, 'idx', []);
 
+    // ─── Pagination: parse ?cursor=&limit= from URL ───
+    const url = new URL(req.url);
+    const cursor = url.searchParams.get('cursor') || null;
+    const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 1000, 5000);
+
+    let fpKeys;
+    if (cursor) {
+      const cursorIdx = idx.indexOf(cursor);
+      if (cursorIdx >= 0) {
+        fpKeys = idx.slice(cursorIdx + 1, cursorIdx + 1 + limit);
+      } else {
+        fpKeys = []; // cursor not found
+      }
+    } else {
+      fpKeys = idx.slice(0, limit);
+    }
+
+    const nextCursor = fpKeys.length === limit ? fpKeys[fpKeys.length - 1] : null;
+
     // ─── Compute analysis ───
 
     const analysis = {
@@ -198,6 +217,15 @@ export default async (req, context) => {
         note: 'First dataset with demographics. Open access.' },
       hidingInCrowd2018: { venue: 'WWW 2018', sampleSize: '2M (French general audience)',
         desktopUniqueness: '33.6%', mobileUniqueness: '18.5%' },
+    };
+
+    // Pagination metadata
+    analysis.pagination = {
+      cursor: cursor,
+      limit: limit,
+      nextCursor: nextCursor,
+      totalFingerprints: idx.length,
+      returnedFingerprints: fpKeys.length,
     };
 
     // --- Write analysis cache ---
