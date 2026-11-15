@@ -79,6 +79,19 @@ jobs:
           # a separate full honeypot suite remains the release gate.
           probe sentrygate-admin https://scrutari-submit-1783887159.netlify.app/admin no
           probe sentrygate-admin-slash https://scrutari-submit-1783887159.netlify.app/admin/ no
+          # A bounded second observation preserves intermittent 5xx evidence
+          # without trying to convert the initial RED into a passing result.
+          for route in admin admin/; do
+            for sample in 2 3; do
+              rc=0
+              metrics="$(curl --silent --show-error --output /dev/null \
+                --connect-timeout 7 --max-time 15 --retry 0 --proto '=https' \
+                --write-out 'http=%{http_code} ttfb=%{time_starttransfer} total=%{time_total}' \
+                "https://scrutari-submit-1783887159.netlify.app/$route")" || rc=$?
+              printf 'EDGE_SAMPLE route=/%s sample=%s curl_exit=%s %s\\n' \
+                "$route" "$sample" "$rc" "$metrics"
+            done
+          done
           probe historical-custom-root https://leak-detector.scrutari.cloud-ip.cc/ no
           probe historical-custom-status https://leak-detector.scrutari.cloud-ip.cc/api/status no
           probe historical-github-pages https://sempersupra.github.io/scrutari/ no
