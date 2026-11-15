@@ -30,7 +30,9 @@ const report = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
   runId: process.env.GITHUB_RUN_ID || 'local-ephemeral',
-  sourceCommit: process.env.SCRUTARI_SOURCE_COMMIT || null,\n  workflowCheckoutSha: process.env.GITHUB_SHA || null,\n  deployedCommit: null, // Must be verified independently via Netlify deployment metadata.
+  sourceCommit: process.env.SCRUTARI_SOURCE_COMMIT || null,
+  workflowCheckoutSha: process.env.GITHUB_SHA || null,
+  deployedCommit: null, // Must be verified independently via Netlify deployment metadata.
   targetOrigin: target.origin,
   targetPath: target.pathname,
   truthKind: 'harness_attested_automation_only',
@@ -60,7 +62,9 @@ async function writeReport() {
     attempted: report.observations.length,
     passed: report.observations.filter(o => o.outcome === 'PASS').length,
     failed: report.observations.filter(o => o.outcome === 'FAIL').length,
-    recordedScores: report.observations.filter(o => Number.isInteger(o.botScore)).length,\n    harnessKnownAutomationFlaggedAt50: report.observations.filter(o => o.outcome === 'PASS' && o.flaggedAtAnalysisThreshold === true).length,\n    interpretation: 'Descriptive automation controls from one runner; not independent class-accuracy data',
+    recordedScores: report.observations.filter(o => Number.isInteger(o.botScore)).length,
+    harnessKnownAutomationFlaggedAt50: report.observations.filter(o => o.outcome === 'PASS' && o.flaggedAtAnalysisThreshold === true).length,
+    interpretation: 'Descriptive automation controls from one runner; not independent class-accuracy data',
   };
   await mkdir(dirname(OUTPUT), { recursive: true });
   await writeFile(OUTPUT, JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
@@ -149,7 +153,9 @@ async function observe(playwright, engineName, scenario) {
       };
     });
     if (!verifiedScore(score)) throw new Error('Missing/inconsistent detector score');
-    observation.botScore = score.botProbability;\n    observation.testsTotal = score.testsTotal;\n    observation.flaggedAtAnalysisThreshold = score.botProbability > 50; // Existing analysis cutoff; fixed for this experiment.
+    observation.botScore = score.botProbability;
+    observation.testsTotal = score.testsTotal;
+    observation.flaggedAtAnalysisThreshold = score.botProbability > 50; // Existing analysis cutoff; fixed for this experiment.
     observation.signalCount = score.testsRun;
     observation.signalOutcomes = score.signals;
     observation.confidenceLabel = score.confidenceLabel; // Heuristic coverage, not calibrated statistical confidence.
