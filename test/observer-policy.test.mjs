@@ -22,7 +22,7 @@ test('observer prevents production mutations and unapproved outbound requests', 
   assert.equal(requestDecision('GET', origin + '/api/challenge', origin), 'allow');
   assert.equal(requestDecision('HEAD', origin + '/', origin), 'allow');
   assert.equal(requestDecision('GET', 'https://ipinfo.io/json', origin), 'block-cross-origin');
-  assert.equal(requestDecision('POST', 'https://ipinfo.io/json', origin), 'block-cross-origin');
+  assert.equal(requestDecision('POST', 'https://ipinfo.io/json', origin), 'block-write');
   assert.equal(requestDecision('GET', 'data:text/plain,hello', origin), 'allow-local');
 });
 

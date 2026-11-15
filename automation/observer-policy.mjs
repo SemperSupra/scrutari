@@ -26,8 +26,8 @@ export function requestDecision(method, rawUrl, allowedOrigin) {
   let url;
   try { url = new URL(rawUrl); } catch { return 'block-malformed'; }
   if (['data:', 'blob:', 'about:'].includes(url.protocol)) return 'allow-local';
-  if (url.origin !== allowedOrigin) return 'block-cross-origin';
   if (!['GET', 'HEAD'].includes(String(method).toUpperCase())) return 'block-write';
+  if (url.origin !== allowedOrigin) return 'block-cross-origin';
   return 'allow';
 }
 
