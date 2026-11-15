@@ -1,0 +1,63 @@
+name: Synthetic Browser Assessment - read only
+
+# All browser observations are explicitly SYNTHETIC. No production POST.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/synthetic-browser-assessment.yml'
+      - 'automation/live-synthetic-observer.mjs'
+      - 'automation/observer-policy.mjs'
+      - 'test/observer-policy.test.mjs'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/synthetic-browser-assessment.yml'
+      - 'automation/live-synthetic-observer.mjs'
+      - 'automation/observer-policy.mjs'
+      - 'test/observer-policy.test.mjs'
+  workflow_dispatch:
+  schedule:
+    - cron: '37 6 * * 3' # Weekly Wednesday; more frequent only after review.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: synthetic-browser-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      CI: 'true'
+      SCRUTARI_OBSERVER_TARGET: https://scrutari-submit-1783887159.netlify.app/
+      SCRUTARI_OBSERVER_ENGINES: chromium,firefox,webkit
+      SCRUTARI_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout published source only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Node in disposable runner
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install exactly locked dependencies
+        run: npm ci
+      - name: Qualify read-only observation policy offline
+        run: node --test test/observer-policy.test.mjs
+      - name: Install browser binaries and OS deps in disposable runner
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Observe live public Scrutari through genuine browser engines
+        run: node automation/live-synthetic-observer.mjs
+      - name: Retain sanitized synthetic-only report even on RED
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrutari-synthetic-browser-${{ github.run_id }}
+          path: automation/observations/live-synthetic-report.json
+          if-no-files-found: warn
+          retention-days: 14
