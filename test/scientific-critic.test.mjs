@@ -56,3 +56,29 @@ test('fresh honeypot regression prevents downstream qualification',()=>{
   assert.equal(result.verdict,'FAIL');
   assert.ok(result.findings.some(f=>f.code==='HONEYPOT_REGRESSION'));
 });
+
+
+test('old 88/88 cannot count as current honeypot acceptance',()=>{
+  const result=critique(report(),{...options,now:'2026-11-15T17:00:00Z',
+    currentHoneypotReceipt:{
+      runId:'july-archive',sourceCommit:'old',
+      trapManifestSha:'old-manifest',completedAt:'2026-07-13T16:00:00Z',
+      total:88,passed:88,failed:0
+    }});
+  assert.equal(result.verdict,'INCONCLUSIVE');
+  assert.ok(result.findings.some(f=>f.code==='HONEYPOT_RECEIPT_STALE'));
+  assert.equal(result.releasePermitted,false);
+});
+test('unproven provenance of a claimed passing honeypot suite is inconclusive',()=>{
+  const result=critique(report(),{...options,currentHoneypotReceipt:{passed:88,failed:0,total:88}});
+  assert.ok(result.findings.some(f=>f.code==='HONEYPOT_RECEIPT_INCOMPLETE'));
+});
+test('recent source mismatches are an explicit release regression',()=>{
+  const result=critique(report({deployedCommit:'release-a'}),{...options,
+    now:'2026-11-15T17:00:00Z',
+    currentHoneypotReceipt:{runId:'today',sourceCommit:'release-b',trapManifestSha:'trap-hash',
+      completedAt:'2026-11-15T16:00:00Z',total:88,passed:88,failed:0}
+  });
+  assert.equal(result.verdict,'FAIL');
+  assert.ok(result.findings.some(f=>f.code==='HONEYPOT_SOURCE_MISMATCH'));
+});
