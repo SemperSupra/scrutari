@@ -57,10 +57,25 @@ export function critique(report, opts = {}) {
   if (!report?.deployedCommit) {
     findings.push(finding('DEPLOYED_REVISION_UNVERIFIED','INCONCLUSIVE','Exact Netlify deployed commit is unknown; score drift cannot be attributed.'));
   }
-  if (!opts.currentHoneypotReceipt) {
+  // A historical 88/88 is NOT a fresh receipt. Keep honeypot evidence
+  // separate from read-only browser observation and bind it to the source.
+  const hp = opts.currentHoneypotReceipt;
+  if (!hp) {
     findings.push(finding('HONEYPOT_UNTESTED','INCONCLUSIVE','Read-only observer does not exercise all honeypots; separate isolated honeypot regression is required.'));
-  } else if (!(opts.currentHoneypotReceipt.passed >= 88 && opts.currentHoneypotReceipt.failed === 0)) {
-    findings.push(finding('HONEYPOT_REGRESSION','FAIL','The supplied fresh honeypot test receipt is not a full pass.'));
+  } else if (hp.failed > 0 || (Number.isInteger(hp.total) && hp.passed !== hp.total)) {
+    findings.push(finding('HONEYPOT_REGRESSION','FAIL','Honeypot regression has failing or missing assertions.'));
+  } else if (!hp.runId || !hp.trapManifestSha || !hp.sourceCommit ||
+             !hp.completedAt || !Number.isInteger(hp.total) || hp.total < 88) {
+    findings.push(finding('HONEYPOT_RECEIPT_INCOMPLETE','INCONCLUSIVE','Honeypot receipt lacks complete run, manifest, source, timestamp or minimum test coverage.'));
+  } else {
+    const now = Date.parse(opts.now || new Date().toISOString());
+    const when = Date.parse(hp.completedAt);
+    const ageMs = now - when;
+    if (!Number.isFinite(when) || !Number.isFinite(now) || ageMs < -3600000 || ageMs > 7*86400000) {
+      findings.push(finding('HONEYPOT_RECEIPT_STALE','INCONCLUSIVE','A historical or future-dated honeypot pass cannot qualify the current build.'));
+    } else if (report.deployedCommit && hp.sourceCommit !== report.deployedCommit) {
+      findings.push(finding('HONEYPOT_SOURCE_MISMATCH','FAIL','The honeypot receipt is from a different deployed detector commit.'));
+    }
   }
   findings.push(finding('HUMAN_CONTROLS_ABSENT','INCONCLUSIVE','Known automation only: cannot estimate human false-positive rate or population accuracy.'));
   return {
