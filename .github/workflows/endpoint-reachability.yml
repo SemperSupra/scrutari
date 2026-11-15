@@ -74,6 +74,11 @@ jobs:
           probe netlify-root https://scrutari-submit-1783887159.netlify.app/ yes
           probe netlify-status https://scrutari-submit-1783887159.netlify.app/api/status yes
           # Other historical deployment surfaces are observations, not release gates.
+          # Honeypot paths are probed as read-only availability indicators.
+          # Report transient 502s without changing the trusted honeypot contract;
+          # a separate full honeypot suite remains the release gate.
+          probe sentrygate-admin https://scrutari-submit-1783887159.netlify.app/admin no
+          probe sentrygate-admin-slash https://scrutari-submit-1783887159.netlify.app/admin/ no
           probe historical-custom-root https://leak-detector.scrutari.cloud-ip.cc/ no
           probe historical-custom-status https://leak-detector.scrutari.cloud-ip.cc/api/status no
           probe historical-github-pages https://sempersupra.github.io/scrutari/ no
