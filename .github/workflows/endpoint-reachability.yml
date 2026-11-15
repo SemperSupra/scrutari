@@ -54,6 +54,22 @@ jobs:
             fi
             rm -f "$tmp"
           }
+          # Read-only DNS record evidence. CNAME is stable across Netlify deploys:
+          # never update DNS on every deployment and never put ClouDNS tokens in CI.
+          if command -v dig >/dev/null 2>&1; then
+            cname="$(dig +short +time=2 +tries=1 CNAME leak-detector.scrutari.cloud-ip.cc | tr '[:upper:]' '[:lower:]' | tr -d '\r')"
+            if [ -n "$cname" ]; then
+              printf 'DNS custom-domain cname=%s\n' "$cname"
+              if [ "$cname" != "scrutari-submit-1783887159.netlify.app." ]; then
+                echo 'DNS_CNAME_DRIFT: target differs from documented Netlify host'
+                failed=1
+              fi
+            else
+              echo 'DNS_CNAME_UNKNOWN: no direct CNAME answer; requires provider verification'
+            fi
+          else
+            echo 'DNS_CHECK_UNAVAILABLE: dig not installed on ephemeral runner'
+          fi
           # Required Netlify URL is the documented submission frontend endpoint.
           probe netlify-root https://scrutari-submit-1783887159.netlify.app/ yes
           probe netlify-status https://scrutari-submit-1783887159.netlify.app/api/status yes
