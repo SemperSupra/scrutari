@@ -1,5 +1,11 @@
 # Scrutari — Browser Leak Detector
 
+## Pronunciation
+
+**Proposed brand reading (pending owner/listening acceptance):** **skroo-TAH-ree** — US-English approximation **/skruːˈtɑː.riː/**, with stress on **TAH**. The Latin source word *scrūtārī* has the classical reconstructed reading **/skruːˈtaː.riː/**. This is a proposal, not an accepted audio recording or an assertion that there is only one possible English pronunciation.
+
+[Accessible text/IPA guide](docs/pronunciation/index.html) · [pronunciation and acceptance status](docs/pronunciation/README.md). Full-word synthetic audio and timed syllable-highlight video are **not yet recorded, listener-approved, or released**; no playback link is implied. The private project will generate those assets with the pinned reusable Dev Toolbox recipe after human listening acceptance.
+
 **🌐 Live site:** https://scrutari-submit-1783887159.netlify.app/
 **📖 GitHub Pages:** https://sempersupra.github.io/scrutari/
 
