@@ -1,0 +1,68 @@
+name: Production Endpoint Reachability (GET-only)
+
+# Public endpoints only; no submission, capture, honeypot, or analysis API reads.
+# No credentials, no private repository checkout, no production writes.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/endpoint-reachability.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/endpoint-reachability.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '23 7 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reachability-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: Public endpoints - no secrets, no state mutation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Probe document URLs (metadata only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Scrutari reachability UTC %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          printf 'No response bodies, credentials, fingerprint submissions or data exports are fetched.\n'
+          failed=0
+          probe() {
+            local label="$1" url="$2" required="$3" tmp code rc
+            tmp="$(mktemp)"
+            rc=0
+            # No external redirects: a 3xx is an HTTP-visible endpoint, not a proof its target works.
+            code="$(curl --silent --show-error --max-time 15 --connect-timeout 7 \
+              --retry 0 --proto '=https' --output /dev/null \
+              --write-out '%{http_code}' "$url" 2>"$tmp")" || rc=$?
+            if [ "$rc" -eq 0 ]; then
+              printf 'PROBE %s transport=ok http=%s\n' "$label" "$code"
+              if [ "$required" = yes ] && [[ ! "$code" =~ ^(2[0-9][0-9]|3[0-9][0-9]|401|403)$ ]]; then
+                failed=1
+              fi
+            else
+              # Output the error category without a URL or response body.
+              printf 'PROBE %s transport=failed curl_exit=%s http=%s\n' "$label" "$rc" "${code:-000}"
+              if [ "$required" = yes ]; then failed=1; fi
+            fi
+            rm -f "$tmp"
+          }
+          # Required Netlify URL is the documented submission frontend endpoint.
+          probe netlify-root https://scrutari-submit-1783887159.netlify.app/ yes
+          probe netlify-status https://scrutari-submit-1783887159.netlify.app/api/status yes
+          # Other historical deployment surfaces are observations, not release gates.
+          probe historical-custom-root https://leak-detector.scrutari.cloud-ip.cc/ no
+          probe historical-custom-status https://leak-detector.scrutari.cloud-ip.cc/api/status no
+          probe historical-github-pages https://sempersupra.github.io/scrutari/ no
+          if [ "$failed" -ne 0 ]; then
+            echo 'REACHABILITY_RED: primary documented Netlify site not consistently reachable.'
+            exit 1
+          fi
+          echo 'REACHABILITY_GREEN: primary Netlify host responded; this does NOT establish storage, capture, or data-analysis health.'
