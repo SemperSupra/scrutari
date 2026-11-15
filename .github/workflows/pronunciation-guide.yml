@@ -1,0 +1,41 @@
+name: Pronunciation Guide - public/offline qualification
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'docs/pronunciation/**'
+      - 'tests/pronunciation/**'
+      - '.github/workflows/pronunciation-guide.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'docs/pronunciation/**'
+      - 'tests/pronunciation/**'
+      - '.github/workflows/pronunciation-guide.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pronunciation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-guide:
+    name: Static guide - stdlib, no secrets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout publication-safe source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Qualify text, IPA, local links and acceptance disclosure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 --version
+          python3 -m unittest discover -s tests/pronunciation -p 'test_*.py' -v
