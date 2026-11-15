@@ -1,0 +1,32 @@
+name: Scientific Critic - offline deterministic evaluation
+
+on:
+  pull_request:
+    paths:
+      - 'automation/scientific-critic.mjs'
+      - 'test/scientific-critic.test.mjs'
+      - '.github/workflows/scientific-critic.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'automation/scientific-critic.mjs'
+      - 'test/scientific-critic.test.mjs'
+      - '.github/workflows/scientific-critic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  critic-unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: No-network scientific critic fixture validation
+        run: node --test test/scientific-critic.test.mjs
