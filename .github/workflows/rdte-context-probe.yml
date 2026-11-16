@@ -63,8 +63,14 @@ jobs:
           }
           & $p -Mode Deploy -ApproveDraftDeployment -Toolbox $fake
           if (-not (Test-Path -LiteralPath $record)) { throw 'Approved offline mock was not invoked' }
-          $args = @(Get-Content -LiteralPath $record -Raw | ConvertFrom-Json)
-          if ($args -contains '--context' -or $args -contains '--prod' -or $args -notcontains '--no-build') {
+          # Inspect the exact mock-recorded JSON text, not PowerShell's
+          # automatic $args variable (which is reserved for unbound parameters).
+          $capturedJson = [System.IO.File]::ReadAllText($record)
+          if ($capturedJson -match '"--context"' -or
+              $capturedJson -match '"--prod"' -or
+              $capturedJson -notmatch '"--no-build"' -or
+              $capturedJson -notmatch '"--site"' -or
+              $capturedJson -notmatch 'c7bb4aae-c13d-431b-bc93-4e79a85e1f37') {
             throw 'Rejected Netlify CLI flag combination'
           }
           Remove-Item -LiteralPath $record -Force
