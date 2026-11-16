@@ -20,7 +20,7 @@ if(-not (Test-Path -LiteralPath $Toolbox -PathType Leaf)){throw 'Portable toolbo
 $root=Join-Path ([IO.Path]::GetTempPath()) ('scrutari-rdte-'+[Guid]::NewGuid().ToString('N'))
 $pub=Join-Path $root 'public'
 $functions=Join-Path $root 'netlify\functions'
-$utf8=New-Object Text.UTF8Encoding($false)
+$utf8 = New-Object System.Text.UTF8Encoding -ArgumentList $false
 try{
   [IO.Directory]::CreateDirectory($pub)|Out-Null
   [IO.Directory]::CreateDirectory($functions)|Out-Null
