@@ -10,9 +10,9 @@ $ErrorActionPreference='Stop'
 $rdte='c7bb4aae-c13d-431b-bc93-4e79a85e1f37'
 $production='07a114de-1ed2-4268-b692-8e3690e4e51f'
 if($rdte -eq $production){throw 'RDTE must never equal production'}
-Write-Host "Target: scrutari-rdte-sempersupra ($rdte); production excluded."
+Write-Output "Target: scrutari-rdte-sempersupra ($rdte); production excluded."
 if($Mode -eq 'Plan'){
-  Write-Host 'PLAN_ONLY: no files, Netlify calls or deployments.'
+  Write-Output 'PLAN_ONLY: no files, Netlify calls or deployments.'
   return
 }
 if(-not $ApproveDraftDeployment){throw 'Use -ApproveDraftDeployment to authorize this draft.'}
