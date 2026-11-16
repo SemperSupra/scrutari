@@ -1,7 +1,8 @@
 name: Production Endpoint Reachability (GET-only)
 
-# Public endpoints only; no submission, capture, honeypot, or analysis API reads.
-# No credentials, no private repository checkout, no production writes.
+# Public endpoints only. The only response body fetched is the public, static
+# js/scrutari.js asset for bounded SHA-256 comparison across Netlify aliases.
+# No submission, fingerprint, honeypot, private API data or production writes.
 on:
   pull_request:
     paths:
@@ -32,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           printf 'Scrutari reachability UTC %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          printf 'No response bodies, credentials, fingerprint submissions or data exports are fetched.\n'
+          printf 'Only bounded, published JavaScript asset bodies are fetched; never visitor/API data.\n'
           failed=0
           probe() {
             local label="$1" url="$2" required="$3" tmp code rc
@@ -92,6 +93,43 @@ jobs:
                 "$route" "$sample" "$rc" "$metrics"
             done
           done
+          # Public artifact provenance comparison: static JS is publicly
+          # served code, not research telemetry. The SHA is an observation,
+          # not a verified Netlify deployment Git commit.
+          static_sha() {
+            local label="$1" host="$2" tmp rc digest bytes
+            tmp="$(mktemp)"
+            rc=0
+            curl --silent --show-error --fail --proto '=https' --retry 0 \
+              --connect-timeout 7 --max-time 15 --max-filesize 1000000 \
+              --output "$tmp" "$host/js/scrutari.js" || rc=$?
+            if [ "$rc" -eq 0 ]; then
+              digest="$(sha256sum "$tmp" | cut -d' ' -f1)"
+              bytes="$(wc -c < "$tmp" | tr -d ' ')"
+              printf 'STATIC_ASSET %s sha256=%s bytes=%s\\n' "$label" "$digest" "$bytes"
+              rm -f "$tmp"
+              printf '%s' "$digest"
+              return 0
+            fi
+            printf 'STATIC_ASSET_UNVERIFIED %s curl_exit=%s\\n' "$label" "$rc"
+            rm -f "$tmp"
+            return 1
+          }
+          netlify_asset="$(static_sha netlify https://scrutari-submit-1783887159.netlify.app)" || true
+          custom_asset="$(static_sha custom https://leak-detector.scrutari.cloud-ip.cc)" || true
+          # The tool emits status as well as digest; only the final 64 hex
+          # characters can be treated as a comparable SHA-256 observation.
+          netlify_digest="${netlify_asset: -64}"
+          custom_digest="${custom_asset: -64}"
+          if [[ "$netlify_digest" =~ ^[0-9a-f]{64}$ && "$custom_digest" =~ ^[0-9a-f]{64}$ ]]; then
+            if [ "$netlify_digest" = "$custom_digest" ]; then
+              echo 'STATIC_ALIAS_CONSISTENT: Netlify and custom-domain JS bodies match.'
+            else
+              echo 'STATIC_ALIAS_DRIFT: published JS differs across Netlify hostnames.'
+            fi
+          else
+            echo 'STATIC_IDENTITY_INCONCLUSIVE: one or both public JS asset hashes unavailable.'
+          fi
           probe historical-custom-root https://leak-detector.scrutari.cloud-ip.cc/ no
           probe historical-custom-status https://leak-detector.scrutari.cloud-ip.cc/api/status no
           probe historical-github-pages https://sempersupra.github.io/scrutari/ no
