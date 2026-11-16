@@ -4,7 +4,7 @@
  *
  * Tests all 30+ honeypot paths to ensure:
  *   1. Each returns HTTP 200 with realistic content
- *   2. Branding is consistent (ACME Corp, Laravel) across all pages
+ *   2. Branding is consistent (SentryGate Inc., Laravel) across all pages
  *   3. Tarpit cookie tracking works across visits
  *   4. Stealth JS tracking script is injected correctly
  *   5. Different bot user-agents are classified and logged
@@ -24,7 +24,7 @@ const OUT = join(__dirname, 'expected-results');
 mkdirSync(OUT, { recursive: true });
 
 const BASE = 'https://scrutari-submit-1783887159.netlify.app';
-const BRAND = 'ACME Corp';
+const BRAND = 'SentryGate Inc.';
 const TECH = ['Laravel', 'PHP 8'];
 
 // All honeypot paths that should return 200
@@ -77,12 +77,12 @@ async function run() {
   }
 
   // ─── Test 2: Brand consistency ───
-  console.log('\n▶ 2. Brand consistency (ACME Corp + Laravel across all pages)');
+  console.log('\n▶ 2. Brand consistency (SentryGate Inc. + Laravel across all pages)');
   for (const path of BRANDED_PATHS) {
     const html = await (await fetch(BASE + path)).text();
     const hasBrand = html.includes(BRAND);
     const hasTech = TECH.some(t => html.includes(t));
-    assert(`${path} → ACME Corp: ${hasBrand}, ${TECH[0]}: ${hasTech}`, hasBrand && hasTech,
+    assert(`${path} → SentryGate Inc.: ${hasBrand}, ${TECH[0]}: ${hasTech}`, hasBrand && hasTech,
       `brand=${hasBrand} tech=${hasTech}`);
   }
 
@@ -90,7 +90,7 @@ async function run() {
   console.log('\n▶ 3. Stealth tracking script injected');
   for (const path of TRACKED_PATHS) {
     const html = await (await fetch(BASE + path)).text();
-    const hasTracker = html.includes('hp_track') && html.includes('sendBeacon') && html.includes('canvas');
+    const hasTracker = html.includes('sg_track') && html.includes('sendBeacon') && html.includes('canvas');
     const hasSubEndpoint = html.includes('/api/submit');
     assert(`${path} → tracker: ${hasTracker}, endpoint: ${hasSubEndpoint}`,
       hasTracker && hasSubEndpoint);
@@ -101,18 +101,18 @@ async function run() {
   // First visit — cookie should be 1
   const resp1 = await fetch(BASE + '/admin/', { redirect: 'manual' });
   const cookie1 = resp1.headers.get('set-cookie') || '';
-  assert('First visit → __hp_visit=1', cookie1.includes('__hp_visit=1'), cookie1.substring(0, 50));
+  assert('First visit → __sg_visit=1', cookie1.includes('__sg_visit=1'), cookie1.substring(0, 50));
 
   // Simulate 5th visit
   const resp5 = await fetch(BASE + '/admin/', {
-    headers: { Cookie: '__hp_visit=5' }
+    headers: { Cookie: '__sg_visit=5' }
   });
   const cookie5 = resp5.headers.get('set-cookie') || '';
-  assert('5th visit → __hp_visit=6', cookie5.includes('__hp_visit=6'), cookie5.substring(0, 50));
+  assert('5th visit → __sg_visit=6', cookie5.includes('__sg_visit=6'), cookie5.substring(0, 50));
 
   // Verify content changes with visit count
   const html1 = await (await fetch(BASE + '/admin/')).text();
-  const html6 = await (await fetch(BASE + '/admin/', { headers: { Cookie: '__hp_visit=5' } })).text();
+  const html6 = await (await fetch(BASE + '/admin/', { headers: { Cookie: '__sg_visit=5' } })).text();
   const diff = html1 !== html6;
   assert('Content differs between visit #1 and #5', diff);
 
@@ -168,6 +168,15 @@ async function run() {
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
 
+    // Read-only browser qualification. Block all POST/PUT/PATCH/DELETE
+    // traffic before navigation, including hidden tracking beacons.
+    // The test must never write synthetic data into production.
+    await page.route('**/*', async route => {
+      const method = route.request().method();
+      if (method !== 'GET' && method !== 'HEAD') return route.abort();
+      return route.continue();
+    });
+
     // Listen for requests to /api/submit from the tracking beacon
     let beaconSent = null;
     page.on('request', req => {
@@ -180,8 +189,8 @@ async function run() {
     await page.waitForTimeout(2000);
 
     // Check if the tracking JS executed without error
-    const trackerRan = await page.evaluate(() => typeof hp_track === 'function');
-    assert('hp_track function exists in browser context', trackerRan);
+    const trackerRan = await page.evaluate(() => typeof sg_track === 'function');
+    assert('sg_track function exists in browser context', trackerRan);
 
     // Check navigator.webdriver detection
     const wd = await page.evaluate(() => !!navigator.webdriver);
@@ -189,7 +198,9 @@ async function run() {
 
     await browser.close();
   } catch (e) {
-    console.log(`  (Playwright test skipped: ${e.message})`);
+    // Failure to launch or exercise the browser is a qualification failure,
+    // not a silent pass. Actual unsupported runner must be marked RED.
+    assert('Playwright browser trap qualification', false, String(e.message || e));
   }
 
   // ─── Summary ───

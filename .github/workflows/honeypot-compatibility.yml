@@ -1,0 +1,35 @@
+name: Public SentryGate Trap Contract — GET-only
+on:
+  pull_request:
+    paths:
+      - 'automation/honeypot-tests.mjs'
+      - '.github/workflows/honeypot-compatibility.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sentrygate-trap-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  honeypot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Probe owned production traps (GET-only; block every browser write)
+        run: node automation/honeypot-tests.mjs --server
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sentrygate-trap-results-${{ github.run_id }}
+          path: automation/expected-results/honeypot-results.json
+          if-no-files-found: warn
+          retention-days: 14
