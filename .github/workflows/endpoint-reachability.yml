@@ -1,0 +1,157 @@
+name: Production Endpoint Reachability (GET-only)
+
+# Public endpoints only. The only response body fetched is the public, static
+# js/scrutari.js asset for bounded SHA-256 comparison across Netlify aliases.
+# No submission, fingerprint, honeypot, private API data or production writes.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/endpoint-reachability.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/endpoint-reachability.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '23 7 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reachability-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: Public endpoints - no secrets, no state mutation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Probe document URLs and bounded public JS provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Scrutari reachability UTC %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          printf 'Only bounded, published JavaScript asset bodies are fetched; never visitor/API data.\n'
+          failed=0
+          probe() {
+            local label="$1" url="$2" required="$3" tmp code rc
+            tmp="$(mktemp)"
+            rc=0
+            # No external redirects: a 3xx is an HTTP-visible endpoint, not a proof its target works.
+            code="$(curl --silent --show-error --max-time 15 --connect-timeout 7 \
+              --retry 0 --proto '=https' --output /dev/null \
+              --write-out '%{http_code}' "$url" 2>"$tmp")" || rc=$?
+            if [ "$rc" -eq 0 ]; then
+              printf 'PROBE %s transport=ok http=%s\n' "$label" "$code"
+              if [ "$required" = yes ] && [[ ! "$code" =~ ^(2[0-9][0-9]|3[0-9][0-9]|401|403)$ ]]; then
+                failed=1
+              fi
+            else
+              # Output the error category without a URL or response body.
+              printf 'PROBE %s transport=failed curl_exit=%s http=%s\n' "$label" "$rc" "${code:-000}"
+              if [ "$required" = yes ]; then failed=1; fi
+            fi
+            rm -f "$tmp"
+          }
+          # Read-only DNS record evidence. CNAME is stable across Netlify deploys:
+          # never update DNS on every deployment and never put ClouDNS tokens in CI.
+          if command -v dig >/dev/null 2>&1; then
+            cname="$(dig +short +time=2 +tries=1 CNAME leak-detector.scrutari.cloud-ip.cc | tr '[:upper:]' '[:lower:]' | tr -d '\r')"
+            if [ -n "$cname" ]; then
+              printf 'DNS custom-domain cname=%s\n' "$cname"
+              if [ "$cname" != "scrutari-submit-1783887159.netlify.app." ]; then
+                echo 'DNS_CNAME_DRIFT: target differs from documented Netlify host'
+                failed=1
+              fi
+            else
+              echo 'DNS_CNAME_UNKNOWN: no direct CNAME answer; requires provider verification'
+            fi
+          else
+            echo 'DNS_CHECK_UNAVAILABLE: dig not installed on ephemeral runner'
+          fi
+          # Required Netlify URL is the documented submission frontend endpoint.
+          probe netlify-root https://scrutari-submit-1783887159.netlify.app/ yes
+          probe netlify-status https://scrutari-submit-1783887159.netlify.app/api/status yes
+          # Other historical deployment surfaces are observations, not release gates.
+          # Honeypot paths are probed as read-only availability indicators.
+          # Report transient 502s without changing the trusted honeypot contract;
+          # a separate full honeypot suite remains the release gate.
+          probe sentrygate-admin https://scrutari-submit-1783887159.netlify.app/admin no
+          probe sentrygate-admin-slash https://scrutari-submit-1783887159.netlify.app/admin/ no
+          # A bounded second observation preserves intermittent 5xx evidence
+          # without trying to convert the initial RED into a passing result.
+          for route in admin admin/; do
+            for sample in 2 3; do
+              rc=0
+              metrics="$(curl --silent --show-error --output /dev/null \
+                --connect-timeout 7 --max-time 15 --retry 0 --proto '=https' \
+                --write-out 'http=%{http_code} ttfb=%{time_starttransfer} total=%{time_total}' \
+                "https://scrutari-submit-1783887159.netlify.app/$route")" || rc=$?
+              printf 'EDGE_SAMPLE route=/%s sample=%s curl_exit=%s %s\\n' \
+                "$route" "$sample" "$rc" "$metrics"
+            done
+          done
+          # Public artifact provenance comparison: static JS is publicly
+          # served code, not research telemetry. The SHA is an observation,
+          # not a verified Netlify deployment Git commit.
+          static_sha() {
+            local label="$1" host="$2" tmp rc digest bytes
+            tmp="$(mktemp)"
+            rc=0
+            curl --silent --show-error --fail --proto '=https' --retry 0 \
+              --connect-timeout 7 --max-time 15 --max-filesize 1000000 \
+              --output "$tmp" "$host/js/scrutari.js" || rc=$?
+            if [ "$rc" -eq 0 ]; then
+              digest="$(sha256sum "$tmp" | cut -d' ' -f1)"
+              bytes="$(wc -c < "$tmp" | tr -d ' ')"
+              printf 'STATIC_ASSET %s sha256=%s bytes=%s\\n' "$label" "$digest" "$bytes" >&2
+              rm -f "$tmp"
+              printf '%s' "$digest"
+              return 0
+            fi
+            printf 'STATIC_ASSET_UNVERIFIED %s curl_exit=%s\\n' "$label" "$rc" >&2
+            rm -f "$tmp"
+            return 1
+          }
+          netlify_asset="$(static_sha netlify https://scrutari-submit-1783887159.netlify.app)" || true
+          custom_asset="$(static_sha custom https://leak-detector.scrutari.cloud-ip.cc)" || true
+          # The tool emits status as well as digest; only the final 64 hex
+          # characters can be treated as a comparable SHA-256 observation.
+          netlify_digest="${netlify_asset: -64}"
+          custom_digest="${custom_asset: -64}"
+          if [[ "$netlify_digest" =~ ^[0-9a-f]{64}$ && "$custom_digest" =~ ^[0-9a-f]{64}$ ]]; then
+            if [ "$netlify_digest" = "$custom_digest" ]; then
+              echo 'STATIC_ALIAS_CONSISTENT: Netlify and custom-domain JS bodies match.'
+            else
+              echo 'STATIC_ALIAS_DRIFT: published JS differs across Netlify hostnames.'
+            fi
+          else
+            echo 'STATIC_IDENTITY_INCONCLUSIVE: one or both public JS asset hashes unavailable.'
+          fi
+          # Compare the deployed static asset with this *public* checked-out
+          # source. A PR checkout can include a synthetic merge commit; print
+          # its SHA to prevent claiming that it is the Netlify release commit.
+          if [ -f js/scrutari.js ] && [[ "$netlify_digest" =~ ^[0-9a-f]{64}$ ]]; then
+            source_digest="$(sha256sum js/scrutari.js | cut -d' ' -f1)"
+            printf 'STATIC_SOURCE checkout_sha=%s sha256=%s\\n' "$GITHUB_SHA" "$source_digest"
+            if [ "$source_digest" = "$netlify_digest" ]; then
+              echo 'STATIC_SOURCE_MATCH: this checked-out public detector equals the served Netlify JS bytes.'
+            else
+              echo 'STATIC_SOURCE_DRIFT: served JS differs from this checked-out public detector. Deploy commit mapping still unknown.'
+            fi
+          else
+            echo 'STATIC_SOURCE_INCONCLUSIVE: source or deployed asset could not be compared.'
+          fi
+          probe historical-custom-root https://leak-detector.scrutari.cloud-ip.cc/ no
+          probe historical-custom-status https://leak-detector.scrutari.cloud-ip.cc/api/status no
+          probe historical-github-pages https://sempersupra.github.io/scrutari/ no
+          if [ "$failed" -ne 0 ]; then
+            echo 'REACHABILITY_RED: primary documented Netlify site not consistently reachable.'
+            exit 1
+          fi
+          echo 'REACHABILITY_GREEN: primary Netlify host responded; this does NOT establish storage, capture, or data-analysis health.'
