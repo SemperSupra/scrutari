@@ -106,12 +106,12 @@ jobs:
             if [ "$rc" -eq 0 ]; then
               digest="$(sha256sum "$tmp" | cut -d' ' -f1)"
               bytes="$(wc -c < "$tmp" | tr -d ' ')"
-              printf 'STATIC_ASSET %s sha256=%s bytes=%s\\n' "$label" "$digest" "$bytes"
+              printf 'STATIC_ASSET %s sha256=%s bytes=%s\\n' "$label" "$digest" "$bytes" >&2
               rm -f "$tmp"
               printf '%s' "$digest"
               return 0
             fi
-            printf 'STATIC_ASSET_UNVERIFIED %s curl_exit=%s\\n' "$label" "$rc"
+            printf 'STATIC_ASSET_UNVERIFIED %s curl_exit=%s\\n' "$label" "$rc" >&2
             rm -f "$tmp"
             return 1
           }
