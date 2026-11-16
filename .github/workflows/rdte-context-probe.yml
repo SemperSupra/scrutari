@@ -26,3 +26,53 @@ jobs:
           $plan = (& $p -Mode Plan | Out-String)
           if ($plan -notmatch 'PLAN_ONLY' -or $plan -notmatch 'scrutari-rdte-sempersupra') { throw 'Plan gate failed' }
           Write-Host 'RDTE_CONTEXT_PROBE_PLAN_GREEN'
+      - name: Exercise draft arguments and permissions with a local fake toolbox
+        shell: powershell
+        run: |
+          $p = Join-Path $env:GITHUB_WORKSPACE 'automation\windows\Scrutari-Netlify-RDTE-Context-Probe.ps1'
+          $fake = Join-Path $env:RUNNER_TEMP 'fake-netlify-toolbox.ps1'
+          $record = Join-Path $env:RUNNER_TEMP 'rdte-args.json'
+          $env:SCRUTARI_PROBE_RECORD = $record
+          @'
+          [CmdletBinding()]
+          param([string]$Mode,[switch]$AllowMutatingCommands,[string[]]$CliArgs)
+          if ($Mode -ne 'Run' -or -not $AllowMutatingCommands) { throw 'Unexpected wrapper mode' }
+          if ($CliArgs[0] -ne 'deploy') { throw 'Unexpected CLI command' }
+          if ($CliArgs -contains '--prod' -or $CliArgs -contains '--context') { throw 'Unsafe or incompatible deploy flags' }
+          if ($CliArgs -notcontains '--no-build' -or $CliArgs -notcontains '--site') { throw 'Missing gated draft flags' }
+          $i = [Array]::IndexOf($CliArgs,'--site')
+          if (($i + 1) -ge $CliArgs.Length -or $CliArgs[$i+1] -ne 'c7bb4aae-c13d-431b-bc93-4e79a85e1f37') {
+            throw 'Unexpected project ID'
+          }
+          $function = Join-Path (Get-Location).Path 'netlify\functions\rdte-context.mjs'
+          $page = Join-Path (Get-Location).Path 'public\index.html'
+          if (-not (Test-Path -LiteralPath $function) -or -not (Test-Path -LiteralPath $page)) {
+            throw 'Draft fixture assets missing'
+          }
+          if ((Get-Content -LiteralPath $function -Raw) -notmatch 'writesPerformed:false') {
+            throw 'Draft fixture must be read-only'
+          }
+          if ($env:SCRUTARI_PROBE_MOCK_FAIL -eq 'yes') { throw 'Simulated CLI failure' }
+          $CliArgs | ConvertTo-Json | Set-Content -LiteralPath $env:SCRUTARI_PROBE_RECORD
+          Write-Output 'MOCK_DRAFT_ONLY_NOT_A_NETLIFY_DEPLOY'
+          '@ | Set-Content -LiteralPath $fake
+          $noApprovalDenied = $false
+          try { & $p -Mode Deploy -Toolbox $fake } catch { $noApprovalDenied = $true }
+          if (-not $noApprovalDenied -or (Test-Path -LiteralPath $record)) {
+            throw 'Draft ran without explicit approval'
+          }
+          & $p -Mode Deploy -ApproveDraftDeployment -Toolbox $fake
+          if (-not (Test-Path -LiteralPath $record)) { throw 'Approved offline mock was not invoked' }
+          $args = @(Get-Content -LiteralPath $record -Raw | ConvertFrom-Json)
+          if ($args -contains '--context' -or $args -contains '--prod' -or $args -notcontains '--no-build') {
+            throw 'Rejected Netlify CLI flag combination'
+          }
+          Remove-Item -LiteralPath $record -Force
+          $env:SCRUTARI_PROBE_MOCK_FAIL = 'yes'
+          $failedClosed = $false
+          try { & $p -Mode Deploy -ApproveDraftDeployment -Toolbox $fake } catch { $failedClosed = $true }
+          if (-not $failedClosed -or (Test-Path -LiteralPath $record)) {
+            throw 'Failed CLI incorrectly acknowledged a draft deployment'
+          }
+          Write-Host 'RDTE_DRAFT_PROBE_MOCK_GREEN'
+

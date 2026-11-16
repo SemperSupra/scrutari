@@ -49,7 +49,9 @@ export default async (req,ctx)=>{
 };
 '@
   [IO.File]::WriteAllText((Join-Path $functions 'rdte-context.mjs'),$handler,$utf8)
-  $cli=@('deploy','--site',$rdte,'--context','deploy-preview',
+  # This is an already-prepared draft, not a build. Netlify CLI 27.19.0
+  # rejects --context without a build; observe the true runtime context.
+  $cli=@('deploy','--site',$rdte,
     '--no-build','--dir','public','--functions','netlify/functions',
     '--message','Scrutari synthetic-only context probe')
   Push-Location $root
