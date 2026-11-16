@@ -1,0 +1,52 @@
+name: Portable Netlify Toolbox — Windows PowerShell 5.1
+on:
+  pull_request:
+    paths:
+      - 'automation/windows/Scrutari-Netlify-Toolbox.ps1'
+      - 'docs/PORTABLE_NETLIFY_TOOLBOX.md'
+      - '.github/workflows/portable-netlify-toolbox.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-netlify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  portable-install:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      NO_COLOR: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Parse script with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $p = Join-Path $env:GITHUB_WORKSPACE 'automation\windows\Scrutari-Netlify-Toolbox.ps1'
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($p, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "PowerShell 5.1 parser rejected portable toolbox"
+          }
+          Write-Host 'POWERSHELL_51_SYNTAX_GREEN'
+      - name: Install checksum-pinned portable Node and locally locked CLI
+        shell: powershell
+        run: |
+          $p = Join-Path $env:GITHUB_WORKSPACE 'automation\windows\Scrutari-Netlify-Toolbox.ps1'
+          $root = Join-Path $env:RUNNER_TEMP 'scrutari-toolbox'
+          & $p -Mode Install -Root $root
+          if (-not (Test-Path (Join-Path $root 'packages\netlify-cli\package-lock.json'))) { throw 'Missing pinned npm lockfile' }
+          & $p -Mode Run -Root $root -CliArgs @('--version')
+          & $p -Mode Status -Root $root
+          & $p -Mode Clean -Root $root
+          if (-not (Test-Path (Join-Path $root 'packages\netlify-cli\node_modules\.bin\netlify.cmd'))) { throw 'Clean removed reusable CLI' }
+          if (-not (Test-Path (Join-Path $root 'state\auth'))) { throw 'Missing isolated authentication state directory' }
+          Write-Host 'PORTABLE_NETLIFY_TOOLBOX_GREEN: no login, deployment, global npm or protected secret used'
