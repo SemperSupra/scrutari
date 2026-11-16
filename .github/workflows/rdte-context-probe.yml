@@ -1,0 +1,28 @@
+name: RDTE Context Probe — Windows PowerShell 5.1
+on:
+  pull_request:
+    paths:
+      - 'automation/windows/Scrutari-Netlify-RDTE-Context-Probe.ps1'
+      - 'docs/RDTE-CONTEXT-PROBE.md'
+      - '.github/workflows/rdte-context-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: windows-2022
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse under Windows PowerShell 5.1 and run read-only Plan
+        shell: powershell
+        run: |
+          $p = Join-Path $env:GITHUB_WORKSPACE 'automation\windows\Scrutari-Netlify-RDTE-Context-Probe.ps1'
+          $tokens = $null; $errors = $null
+          [Management.Automation.Language.Parser]::ParseFile($p,[ref]$tokens,[ref]$errors)|Out-Null
+          if ($errors.Count -gt 0) { throw 'PS5.1 parse failed' }
+          $plan = (& $p -Mode Plan | Out-String)
+          if ($plan -notmatch 'PLAN_ONLY' -or $plan -notmatch 'scrutari-rdte-sempersupra') { throw 'Plan gate failed' }
+          Write-Host 'RDTE_CONTEXT_PROBE_PLAN_GREEN'
