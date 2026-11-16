@@ -28,7 +28,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 4
     steps:
-      - name: Probe document URLs (metadata only)
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Probe document URLs and bounded public JS provenance
         shell: bash
         run: |
           set -euo pipefail
@@ -129,6 +132,20 @@ jobs:
             fi
           else
             echo 'STATIC_IDENTITY_INCONCLUSIVE: one or both public JS asset hashes unavailable.'
+          fi
+          # Compare the deployed static asset with this *public* checked-out
+          # source. A PR checkout can include a synthetic merge commit; print
+          # its SHA to prevent claiming that it is the Netlify release commit.
+          if [ -f js/scrutari.js ] && [[ "$netlify_digest" =~ ^[0-9a-f]{64}$ ]]; then
+            source_digest="$(sha256sum js/scrutari.js | cut -d' ' -f1)"
+            printf 'STATIC_SOURCE checkout_sha=%s sha256=%s\\n' "$GITHUB_SHA" "$source_digest"
+            if [ "$source_digest" = "$netlify_digest" ]; then
+              echo 'STATIC_SOURCE_MATCH: this checked-out public detector equals the served Netlify JS bytes.'
+            else
+              echo 'STATIC_SOURCE_DRIFT: served JS differs from this checked-out public detector. Deploy commit mapping still unknown.'
+            fi
+          else
+            echo 'STATIC_SOURCE_INCONCLUSIVE: source or deployed asset could not be compared.'
           fi
           probe historical-custom-root https://leak-detector.scrutari.cloud-ip.cc/ no
           probe historical-custom-status https://leak-detector.scrutari.cloud-ip.cc/api/status no
