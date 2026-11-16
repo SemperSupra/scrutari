@@ -1,0 +1,69 @@
+name: Portable Netlify Toolbox — Windows PowerShell 5.1
+on:
+  pull_request:
+    paths:
+      - 'automation/windows/Scrutari-Netlify-Toolbox.ps1'
+      - 'docs/PORTABLE_NETLIFY_TOOLBOX.md'
+      - 'automation/windows/Scrutari-Netlify-Audit.ps1'
+      - 'test/fixtures/netlify-site-sanitized-audit.json'
+      - '.github/workflows/portable-netlify-toolbox.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-netlify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  portable-install:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      NO_COLOR: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Parse script with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $p = Join-Path $env:GITHUB_WORKSPACE 'automation\windows\Scrutari-Netlify-Toolbox.ps1'
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($p, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "PowerShell 5.1 parser rejected portable toolbox"
+          }
+          Write-Host 'POWERSHELL_51_SYNTAX_GREEN'
+      - name: Verify sanitized Netlify project audit using fixture
+        shell: powershell
+        run: |
+          $script = Join-Path $env:GITHUB_WORKSPACE 'automation\windows\Scrutari-Netlify-Audit.ps1'
+          $fixture = Join-Path $env:GITHUB_WORKSPACE 'test\fixtures\netlify-site-sanitized-audit.json'
+          $site = '07a114de-1ed2-4268-b692-8e3690e4e51f'
+          $view = & $script -ProjectId $site -FixturePath $fixture
+          if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw 'Audit fixture rejected' }
+          $obj = $view | ConvertFrom-Json
+          if ($obj.auditMode -ne 'offline-fixture-not-account-verified') { throw 'Fixture mislabeled live' }
+          if ($obj.projectId -ne $site -or $obj.currentDeploymentId -ne '6a5aff20b023cc98b0ccf74c') { throw 'Identity mismatch' }
+          if ($obj.gitCommitRef -ne $null -or $obj.deploymentGitProvenanceVerified) { throw 'Invented git provenance' }
+          if (-not ($obj.functionRuntimes -contains 'nodejs20.x')) { throw 'Lost function version' }
+          if ($view -match 'MUST_NOT_EXPOSE|jwt_secret|skew_protection|user_id|available_functions') { throw 'Raw or sensitive provider fields leaked' }
+          Write-Host 'NETLIFY_SITE_AUDIT_SANITIZED_GREEN'
+      - name: Install checksum-pinned portable Node and locally locked CLI
+        shell: powershell
+        run: |
+          $p = Join-Path $env:GITHUB_WORKSPACE 'automation\windows\Scrutari-Netlify-Toolbox.ps1'
+          $root = Join-Path $env:RUNNER_TEMP 'scrutari-toolbox'
+          & $p -Mode Install -Root $root
+          if (-not (Test-Path (Join-Path $root 'packages\netlify-cli\package-lock.json'))) { throw 'Missing pinned npm lockfile' }
+          & $p -Mode Run -Root $root -CliArgs @('--version')
+          & $p -Mode Status -Root $root
+          & $p -Mode Clean -Root $root
+          if (-not (Test-Path (Join-Path $root 'packages\netlify-cli\node_modules\.bin\netlify.cmd'))) { throw 'Clean removed reusable CLI' }
+          if (-not (Test-Path (Join-Path $root 'state\auth'))) { throw 'Missing isolated authentication state directory' }
+          Write-Host 'PORTABLE_NETLIFY_TOOLBOX_GREEN: no login, deployment, global npm or protected secret used'

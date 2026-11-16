@@ -1,0 +1,29 @@
+{
+  "id": "07a114de-1ed2-4268-b692-8e3690e4e51f",
+  "name": "scrutari-submit-1783887159",
+  "deploy_source": "cli",
+  "account_type": "Free",
+  "jwt_secret": "MUST_NOT_EXPOSE_THIS",
+  "skew_protection_token": "MUST_NOT_EXPOSE_SKEW",
+  "build_settings": {},
+  "published_deploy": {
+    "id": "6a5aff20b023cc98b0ccf74c",
+    "published_at": "2026-07-18T04:21:01.453Z",
+    "context": "production",
+    "commit_ref": null,
+    "deploy_source": "cli",
+    "available_functions": [
+      {
+        "n": "analysis",
+        "r": "nodejs20.x",
+        "id": "MUST_NOT_EXPOSE_ID"
+      },
+      {
+        "n": "challenge",
+        "r": "nodejs20.x",
+        "id": "MUST_NOT_EXPOSE_ID2"
+      }
+    ]
+  },
+  "user_id": "MUST_NOT_EXPOSE_USER"
+}
